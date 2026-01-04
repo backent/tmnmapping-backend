@@ -15,7 +15,7 @@ func NewRepositoryUserImpl() RepositoryUserInterface {
 }
 
 func (repository *RepositoryUserImpl) FindById(ctx context.Context, tx *sql.Tx, id int) (models.User, error) {
-	SQL := "SELECT id, username, name, email, password, role FROM " + models.UserTable + " WHERE id = ?"
+	SQL := "SELECT id, username, name, email, password, role FROM " + models.UserTable + " WHERE id = $1"
 	rows, err := tx.QueryContext(ctx, SQL, id)
 	if err != nil {
 		return models.User{}, err
@@ -35,7 +35,7 @@ func (repository *RepositoryUserImpl) FindById(ctx context.Context, tx *sql.Tx, 
 }
 
 func (repository *RepositoryUserImpl) FindByUsername(ctx context.Context, tx *sql.Tx, username string) (models.User, error) {
-	SQL := "SELECT id, username, name, email, password, role FROM " + models.UserTable + " WHERE username = ?"
+	SQL := "SELECT id, username, name, email, password, role FROM " + models.UserTable + " WHERE username = $1"
 	rows, err := tx.QueryContext(ctx, SQL, username)
 	if err != nil {
 		return models.User{}, err

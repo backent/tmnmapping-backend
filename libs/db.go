@@ -7,27 +7,27 @@ import (
 	"strconv"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/malikabdulaziz/tmn-backend/helpers"
 )
 
 func NewDatabase() *sql.DB {
 	logger := helpers.GetLogger()
 
-	MYSQL_HOST := os.Getenv("MYSQL_HOST")
-	MYSQL_PORT := os.Getenv("MYSQL_PORT")
-	MYSQL_USER := os.Getenv("MYSQL_USER")
-	MYSQL_PASSWORD := os.Getenv("MYSQL_PASSWORD")
-	MYSQL_DATABASE := os.Getenv("MYSQL_DATABASE")
+	POSTGRES_HOST := os.Getenv("POSTGRES_HOST")
+	POSTGRES_PORT := os.Getenv("POSTGRES_PORT")
+	POSTGRES_USER := os.Getenv("POSTGRES_USER")
+	POSTGRES_PASSWORD := os.Getenv("POSTGRES_PASSWORD")
+	POSTGRES_DATABASE := os.Getenv("POSTGRES_DATABASE")
 
-	dataSourceName := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", MYSQL_USER, MYSQL_PASSWORD, MYSQL_HOST, MYSQL_PORT, MYSQL_DATABASE)
+	dataSourceName := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DATABASE)
 
-	db, err := sql.Open("mysql", dataSourceName)
+	db, err := sql.Open("pgx", dataSourceName)
 	if err != nil {
 		logger.WithFields(map[string]interface{}{
-			"host":     MYSQL_HOST,
-			"port":     MYSQL_PORT,
-			"database": MYSQL_DATABASE,
+			"host":     POSTGRES_HOST,
+			"port":     POSTGRES_PORT,
+			"database": POSTGRES_DATABASE,
 			"error":    err.Error(),
 		}).Error("Failed to open database connection")
 		panic(err)
@@ -58,18 +58,18 @@ func NewDatabase() *sql.DB {
 	err = db.Ping()
 	if err != nil {
 		logger.WithFields(map[string]interface{}{
-			"host":     MYSQL_HOST,
-			"port":     MYSQL_PORT,
-			"database": MYSQL_DATABASE,
+			"host":     POSTGRES_HOST,
+			"port":     POSTGRES_PORT,
+			"database": POSTGRES_DATABASE,
 			"error":    err.Error(),
 		}).Error("Failed to ping database")
 		panic(err)
 	}
 
 	logger.WithFields(map[string]interface{}{
-		"host":                  MYSQL_HOST,
-		"port":                  MYSQL_PORT,
-		"database":              MYSQL_DATABASE,
+		"host":                  POSTGRES_HOST,
+		"port":                  POSTGRES_PORT,
+		"database":              POSTGRES_DATABASE,
 		"max_open_connections":  DB_MAX_OPEN_CONNECTIONS,
 		"max_idle_connections":  DB_MAX_IDLE_CONNECTIONS,
 		"conn_max_lifetime_sec": DB_CONN_MAX_LIFETIME_IN_SEC,

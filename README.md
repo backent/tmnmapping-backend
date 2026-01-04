@@ -6,7 +6,7 @@ Complete Go backend service with JWT authentication built using clean architectu
 
 ✅ **JWT Authentication** - Secure token-based auth with HTTP-only cookies  
 ✅ **Clean Architecture** - Separated layers (Controllers, Services, Repositories)  
-✅ **MySQL Database** - User management with migrations  
+✅ **PostgreSQL Database** - User management with migrations  
 ✅ **Password Hashing** - Bcrypt encryption  
 ✅ **Protected Routes** - Middleware-based auth  
 ✅ **Google Wire** - Dependency injection  
@@ -34,7 +34,7 @@ backend/
 ## Prerequisites
 
 - Go 1.21+
-- MySQL 8.0+
+- PostgreSQL 14+
 - Make (optional)
 
 ## Setup
@@ -58,11 +58,11 @@ Edit `.env` with your configuration:
 
 ```bash
 # Database
-DB_USER=root
-DB_PASS=your_password
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=tmn_backend
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=adminlocal
+POSTGRES_DATABASE=tmn_backend
 
 # Application
 APP_PORT=8088
@@ -73,8 +73,9 @@ APP_TOKEN_EXPIRE_IN_SEC=3600
 ### 3. Create Database
 
 ```bash
-mysql -u root -p
+psql -U postgres -h localhost
 CREATE DATABASE tmn_backend;
+\q
 ```
 
 ### 4. Run Migrations
@@ -92,39 +93,39 @@ curl -L https://github.com/golang-migrate/migrate/releases/download/v4.17.0/migr
 sudo mv migrate /usr/local/bin/
 
 # Or install with Go
-go install -tags 'mysql' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 ```
 
 **Run migrations:**
 
 ```bash
 # Run all pending migrations
-migrate -path database/migrations -database "mysql://root:your_password@tcp(localhost:3306)/tmn_backend" up
+migrate -path database/migrations -database "postgres://postgres:adminlocal@localhost:5432/tmn_backend?sslmode=disable" up
 
 # Run specific number of migrations
-migrate -path database/migrations -database "mysql://root:your_password@tcp(localhost:3306)/tmn_backend" up 1
+migrate -path database/migrations -database "postgres://postgres:adminlocal@localhost:5432/tmn_backend?sslmode=disable" up 1
 
 # Rollback last migration
-migrate -path database/migrations -database "mysql://root:your_password@tcp(localhost:3306)/tmn_backend" down 1
+migrate -path database/migrations -database "postgres://postgres:adminlocal@localhost:5432/tmn_backend?sslmode=disable" down 1
 ```
 
 **Using Docker (no installation needed):**
 
 ```bash
 # Single line
-docker run -v $(pwd)/database/migrations:/migrations --network host migrate/migrate -path=/migrations -database "mysql://root:your_password@tcp(127.0.0.1:3306)/tmn_backend" up
+docker run -v $(pwd)/database/migrations:/migrations --network host migrate/migrate -path=/migrations -database "postgres://postgres:adminlocal@localhost:5432/tmn_backend?sslmode=disable" up
 
 # Multi-line (better readability)
 docker run -v $(pwd)/database/migrations:/migrations --network host migrate/migrate \
   -path=/migrations \
-  -database "mysql://root:your_password@tcp(127.0.0.1:3306)/tmn_backend" \
+  -database "postgres://postgres:adminlocal@localhost:5432/tmn_backend?sslmode=disable" \
   up
 ```
 
-#### Option B: Using MySQL directly
+#### Option B: Using PostgreSQL directly
 
 ```bash
-mysql -u root -p tmn_backend < database/migrations/001_create_users_table.up.sql
+psql -U postgres -h localhost -d tmn_backend -f database/migrations/001_create_users_table.up.sql
 ```
 
 ### 5. Seed Test User
@@ -334,14 +335,14 @@ All panics are caught by the router's panic handler and converted to appropriate
 
 ```sql
 CREATE TABLE users (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
     name VARCHAR(50) NOT NULL,
     email VARCHAR(50),
     password VARCHAR(200) NOT NULL,
     role VARCHAR(20) DEFAULT 'user',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
@@ -365,12 +366,12 @@ migrate create -ext sql -dir database/migrations -seq create_new_table
 `002_create_posts_table.up.sql`:
 ```sql
 CREATE TABLE IF NOT EXISTS posts (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     content TEXT,
-    user_id BIGINT UNSIGNED NOT NULL,
+    user_id BIGINT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    CONSTRAINT fk_posts_user_id FOREIGN KEY (user_id) REFERENCES users(id)
 );
 ```
 
@@ -403,7 +404,7 @@ wire
 
 ### Database Connection Error
 
-- Check MySQL is running
+- Check PostgreSQL is running
 - Verify credentials in `.env`
 - Ensure database exists
 

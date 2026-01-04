@@ -4,9 +4,9 @@
 
 ### 1. Create Database
 ```bash
-mysql -u root -p
+psql -U postgres -h localhost
 CREATE DATABASE tmn_backend;
-exit
+\q
 ```
 
 ### 2. Run Migration
@@ -20,7 +20,7 @@ exit
 
 # Run migration
 migrate -path database/migrations \
-  -database "mysql://root:your_password@tcp(localhost:3306)/tmn_backend" \
+  -database "postgres://postgres:adminlocal@localhost:5432/tmn_backend?sslmode=disable" \
   up
 ```
 
@@ -29,23 +29,23 @@ migrate -path database/migrations \
 ```bash
 docker run -v $(pwd)/database/migrations:/migrations --network host migrate/migrate \
   -path=/migrations \
-  -database "mysql://root:your_password@tcp(127.0.0.1:3306)/tmn_backend" \
+  -database "postgres://postgres:adminlocal@localhost:5432/tmn_backend?sslmode=disable" \
   up
 ```
 
-#### Option B: Using MySQL directly
+#### Option B: Using PostgreSQL directly
 
 ```bash
-mysql -u root -p tmn_backend < database/migrations/001_create_users_table.up.sql
+psql -U postgres -h localhost -d tmn_backend -f database/migrations/001_create_users_table.up.sql
 ```
 
 ### 3. Create Test User
 ```bash
 # Hash for password "password123"
-mysql -u root -p tmn_backend
+psql -U postgres -h localhost -d tmn_backend
 INSERT INTO users (username, name, password, role) 
 VALUES ('admin', 'Administrator', '$2a$10$N9qo8uLOickgx2ZMRZoMye5xvJ5UYEPlL7O0IYdH7g3LVXh9dkQvq', 'admin');
-exit
+\q
 ```
 
 ### 4. Configure Environment
@@ -56,11 +56,11 @@ cp env.example .env
 
 Example `.env`:
 ```bash
-DB_USER=root
-DB_PASS=your_password
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=tmn_backend
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=adminlocal
+POSTGRES_DATABASE=tmn_backend
 
 APP_PORT=8088
 APP_SECRET_KEY=my-super-secret-key-min-32-chars-long
