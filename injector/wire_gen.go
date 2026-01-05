@@ -10,11 +10,14 @@ import (
 	"github.com/google/wire"
 	"github.com/julienschmidt/httprouter"
 	auth3 "github.com/malikabdulaziz/tmn-backend/controllers/auth"
+	building3 "github.com/malikabdulaziz/tmn-backend/controllers/building"
 	"github.com/malikabdulaziz/tmn-backend/libs"
 	"github.com/malikabdulaziz/tmn-backend/middlewares"
 	"github.com/malikabdulaziz/tmn-backend/repositories/auth"
+	"github.com/malikabdulaziz/tmn-backend/repositories/building"
 	"github.com/malikabdulaziz/tmn-backend/repositories/user"
 	auth2 "github.com/malikabdulaziz/tmn-backend/services/auth"
+	building2 "github.com/malikabdulaziz/tmn-backend/services/building"
 )
 
 // Injectors from wire.go:
@@ -23,17 +26,34 @@ func InitializeRouter() *httprouter.Router {
 	validate := libs.NewValidator()
 	repositoryAuthInterface := auth.NewRepositoryAuthJWTImpl()
 	authMiddleware := middlewares.NewAuthMiddleware(validate, repositoryAuthInterface)
-	loggingMiddleware := middlewares.NewLoggingMiddleware()
 	db := libs.NewDatabase()
+	repositoryBuildingInterface := building.NewRepositoryBuildingImpl()
+	buildingMiddleware := middlewares.NewBuildingMiddleware(validate, db, repositoryBuildingInterface)
+	loggingMiddleware := middlewares.NewLoggingMiddleware()
 	repositoryUserInterface := user.NewRepositoryUserImpl()
 	serviceAuthInterface := auth2.NewServiceAuthImpl(db, repositoryAuthInterface, repositoryUserInterface)
 	controllerAuthInterface := auth3.NewControllerAuthImpl(db, serviceAuthInterface, repositoryUserInterface)
-	router := libs.NewRouter(authMiddleware, loggingMiddleware, controllerAuthInterface)
+	erpClient := libs.ProvideERPClient()
+	logger := libs.NewLogger()
+	serviceBuildingInterface := building2.NewServiceBuildingImpl(db, repositoryBuildingInterface, erpClient, logger)
+	controllerBuildingInterface := building3.NewControllerBuildingImpl(serviceBuildingInterface)
+	router := libs.NewRouter(authMiddleware, buildingMiddleware, loggingMiddleware, controllerAuthInterface, controllerBuildingInterface)
 	return router
+}
+
+func InitializeBuildingService() building2.ServiceBuildingInterface {
+	db := libs.NewDatabase()
+	repositoryBuildingInterface := building.NewRepositoryBuildingImpl()
+	erpClient := libs.ProvideERPClient()
+	logger := libs.NewLogger()
+	serviceBuildingInterface := building2.NewServiceBuildingImpl(db, repositoryBuildingInterface, erpClient, logger)
+	return serviceBuildingInterface
 }
 
 // wire.go:
 
 var authSet = wire.NewSet(auth.NewRepositoryAuthJWTImpl, user.NewRepositoryUserImpl, auth2.NewServiceAuthImpl, auth3.NewControllerAuthImpl)
 
-var middlewareSet = wire.NewSet(middlewares.NewAuthMiddleware, middlewares.NewLoggingMiddleware)
+var buildingSet = wire.NewSet(building.NewRepositoryBuildingImpl, building2.NewServiceBuildingImpl, building3.NewControllerBuildingImpl)
+
+var middlewareSet = wire.NewSet(middlewares.NewAuthMiddleware, middlewares.NewBuildingMiddleware, middlewares.NewLoggingMiddleware)

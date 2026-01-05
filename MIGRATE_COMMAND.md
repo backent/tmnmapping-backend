@@ -15,7 +15,7 @@ curl -L https://github.com/golang-migrate/migrate/releases/download/v4.17.0/migr
 sudo mv migrate /usr/local/bin/
 
 # Or with Go
-go install -tags 'mysql' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 
 # Verify installation
 migrate -version
@@ -47,7 +47,7 @@ migrate -path [path] -database [connection_string] [action] [N]
 
 ```bash
 migrate -path database/migrations \
-  -database "mysql://root:password@tcp(localhost:3306)/tmn_backend" \
+  -database "postgres://postgres:adminlocal@localhost:5432/tmn_backend?sslmode=disable" \
   up
 ```
 
@@ -55,7 +55,7 @@ migrate -path database/migrations \
 
 ```bash
 migrate -path database/migrations \
-  -database "mysql://root:password@tcp(localhost:3306)/tmn_backend" \
+  -database "postgres://postgres:adminlocal@localhost:5432/tmn_backend?sslmode=disable" \
   up 1
 ```
 
@@ -63,7 +63,7 @@ migrate -path database/migrations \
 
 ```bash
 migrate -path database/migrations \
-  -database "mysql://root:password@tcp(localhost:3306)/tmn_backend" \
+  -database "postgres://postgres:adminlocal@localhost:5432/tmn_backend?sslmode=disable" \
   down 1
 ```
 
@@ -71,7 +71,7 @@ migrate -path database/migrations \
 
 ```bash
 migrate -path database/migrations \
-  -database "mysql://root:password@tcp(localhost:3306)/tmn_backend" \
+  -database "postgres://postgres:adminlocal@localhost:5432/tmn_backend?sslmode=disable" \
   down
 ```
 
@@ -79,7 +79,7 @@ migrate -path database/migrations \
 
 ```bash
 migrate -path database/migrations \
-  -database "mysql://root:password@tcp(localhost:3306)/tmn_backend" \
+  -database "postgres://postgres:adminlocal@localhost:5432/tmn_backend?sslmode=disable" \
   force 1
 ```
 
@@ -87,7 +87,7 @@ migrate -path database/migrations \
 
 ```bash
 migrate -path database/migrations \
-  -database "mysql://root:password@tcp(localhost:3306)/tmn_backend" \
+  -database "postgres://postgres:adminlocal@localhost:5432/tmn_backend?sslmode=disable" \
   version
 ```
 
@@ -98,15 +98,15 @@ If you prefer to use Docker instead of installing migrate on your host:
 ### Single line command:
 
 ```bash
-docker run -v $(pwd)/database/migrations:/migrations --network host migrate/migrate -path=/migrations -database "mysql://root:password@tcp(127.0.0.1:3306)/tmn_backend" up
+docker run -v $(pwd)/database/migrations:/migrations --network host migrate/migrate -path=/migrations/ -database "postgres://postgres:adminlocal@127.0.0.1:5432/tmn_backend?sslmode=disable" up
 ```
 
 ### Multi-line command (better readability):
 
 ```bash
 docker run -v $(pwd)/database/migrations:/migrations --network host migrate/migrate \
-  -path=/migrations \
-  -database "mysql://root:password@tcp(127.0.0.1:3306)/tmn_backend" \
+  -path=/migrations/ \
+  -database "postgres://postgres:adminlocal@127.0.0.1:5432/tmn_backend?sslmode=disable" \
   up
 ```
 
@@ -118,8 +118,8 @@ docker run -v $(pwd)/database/migrations:/migrations --network host migrate/migr
 
 ```bash
 docker run -v $(pwd)/database/migrations:/migrations --network host migrate/migrate \
-  -path=/migrations \
-  -database "mysql://root:password@tcp(127.0.0.1:3306)/tmn_backend" \
+  -path=/migrations/ \
+  -database "postgres://postgres:adminlocal@127.0.0.1:5432/tmn_backend?sslmode=disable" \
   down 1
 ```
 
@@ -127,28 +127,31 @@ docker run -v $(pwd)/database/migrations:/migrations --network host migrate/migr
 
 ```bash
 docker run -v $(pwd)/database/migrations:/migrations --network host migrate/migrate \
-  -path=/migrations \
-  -database "mysql://root:password@tcp(127.0.0.1:3306)/tmn_backend" \
+  -path=/migrations/ \
+  -database "postgres://postgres:adminlocal@127.0.0.1:5432/tmn_backend?sslmode=disable" \
   version
 ```
 
 ## Connection String Format
 
 ```
-mysql://username:password@tcp(host:port)/database
+postgres://username:password@host:port/database?sslmode=disable
 ```
 
 **Examples:**
 
 ```bash
 # Local development
-mysql://root:password@tcp(localhost:3306)/tmn_backend
+postgres://postgres:adminlocal@localhost:5432/tmn_backend?sslmode=disable
 
 # Remote server
-mysql://user:pass@tcp(192.168.1.100:3306)/tmn_backend
+postgres://user:pass@192.168.1.100:5432/tmn_backend?sslmode=disable
+
+# With SSL enabled
+postgres://postgres:adminlocal@localhost:5432/tmn_backend?sslmode=require
 
 # With special characters in password (URL encode)
-mysql://root:p%40ssw0rd@tcp(localhost:3306)/tmn_backend
+postgres://postgres:p%40ssw0rd@localhost:5432/tmn_backend?sslmode=disable
 ```
 
 ## Common Migration Patterns
@@ -158,18 +161,24 @@ mysql://root:p%40ssw0rd@tcp(localhost:3306)/tmn_backend
 **up.sql:**
 ```sql
 CREATE TABLE IF NOT EXISTS posts (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     content TEXT,
-    user_id BIGINT UNSIGNED NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    user_id BIGINT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id);
+
+ALTER TABLE posts ADD CONSTRAINT fk_posts_user_id 
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
 ```
 
 **down.sql:**
 ```sql
+ALTER TABLE posts DROP CONSTRAINT IF EXISTS fk_posts_user_id;
+DROP INDEX IF EXISTS idx_posts_user_id;
 DROP TABLE IF EXISTS posts;
 ```
 
@@ -177,7 +186,7 @@ DROP TABLE IF EXISTS posts;
 
 **up.sql:**
 ```sql
-ALTER TABLE users ADD COLUMN phone VARCHAR(20) AFTER email;
+ALTER TABLE users ADD COLUMN phone VARCHAR(20);
 ```
 
 **down.sql:**
@@ -189,12 +198,12 @@ ALTER TABLE users DROP COLUMN phone;
 
 **up.sql:**
 ```sql
-CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 ```
 
 **down.sql:**
 ```sql
-DROP INDEX idx_users_email ON users;
+DROP INDEX IF EXISTS idx_users_email;
 ```
 
 ## Troubleshooting
@@ -206,12 +215,12 @@ This happens when a migration fails halfway:
 ```bash
 # Check current version and dirty state
 migrate -path database/migrations \
-  -database "mysql://root:password@tcp(localhost:3306)/tmn_backend" \
+  -database "postgres://postgres:adminlocal@localhost:5432/tmn_backend?sslmode=disable" \
   version
 
 # Force to a specific clean version
 migrate -path database/migrations \
-  -database "mysql://root:password@tcp(localhost:3306)/tmn_backend" \
+  -database "postgres://postgres:adminlocal@localhost:5432/tmn_backend?sslmode=disable" \
   force 1
 ```
 
@@ -229,9 +238,16 @@ migrate -path database/migrations -database "..." up 1
 
 ### Error: "database connection refused"
 
-- Check MySQL is running: `mysql -u root -p`
+- Check PostgreSQL is running: `psql -U postgres -h localhost`
 - Verify credentials in connection string
 - Ensure database exists: `CREATE DATABASE tmn_backend;`
+
+### Error: "pq: SSL is not enabled"
+
+Add `?sslmode=disable` to your connection string for local development:
+```bash
+postgres://postgres:adminlocal@localhost:5432/tmn_backend?sslmode=disable
+```
 
 ## Best Practices
 
@@ -239,9 +255,10 @@ migrate -path database/migrations -database "..." up 1
 2. **Test migrations** - Test both up and down on a copy of production data
 3. **Keep migrations small** - One logical change per migration
 4. **Never modify applied migrations** - Create new migrations for changes
-5. **Use transactions** - MySQL InnoDB supports transactional DDL
+5. **Use transactions** - PostgreSQL fully supports transactional DDL
 6. **Version control** - Commit migration files to git
 7. **Document complex migrations** - Add comments explaining why
+8. **Use IF EXISTS/IF NOT EXISTS** - Make migrations idempotent
 
 ## Build Commands
 
@@ -258,23 +275,32 @@ env GOOS=linux GOARCH=amd64 go build -o tmn-backend
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o tmn-backend
 ```
 
-## Useful MySQL Commands
+## Useful PostgreSQL Commands
 
 ```bash
+# Connect to database
+psql -U postgres -h localhost -d tmn_backend
+
 # Show all tables
-mysql -u root -p tmn_backend -e "SHOW TABLES;"
+psql -U postgres -h localhost -d tmn_backend -c "\dt"
 
 # Show table structure
-mysql -u root -p tmn_backend -e "DESCRIBE users;"
+psql -U postgres -h localhost -d tmn_backend -c "\d users"
 
 # Show all migrations applied
-mysql -u root -p tmn_backend -e "SELECT * FROM schema_migrations;"
+psql -U postgres -h localhost -d tmn_backend -c "SELECT * FROM schema_migrations;"
 
 # Drop database (careful!)
-mysql -u root -p -e "DROP DATABASE tmn_backend;"
+psql -U postgres -h localhost -c "DROP DATABASE tmn_backend;"
 
 # Recreate database
-mysql -u root -p -e "CREATE DATABASE tmn_backend;"
+psql -U postgres -h localhost -c "CREATE DATABASE tmn_backend;"
+
+# List all databases
+psql -U postgres -h localhost -c "\l"
+
+# List all indexes on a table
+psql -U postgres -h localhost -d tmn_backend -c "\d+ users"
 ```
 
 ## Quick Reference
@@ -291,5 +317,6 @@ mysql -u root -p -e "CREATE DATABASE tmn_backend;"
 ## Resources
 
 - [golang-migrate Documentation](https://github.com/golang-migrate/migrate)
-- [MySQL Migration Best Practices](https://github.com/golang-migrate/migrate/blob/master/database/mysql/README.md)
+- [PostgreSQL Migration Best Practices](https://github.com/golang-migrate/migrate/blob/master/database/postgres/README.md)
+- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
 

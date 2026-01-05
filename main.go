@@ -3,10 +3,12 @@ package main
 import (
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/joho/godotenv"
 	"github.com/malikabdulaziz/tmn-backend/helpers"
 	"github.com/malikabdulaziz/tmn-backend/injector"
+	servicesBuilding "github.com/malikabdulaziz/tmn-backend/services/building"
 )
 
 func main() {
@@ -28,8 +30,21 @@ func main() {
 		APP_PORT = "8088"
 	}
 
+	// Get ERP sync interval
+	syncIntervalStr := os.Getenv("ERP_SYNC_INTERVAL_MINUTES")
+	syncInterval := 30
+	if syncIntervalStr != "" {
+		if val, err := strconv.Atoi(syncIntervalStr); err == nil {
+			syncInterval = val
+		}
+	}
+
 	// Initialize router with all dependencies
 	router := injector.InitializeRouter()
+
+	// Initialize building service for sync scheduler
+	buildingService := injector.InitializeBuildingService()
+	servicesBuilding.StartBuildingSyncScheduler(buildingService, helpers.Logger, syncInterval)
 
 	// Create HTTP server
 	server := http.Server{

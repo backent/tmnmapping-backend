@@ -1,0 +1,28 @@
+CREATE TABLE IF NOT EXISTS buildings (
+    id BIGSERIAL PRIMARY KEY,
+    external_building_id VARCHAR(100) UNIQUE,
+    iris_code VARCHAR(100),
+    name VARCHAR(255) NOT NULL,
+    project_name VARCHAR(255),
+    audience INTEGER,
+    impression INTEGER,
+    cbd_area VARCHAR(255),
+    building_status INTEGER DEFAULT 0,
+    competitor_location BOOLEAN DEFAULT FALSE,
+    sellable VARCHAR(20),
+    connectivity VARCHAR(50),
+    resource_type VARCHAR(255),
+    synced_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_buildings_external_id ON buildings(external_building_id);
+CREATE INDEX IF NOT EXISTS idx_buildings_iris_code ON buildings(iris_code);
+CREATE INDEX IF NOT EXISTS idx_buildings_name ON buildings(name);
+CREATE INDEX IF NOT EXISTS idx_buildings_created_at ON buildings(created_at);
+CREATE INDEX IF NOT EXISTS idx_buildings_competitor_location ON buildings(competitor_location);
+CREATE INDEX IF NOT EXISTS idx_buildings_sellable ON buildings(sellable);
+CREATE INDEX IF NOT EXISTS idx_buildings_connectivity ON buildings(connectivity);
+CREATE INDEX IF NOT EXISTS idx_buildings_resource_type ON buildings(resource_type);
+

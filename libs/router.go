@@ -5,14 +5,17 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	controllersAuth "github.com/malikabdulaziz/tmn-backend/controllers/auth"
+	controllersBuilding "github.com/malikabdulaziz/tmn-backend/controllers/building"
 	"github.com/malikabdulaziz/tmn-backend/exceptions"
 	"github.com/malikabdulaziz/tmn-backend/middlewares"
 )
 
 func NewRouter(
 	authMiddleware *middlewares.AuthMiddleware,
+	buildingMiddleware *middlewares.BuildingMiddleware,
 	loggingMiddleware *middlewares.LoggingMiddleware,
 	controllersAuth controllersAuth.ControllerAuthInterface,
+	controllersBuilding controllersBuilding.ControllerBuildingInterface,
 ) *httprouter.Router {
 	router := httprouter.New()
 
@@ -37,6 +40,24 @@ func NewRouter(
 	router.GET("/current-user",
 		loggingMiddleware.Log(
 			authMiddleware.RequireAuth(controllersAuth.CurrentUser)))
+
+	// Building routes (protected)
+	router.GET("/buildings",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(controllersBuilding.FindAll)))
+
+	router.GET("/buildings/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(controllersBuilding.FindById)))
+
+	router.PUT("/buildings/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				buildingMiddleware.ValidateUpdate(controllersBuilding.Update))))
+
+	router.POST("/buildings/sync",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(controllersBuilding.SyncManual)))
 
 	return router
 }
