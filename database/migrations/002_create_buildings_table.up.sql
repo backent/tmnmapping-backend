@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS buildings (
     citytown VARCHAR(255),
     province VARCHAR(255),
     grade_resource VARCHAR(255),
+    building_type VARCHAR(255),
+    completion_year INTEGER,
     images JSONB,
     synced_at TIMESTAMP,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -34,4 +36,5 @@ CREATE INDEX IF NOT EXISTS idx_buildings_subdistrict ON buildings(subdistrict);
 CREATE INDEX IF NOT EXISTS idx_buildings_citytown ON buildings(citytown);
 CREATE INDEX IF NOT EXISTS idx_buildings_province ON buildings(province);
 CREATE INDEX IF NOT EXISTS idx_buildings_grade_resource ON buildings(grade_resource);
+CREATE INDEX IF NOT EXISTS idx_buildings_building_type ON buildings(building_type);
 

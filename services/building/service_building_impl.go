@@ -57,10 +57,10 @@ func (service *ServiceBuildingImpl) FindAll(ctx context.Context, request webBuil
 	helpers.PanicIfError(err)
 	defer helpers.CommitOrRollback(tx)
 
-	buildings, err := service.RepositoryBuildingInterface.FindAll(ctx, tx, request.GetTake(), request.GetSkip(), request.GetOrderBy(), request.GetOrderDirection(), request.GetSearch(), request.GetBuildingStatus(), request.GetSellable(), request.GetConnectivity(), request.GetResourceType(), request.GetCompetitorLocation(), request.GetCbdArea(), request.GetSubdistrict(), request.GetCitytown(), request.GetProvince(), request.GetGradeResource())
+	buildings, err := service.RepositoryBuildingInterface.FindAll(ctx, tx, request.GetTake(), request.GetSkip(), request.GetOrderBy(), request.GetOrderDirection(), request.GetSearch(), request.GetBuildingStatus(), request.GetSellable(), request.GetConnectivity(), request.GetResourceType(), request.GetCompetitorLocation(), request.GetCbdArea(), request.GetSubdistrict(), request.GetCitytown(), request.GetProvince(), request.GetGradeResource(), request.GetBuildingType())
 	helpers.PanicIfError(err)
 
-	total, err := service.RepositoryBuildingInterface.CountAll(ctx, tx, request.GetSearch(), request.GetBuildingStatus(), request.GetSellable(), request.GetConnectivity(), request.GetResourceType(), request.GetCompetitorLocation(), request.GetCbdArea(), request.GetSubdistrict(), request.GetCitytown(), request.GetProvince(), request.GetGradeResource())
+	total, err := service.RepositoryBuildingInterface.CountAll(ctx, tx, request.GetSearch(), request.GetBuildingStatus(), request.GetSellable(), request.GetConnectivity(), request.GetResourceType(), request.GetCompetitorLocation(), request.GetCbdArea(), request.GetSubdistrict(), request.GetCitytown(), request.GetProvince(), request.GetGradeResource(), request.GetBuildingType())
 	helpers.PanicIfError(err)
 
 	return webBuilding.BuildingModelsToListBuildingResponse(buildings), total
@@ -196,6 +196,8 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 				Citytown:           erpBuilding.Citytown,
 				Province:           erpBuilding.Province,
 				GradeResource:      erpBuilding.GradeResource,
+				BuildingType:       erpBuilding.BuildingType,
+				CompletionYear:     erpBuilding.CompletionYear,
 				BuildingStatus:     buildingStatus,
 				CompetitorLocation: erpBuilding.CompetitorPresence != 0,
 				Images:             images,
@@ -246,6 +248,8 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 			existingBuilding.Citytown = erpBuilding.Citytown
 			existingBuilding.Province = erpBuilding.Province
 			existingBuilding.GradeResource = erpBuilding.GradeResource
+			existingBuilding.BuildingType = erpBuilding.BuildingType
+			existingBuilding.CompletionYear = erpBuilding.CompletionYear
 			existingBuilding.BuildingStatus = buildingStatus
 			existingBuilding.CompetitorLocation = erpBuilding.CompetitorPresence != 0
 			existingBuilding.Images = images
@@ -292,7 +296,7 @@ func (service *ServiceBuildingImpl) GetFilterOptions(ctx context.Context) map[st
 	filterOptions := make(map[string][]string)
 
 	// Get distinct values for each filter field
-	columns := []string{"building_status", "sellable", "connectivity", "resource_type", "cbd_area", "subdistrict", "citytown", "province", "grade_resource"}
+	columns := []string{"building_status", "sellable", "connectivity", "resource_type", "cbd_area", "subdistrict", "citytown", "province", "grade_resource", "building_type"}
 
 	for _, column := range columns {
 		values, err := service.RepositoryBuildingInterface.GetDistinctValues(ctx, tx, column)

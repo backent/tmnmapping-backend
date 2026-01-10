@@ -28,6 +28,8 @@ type Building struct {
 	Citytown           string          `json:"citytown"`
 	Province           string          `json:"province"`
 	GradeResource      string          `json:"grade_resource"`
+	BuildingType       string          `json:"building_type"`
+	CompletionYear     int             `json:"completion_year"`
 	Images             []BuildingImage `json:"images"`
 	SyncedAt           string          `json:"synced_at"`
 	CreatedAt          string          `json:"created_at"`
@@ -52,6 +54,8 @@ type NullAbleBuilding struct {
 	Citytown           sql.NullString
 	Province           sql.NullString
 	GradeResource      sql.NullString
+	BuildingType       sql.NullString
+	CompletionYear     sql.NullInt64
 	Images             sql.NullString
 	SyncedAt           sql.NullString
 	CreatedAt          sql.NullString
@@ -88,6 +92,8 @@ func NullAbleBuildingToBuilding(nullable NullAbleBuilding) Building {
 		Citytown:           nullable.Citytown.String,
 		Province:           nullable.Province.String,
 		GradeResource:      nullable.GradeResource.String,
+		BuildingType:       nullable.BuildingType.String,
+		CompletionYear:     int(nullable.CompletionYear.Int64),
 		Images:             images,
 		SyncedAt:           nullable.SyncedAt.String,
 		CreatedAt:          nullable.CreatedAt.String,

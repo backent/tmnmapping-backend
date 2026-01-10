@@ -25,6 +25,8 @@ type BuildingResponse struct {
 	Citytown           string                  `json:"citytown"`
 	Province           string                  `json:"province"`
 	GradeResource      string                  `json:"grade_resource"`
+	BuildingType       string                  `json:"building_type"`
+	CompletionYear     int                     `json:"completion_year"`
 	Images             []BuildingImageResponse `json:"images"`
 	SyncedAt           string                  `json:"synced_at"`
 	CreatedAt          string                  `json:"created_at"`
@@ -59,6 +61,8 @@ func BuildingModelToBuildingResponse(building models.Building) BuildingResponse 
 		Citytown:           building.Citytown,
 		Province:           building.Province,
 		GradeResource:      building.GradeResource,
+		BuildingType:       building.BuildingType,
+		CompletionYear:     building.CompletionYear,
 		Images:             images,
 		SyncedAt:           building.SyncedAt,
 		CreatedAt:          building.CreatedAt,

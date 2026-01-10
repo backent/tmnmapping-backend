@@ -77,6 +77,7 @@ type RequestFilter interface {
 	SetCitytown(citytown string)
 	SetProvince(province string)
 	SetGradeResource(gradeResource string)
+	SetBuildingType(buildingType string)
 }
 
 func SetFilters(request RequestFilter, r *http.Request) {
@@ -150,6 +151,13 @@ func SetFilters(request RequestFilter, r *http.Request) {
 		gradeResource := r.URL.Query().Get("grade_resource")
 		if gradeResource != "" {
 			request.SetGradeResource(gradeResource)
+		}
+	}
+
+	if r.URL.Query().Has("building_type") {
+		buildingType := r.URL.Query().Get("building_type")
+		if buildingType != "" {
+			request.SetBuildingType(buildingType)
 		}
 	}
 }

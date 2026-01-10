@@ -30,8 +30,8 @@ func (repository *RepositoryBuildingImpl) Create(ctx context.Context, tx *sql.Tx
 	SQL := `INSERT INTO ` + models.BuildingTable + ` 
 		(external_building_id, iris_code, name, project_name, audience, impression, 
 		cbd_area, building_status, competitor_location, sellable, connectivity, 
-		resource_type, subdistrict, citytown, province, grade_resource, images, synced_at) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) 
+		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, images, synced_at) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20) 
 		RETURNING id, created_at, updated_at`
 
 	err = tx.QueryRowContext(ctx, SQL,
@@ -51,6 +51,8 @@ func (repository *RepositoryBuildingImpl) Create(ctx context.Context, tx *sql.Tx
 		nullIfEmpty(building.Citytown),
 		nullIfEmpty(building.Province),
 		nullIfEmpty(building.GradeResource),
+		nullIfEmpty(building.BuildingType),
+		nullIfZero(building.CompletionYear),
 		imagesJSON,
 		nullIfEmpty(building.SyncedAt),
 	).Scan(&building.Id, &building.CreatedAt, &building.UpdatedAt)
@@ -66,7 +68,7 @@ func (repository *RepositoryBuildingImpl) Create(ctx context.Context, tx *sql.Tx
 func (repository *RepositoryBuildingImpl) FindById(ctx context.Context, tx *sql.Tx, id int) (models.Building, error) {
 	SQL := `SELECT id, external_building_id, iris_code, name, project_name, audience, 
 		impression, cbd_area, building_status, competitor_location, sellable, connectivity, 
-		resource_type, subdistrict, citytown, province, grade_resource, images, synced_at, created_at, updated_at 
+		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, images, synced_at, created_at, updated_at 
 		FROM ` + models.BuildingTable + ` WHERE id = $1`
 
 	rows, err := tx.QueryContext(ctx, SQL, id)
@@ -95,6 +97,8 @@ func (repository *RepositoryBuildingImpl) FindById(ctx context.Context, tx *sql.
 			&building.Citytown,
 			&building.Province,
 			&building.GradeResource,
+			&building.BuildingType,
+			&building.CompletionYear,
 			&building.Images,
 			&building.SyncedAt,
 			&building.CreatedAt,
@@ -113,7 +117,7 @@ func (repository *RepositoryBuildingImpl) FindById(ctx context.Context, tx *sql.
 func (repository *RepositoryBuildingImpl) FindByExternalId(ctx context.Context, tx *sql.Tx, externalId string) (models.Building, error) {
 	SQL := `SELECT id, external_building_id, iris_code, name, project_name, audience, 
 		impression, cbd_area, building_status, competitor_location, sellable, connectivity, 
-		resource_type, subdistrict, citytown, province, grade_resource, images, synced_at, created_at, updated_at 
+		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, images, synced_at, created_at, updated_at 
 		FROM ` + models.BuildingTable + ` WHERE external_building_id = $1`
 
 	rows, err := tx.QueryContext(ctx, SQL, externalId)
@@ -142,6 +146,8 @@ func (repository *RepositoryBuildingImpl) FindByExternalId(ctx context.Context, 
 			&building.Citytown,
 			&building.Province,
 			&building.GradeResource,
+			&building.BuildingType,
+			&building.CompletionYear,
 			&building.Images,
 			&building.SyncedAt,
 			&building.CreatedAt,
@@ -157,10 +163,10 @@ func (repository *RepositoryBuildingImpl) FindByExternalId(ctx context.Context, 
 }
 
 // FindAll retrieves all buildings with pagination, sorting, search, and filters
-func (repository *RepositoryBuildingImpl) FindAll(ctx context.Context, tx *sql.Tx, take int, skip int, orderBy string, orderDirection string, search string, buildingStatus string, sellable string, connectivity string, resourceType string, competitorLocation *bool, cbdArea string, subdistrict string, citytown string, province string, gradeResource string) ([]models.Building, error) {
+func (repository *RepositoryBuildingImpl) FindAll(ctx context.Context, tx *sql.Tx, take int, skip int, orderBy string, orderDirection string, search string, buildingStatus string, sellable string, connectivity string, resourceType string, competitorLocation *bool, cbdArea string, subdistrict string, citytown string, province string, gradeResource string, buildingType string) ([]models.Building, error) {
 	SQL := `SELECT id, external_building_id, iris_code, name, project_name, audience, 
 		impression, cbd_area, building_status, competitor_location, sellable, connectivity, 
-		resource_type, subdistrict, citytown, province, grade_resource, images, synced_at, created_at, updated_at 
+		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, images, synced_at, created_at, updated_at 
 		FROM ` + models.BuildingTable
 
 	args := []interface{}{}
@@ -244,6 +250,13 @@ func (repository *RepositoryBuildingImpl) FindAll(ctx context.Context, tx *sql.T
 		argIndex++
 	}
 
+	// Add building_type filter
+	if buildingType != "" {
+		whereConditions = append(whereConditions, `building_type = $`+strconv.Itoa(argIndex))
+		args = append(args, buildingType)
+		argIndex++
+	}
+
 	// Build WHERE clause
 	if len(whereConditions) > 0 {
 		SQL += ` WHERE ` + whereConditions[0]
@@ -282,6 +295,8 @@ func (repository *RepositoryBuildingImpl) FindAll(ctx context.Context, tx *sql.T
 			&building.Citytown,
 			&building.Province,
 			&building.GradeResource,
+			&building.BuildingType,
+			&building.CompletionYear,
 			&building.Images,
 			&building.SyncedAt,
 			&building.CreatedAt,
@@ -297,7 +312,7 @@ func (repository *RepositoryBuildingImpl) FindAll(ctx context.Context, tx *sql.T
 }
 
 // CountAll returns the total count of buildings with optional search and filters
-func (repository *RepositoryBuildingImpl) CountAll(ctx context.Context, tx *sql.Tx, search string, buildingStatus string, sellable string, connectivity string, resourceType string, competitorLocation *bool, cbdArea string, subdistrict string, citytown string, province string, gradeResource string) (int, error) {
+func (repository *RepositoryBuildingImpl) CountAll(ctx context.Context, tx *sql.Tx, search string, buildingStatus string, sellable string, connectivity string, resourceType string, competitorLocation *bool, cbdArea string, subdistrict string, citytown string, province string, gradeResource string, buildingType string) (int, error) {
 	SQL := "SELECT COUNT(*) FROM " + models.BuildingTable
 
 	args := []interface{}{}
@@ -381,6 +396,13 @@ func (repository *RepositoryBuildingImpl) CountAll(ctx context.Context, tx *sql.
 		argIndex++
 	}
 
+	// Add building_type filter
+	if buildingType != "" {
+		whereConditions = append(whereConditions, `building_type = $`+strconv.Itoa(argIndex))
+		args = append(args, buildingType)
+		argIndex++
+	}
+
 	// Build WHERE clause
 	if len(whereConditions) > 0 {
 		SQL += " WHERE " + whereConditions[0]
@@ -411,6 +433,7 @@ func (repository *RepositoryBuildingImpl) GetDistinctValues(ctx context.Context,
 		"citytown":        true,
 		"province":        true,
 		"grade_resource":  true,
+		"building_type":   true,
 	}
 
 	if !validColumns[columnName] {
@@ -475,8 +498,8 @@ func (repository *RepositoryBuildingImpl) UpdateFromSync(ctx context.Context, tx
 		SET external_building_id = $1, iris_code = $2, name = $3, project_name = $4, 
 		audience = $5, impression = $6, cbd_area = $7, building_status = $8, 
 		competitor_location = $9, subdistrict = $10, citytown = $11, province = $12, 
-		grade_resource = $13, images = $14, synced_at = $15, updated_at = $16 
-		WHERE id = $17 
+		grade_resource = $13, building_type = $14, completion_year = $15, images = $16, synced_at = $17, updated_at = $18 
+		WHERE id = $19 
 		RETURNING updated_at`
 
 	err = tx.QueryRowContext(ctx, SQL,
@@ -493,6 +516,8 @@ func (repository *RepositoryBuildingImpl) UpdateFromSync(ctx context.Context, tx
 		nullIfEmpty(building.Citytown),
 		nullIfEmpty(building.Province),
 		nullIfEmpty(building.GradeResource),
+		nullIfEmpty(building.BuildingType),
+		nullIfZero(building.CompletionYear),
 		imagesJSON,
 		time.Now(),
 		time.Now(),
