@@ -13,12 +13,12 @@ import (
 )
 
 type ControllerBuildingImpl struct {
-	servicesBuilding.ServiceBuildingInterface
+	service servicesBuilding.ServiceBuildingInterface
 }
 
-func NewControllerBuildingImpl(servicesBuilding servicesBuilding.ServiceBuildingInterface) ControllerBuildingInterface {
+func NewControllerBuildingImpl(service servicesBuilding.ServiceBuildingInterface) ControllerBuildingInterface {
 	return &ControllerBuildingImpl{
-		ServiceBuildingInterface: servicesBuilding,
+		service: service,
 	}
 }
 
@@ -29,7 +29,7 @@ func (controller *ControllerBuildingImpl) FindById(w http.ResponseWriter, r *htt
 		panic(exceptions.NewBadRequest("invalid building id"))
 	}
 
-	buildingResponse := controller.ServiceBuildingInterface.FindById(r.Context(), buildingId)
+	buildingResponse := controller.service.FindById(r.Context(), buildingId)
 
 	response := web.WebResponse{
 		Status: "OK",
@@ -49,7 +49,7 @@ func (controller *ControllerBuildingImpl) FindAll(w http.ResponseWriter, r *http
 	web.SetSearch(&request, r)
 	web.SetFilters(&request, r)
 
-	buildingResponses, total := controller.ServiceBuildingInterface.FindAll(r.Context(), request)
+	buildingResponses, total := controller.service.FindAll(r.Context(), request)
 
 	pagination := web.Pagination{
 		Take:  request.GetTake(),
@@ -72,7 +72,7 @@ func (controller *ControllerBuildingImpl) Update(w http.ResponseWriter, r *http.
 	buildingId := r.Context().Value(helpers.ContextKey("buildingId")).(int)
 	request := r.Context().Value(helpers.ContextKey("updateBuildingRequest")).(webBuilding.UpdateBuildingRequest)
 
-	buildingResponse := controller.ServiceBuildingInterface.Update(r.Context(), request, buildingId)
+	buildingResponse := controller.service.Update(r.Context(), request, buildingId)
 
 	response := web.WebResponse{
 		Status: "OK",
@@ -85,7 +85,7 @@ func (controller *ControllerBuildingImpl) Update(w http.ResponseWriter, r *http.
 
 // SyncManual handles POST /buildings/sync
 func (controller *ControllerBuildingImpl) SyncManual(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-	err := controller.ServiceBuildingInterface.SyncFromERP(r.Context())
+	err := controller.service.SyncFromERP(r.Context())
 	if err != nil {
 		panic(exceptions.NewBadRequest("failed to sync buildings from ERP"))
 	}
@@ -101,7 +101,7 @@ func (controller *ControllerBuildingImpl) SyncManual(w http.ResponseWriter, r *h
 
 // GetFilterOptions handles GET /buildings/filter-options
 func (controller *ControllerBuildingImpl) GetFilterOptions(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-	filterOptions := controller.ServiceBuildingInterface.GetFilterOptions(r.Context())
+	filterOptions := controller.service.GetFilterOptions(r.Context())
 
 	response := web.WebResponse{
 		Status: "OK",
@@ -112,3 +112,19 @@ func (controller *ControllerBuildingImpl) GetFilterOptions(w http.ResponseWriter
 	helpers.ReturnReponseJSON(w, response)
 }
 
+// FindAllForMapping handles GET /mapping-buildings
+func (controller *ControllerBuildingImpl) FindAllForMapping(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	var request webBuilding.MappingBuildingRequest
+
+	web.SetMappingFilters(&request, r)
+
+	mappingResponse := controller.service.FindAllForMapping(r.Context(), request)
+
+	response := web.WebResponse{
+		Status: "OK",
+		Code:   http.StatusOK,
+		Data:   mappingResponse,
+	}
+
+	helpers.ReturnReponseJSON(w, response)
+}

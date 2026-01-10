@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/malikabdulaziz/tmn-backend/models"
@@ -459,6 +460,166 @@ func (repository *RepositoryBuildingImpl) GetDistinctValues(ctx context.Context,
 	}
 
 	return values, nil
+}
+
+// FindAllForMapping retrieves all buildings for mapping with filters (no pagination)
+func (repository *RepositoryBuildingImpl) FindAllForMapping(ctx context.Context, tx *sql.Tx, buildingType string, buildingGrade string, year string, subdistrict string, progress string, sellable string, connectivity string) ([]models.Building, error) {
+	SQL := `SELECT id, external_building_id, iris_code, name, project_name, audience, 
+		impression, cbd_area, building_status, competitor_location, sellable, connectivity, 
+		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, images, synced_at, created_at, updated_at 
+		FROM ` + models.BuildingTable
+
+	args := []interface{}{}
+	argIndex := 1
+	whereConditions := []string{}
+
+	// Add building_type filter - handle comma-separated values
+	if buildingType != "" {
+		if strings.Contains(buildingType, ",") {
+			// Multiple values: use IN clause
+			types := strings.Split(buildingType, ",")
+			placeholders := make([]string, len(types))
+			for i := range types {
+				placeholders[i] = "$" + strconv.Itoa(argIndex+i)
+				args = append(args, strings.TrimSpace(types[i]))
+			}
+			whereConditions = append(whereConditions, `building_type IN (`+strings.Join(placeholders, ",")+`)`)
+			argIndex += len(types)
+		} else {
+			// Single value
+			whereConditions = append(whereConditions, `building_type = $`+strconv.Itoa(argIndex))
+			args = append(args, buildingType)
+			argIndex++
+		}
+	}
+
+	// Add grade_resource filter (mapped from building_grade) - handle comma-separated values
+	if buildingGrade != "" {
+		if strings.Contains(buildingGrade, ",") {
+			// Multiple values: use IN clause
+			grades := strings.Split(buildingGrade, ",")
+			placeholders := make([]string, len(grades))
+			for i := range grades {
+				placeholders[i] = "$" + strconv.Itoa(argIndex+i)
+				args = append(args, strings.TrimSpace(grades[i]))
+			}
+			whereConditions = append(whereConditions, `grade_resource IN (`+strings.Join(placeholders, ",")+`)`)
+			argIndex += len(grades)
+		} else {
+			// Single value
+			whereConditions = append(whereConditions, `grade_resource = $`+strconv.Itoa(argIndex))
+			args = append(args, buildingGrade)
+			argIndex++
+		}
+	}
+
+	// Add completion_year filter (supports range: "2010,2020" or single value)
+	if year != "" {
+		if strings.Contains(year, ",") {
+			// Range: parse as min,max
+			parts := strings.Split(year, ",")
+			if len(parts) == 2 {
+				minYear := strings.TrimSpace(parts[0])
+				maxYear := strings.TrimSpace(parts[1])
+				if minYear != "" && maxYear != "" {
+					whereConditions = append(whereConditions, `completion_year >= $`+strconv.Itoa(argIndex)+` AND completion_year <= $`+strconv.Itoa(argIndex+1))
+					args = append(args, minYear, maxYear)
+					argIndex += 2
+				} else if minYear != "" {
+					whereConditions = append(whereConditions, `completion_year >= $`+strconv.Itoa(argIndex))
+					args = append(args, minYear)
+					argIndex++
+				} else if maxYear != "" {
+					whereConditions = append(whereConditions, `completion_year <= $`+strconv.Itoa(argIndex))
+					args = append(args, maxYear)
+					argIndex++
+				}
+			}
+		} else {
+			// Single value: exact match
+			whereConditions = append(whereConditions, `completion_year = $`+strconv.Itoa(argIndex))
+			args = append(args, year)
+			argIndex++
+		}
+	}
+
+	// Add subdistrict filter
+	if subdistrict != "" {
+		whereConditions = append(whereConditions, `subdistrict ILIKE $`+strconv.Itoa(argIndex))
+		args = append(args, "%"+subdistrict+"%")
+		argIndex++
+	}
+
+	// Add building_status filter (mapped from progress)
+	if progress != "" {
+		whereConditions = append(whereConditions, `building_status = $`+strconv.Itoa(argIndex))
+		args = append(args, progress)
+		argIndex++
+	}
+
+	// Add sellable filter
+	if sellable != "" {
+		whereConditions = append(whereConditions, `sellable = $`+strconv.Itoa(argIndex))
+		args = append(args, sellable)
+		argIndex++
+	}
+
+	// Add connectivity filter
+	if connectivity != "" {
+		whereConditions = append(whereConditions, `connectivity = $`+strconv.Itoa(argIndex))
+		args = append(args, connectivity)
+		argIndex++
+	}
+
+	// Build WHERE clause
+	if len(whereConditions) > 0 {
+		SQL += ` WHERE ` + whereConditions[0]
+		for i := 1; i < len(whereConditions); i++ {
+			SQL += ` AND ` + whereConditions[i]
+		}
+	}
+
+	rows, err := tx.QueryContext(ctx, SQL, args...)
+	if err != nil {
+		return []models.Building{}, err
+	}
+	defer rows.Close()
+
+	var buildings []models.Building
+	for rows.Next() {
+		building := models.NullAbleBuilding{}
+		err := rows.Scan(
+			&building.Id,
+			&building.ExternalBuildingId,
+			&building.IrisCode,
+			&building.Name,
+			&building.ProjectName,
+			&building.Audience,
+			&building.Impression,
+			&building.CbdArea,
+			&building.BuildingStatus,
+			&building.CompetitorLocation,
+			&building.Sellable,
+			&building.Connectivity,
+			&building.ResourceType,
+			&building.Subdistrict,
+			&building.Citytown,
+			&building.Province,
+			&building.GradeResource,
+			&building.BuildingType,
+			&building.CompletionYear,
+			&building.Images,
+			&building.SyncedAt,
+			&building.CreatedAt,
+			&building.UpdatedAt,
+		)
+		if err != nil {
+			return []models.Building{}, err
+		}
+		buildings = append(buildings, models.NullAbleBuildingToBuilding(building))
+	}
+
+	return buildings, nil
 }
 
 // Update updates user-editable fields only

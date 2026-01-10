@@ -162,3 +162,66 @@ func SetFilters(request RequestFilter, r *http.Request) {
 	}
 }
 
+// MappingFilter interface for mapping-specific filters
+type MappingFilter interface {
+	SetBuildingType(buildingType string)
+	SetBuildingGrade(buildingGrade string)
+	SetYear(year string)
+	SetSubdistrict(subdistrict string)
+	SetProgress(progress string)
+	SetSellable(sellable string)
+	SetConnectivity(connectivity string)
+}
+
+// SetMappingFilters parses mapping-specific filter parameters from query string
+// Supports both filter[key] format (from frontend) and flat key format
+func SetMappingFilters(request MappingFilter, r *http.Request) {
+	// Helper function to get value from either filter[key] or key format
+	getFilterValue := func(key string) string {
+		// Try filter[key] format first (frontend format)
+		if val := r.URL.Query().Get("filter[" + key + "]"); val != "" {
+			return val
+		}
+		// Fall back to flat key format
+		return r.URL.Query().Get(key)
+	}
+
+	// Building type - handle comma-separated values
+	if buildingType := getFilterValue("building_type"); buildingType != "" {
+		request.SetBuildingType(buildingType)
+	}
+
+	// Building grade - handle comma-separated values
+	if buildingGrade := getFilterValue("building_grade"); buildingGrade != "" {
+		request.SetBuildingGrade(buildingGrade)
+	}
+
+	// Year
+	if year := getFilterValue("year"); year != "" {
+		request.SetYear(year)
+	}
+
+	// Region (district/subdistrict)
+	if region := getFilterValue("district_subdistrict"); region != "" {
+		request.SetSubdistrict(region)
+	}
+	// Also support direct subdistrict parameter
+	if subdistrict := getFilterValue("subdistrict"); subdistrict != "" {
+		request.SetSubdistrict(subdistrict)
+	}
+
+	// Progress
+	if progress := getFilterValue("progress"); progress != "" {
+		request.SetProgress(progress)
+	}
+
+	// Sellable
+	if sellable := getFilterValue("sellable"); sellable != "" {
+		request.SetSellable(sellable)
+	}
+
+	// Connectivity
+	if connectivity := getFilterValue("connectivity"); connectivity != "" {
+		request.SetConnectivity(connectivity)
+	}
+}

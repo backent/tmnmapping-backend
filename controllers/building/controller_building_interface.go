@@ -12,5 +12,6 @@ type ControllerBuildingInterface interface {
 	Update(w http.ResponseWriter, r *http.Request, p httprouter.Params)
 	SyncManual(w http.ResponseWriter, r *http.Request, p httprouter.Params)
 	GetFilterOptions(w http.ResponseWriter, r *http.Request, p httprouter.Params)
+	FindAllForMapping(w http.ResponseWriter, r *http.Request, p httprouter.Params)
 }
 

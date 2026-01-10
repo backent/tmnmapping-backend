@@ -309,3 +309,102 @@ func (service *ServiceBuildingImpl) GetFilterOptions(ctx context.Context) map[st
 
 	return filterOptions
 }
+
+// FindAllForMapping retrieves all buildings for mapping with filters
+func (service *ServiceBuildingImpl) FindAllForMapping(ctx context.Context, request webBuilding.MappingBuildingRequest) webBuilding.MappingBuildingsResponse {
+	tx, err := service.DB.Begin()
+	helpers.PanicIfError(err)
+	defer helpers.CommitOrRollback(tx)
+
+	buildings, err := service.RepositoryBuildingInterface.FindAllForMapping(
+		ctx,
+		tx,
+		request.GetBuildingType(),
+		request.GetBuildingGrade(),
+		request.GetYear(),
+		request.GetSubdistrict(),
+		request.GetProgress(),
+		request.GetSellable(),
+		request.GetConnectivity(),
+	)
+	helpers.PanicIfError(err)
+
+	// Convert to mapping response and calculate totals
+	mappingBuildings := make([]webBuilding.MappingBuildingResponse, 0, len(buildings))
+	totalApartment := 0
+	totalHotel := 0
+	totalOffice := 0
+	totalRetail := 0
+	totalOthers := 0
+
+	for _, building := range buildings {
+		// Convert images
+		images := make([]webBuilding.MappingBuildingImageResponse, 0, len(building.Images))
+		for _, img := range building.Images {
+			images = append(images, webBuilding.MappingBuildingImageResponse{
+				Name: img.Name,
+				Path: img.Path,
+			})
+		}
+
+		// Construct address from location fields
+		addressParts := []string{}
+		if building.Subdistrict != "" {
+			addressParts = append(addressParts, building.Subdistrict)
+		}
+		if building.Citytown != "" {
+			addressParts = append(addressParts, building.Citytown)
+		}
+		if building.Province != "" {
+			addressParts = append(addressParts, building.Province)
+		}
+		address := ""
+		if len(addressParts) > 0 {
+			address = addressParts[0]
+			for i := 1; i < len(addressParts); i++ {
+				address += ", " + addressParts[i]
+			}
+		}
+
+		mappingBuilding := webBuilding.MappingBuildingResponse{
+			Id:             building.Id,
+			Name:           building.Name,
+			BuildingType:   building.BuildingType,
+			GradeResource:  building.GradeResource,
+			CompletionYear: building.CompletionYear,
+			Subdistrict:    building.Subdistrict,
+			Citytown:       building.Citytown,
+			Province:       building.Province,
+			Address:        address,
+			BuildingStatus: building.BuildingStatus,
+			Sellable:       building.Sellable,
+			Connectivity:   building.Connectivity,
+			Images:         images,
+		}
+
+		mappingBuildings = append(mappingBuildings, mappingBuilding)
+
+		// Count by building type
+		switch building.BuildingType {
+		case "Apartment":
+			totalApartment++
+		case "Hotel":
+			totalHotel++
+		case "Office":
+			totalOffice++
+		case "Retail":
+			totalRetail++
+		default:
+			totalOthers++
+		}
+	}
+
+	return webBuilding.MappingBuildingsResponse{
+		Data:            mappingBuildings,
+		TotalApartment:  totalApartment,
+		TotalHotel:      totalHotel,
+		TotalOffice:     totalOffice,
+		TotalRetail:     totalRetail,
+		TotalOthers:     totalOthers,
+	}
+}
