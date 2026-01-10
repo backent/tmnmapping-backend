@@ -3,6 +3,7 @@ package building
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"strconv"
 	"time"
 
@@ -17,14 +18,23 @@ func NewRepositoryBuildingImpl() RepositoryBuildingInterface {
 
 // Create inserts a new building
 func (repository *RepositoryBuildingImpl) Create(ctx context.Context, tx *sql.Tx, building models.Building) (models.Building, error) {
+	// Marshal images to JSON
+	imagesJSON, err := json.Marshal(building.Images)
+	if err != nil {
+		imagesJSON = []byte("[]")
+	}
+	if len(building.Images) == 0 {
+		imagesJSON = nil
+	}
+
 	SQL := `INSERT INTO ` + models.BuildingTable + ` 
 		(external_building_id, iris_code, name, project_name, audience, impression, 
 		cbd_area, building_status, competitor_location, sellable, connectivity, 
-		resource_type, synced_at) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
+		resource_type, images, synced_at) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
 		RETURNING id, created_at, updated_at`
 
-	err := tx.QueryRowContext(ctx, SQL,
+	err = tx.QueryRowContext(ctx, SQL,
 		building.ExternalBuildingId,
 		building.IrisCode,
 		building.Name,
@@ -37,6 +47,7 @@ func (repository *RepositoryBuildingImpl) Create(ctx context.Context, tx *sql.Tx
 		building.Sellable,
 		building.Connectivity,
 		nullIfEmpty(building.ResourceType),
+		imagesJSON,
 		nullIfEmpty(building.SyncedAt),
 	).Scan(&building.Id, &building.CreatedAt, &building.UpdatedAt)
 
@@ -51,7 +62,7 @@ func (repository *RepositoryBuildingImpl) Create(ctx context.Context, tx *sql.Tx
 func (repository *RepositoryBuildingImpl) FindById(ctx context.Context, tx *sql.Tx, id int) (models.Building, error) {
 	SQL := `SELECT id, external_building_id, iris_code, name, project_name, audience, 
 		impression, cbd_area, building_status, competitor_location, sellable, connectivity, 
-		resource_type, synced_at, created_at, updated_at 
+		resource_type, images, synced_at, created_at, updated_at 
 		FROM ` + models.BuildingTable + ` WHERE id = $1`
 
 	rows, err := tx.QueryContext(ctx, SQL, id)
@@ -76,6 +87,7 @@ func (repository *RepositoryBuildingImpl) FindById(ctx context.Context, tx *sql.
 			&building.Sellable,
 			&building.Connectivity,
 			&building.ResourceType,
+			&building.Images,
 			&building.SyncedAt,
 			&building.CreatedAt,
 			&building.UpdatedAt,
@@ -93,7 +105,7 @@ func (repository *RepositoryBuildingImpl) FindById(ctx context.Context, tx *sql.
 func (repository *RepositoryBuildingImpl) FindByExternalId(ctx context.Context, tx *sql.Tx, externalId string) (models.Building, error) {
 	SQL := `SELECT id, external_building_id, iris_code, name, project_name, audience, 
 		impression, cbd_area, building_status, competitor_location, sellable, connectivity, 
-		resource_type, synced_at, created_at, updated_at 
+		resource_type, images, synced_at, created_at, updated_at 
 		FROM ` + models.BuildingTable + ` WHERE external_building_id = $1`
 
 	rows, err := tx.QueryContext(ctx, SQL, externalId)
@@ -118,6 +130,7 @@ func (repository *RepositoryBuildingImpl) FindByExternalId(ctx context.Context, 
 			&building.Sellable,
 			&building.Connectivity,
 			&building.ResourceType,
+			&building.Images,
 			&building.SyncedAt,
 			&building.CreatedAt,
 			&building.UpdatedAt,
@@ -135,7 +148,7 @@ func (repository *RepositoryBuildingImpl) FindByExternalId(ctx context.Context, 
 func (repository *RepositoryBuildingImpl) FindAll(ctx context.Context, tx *sql.Tx, take int, skip int, orderBy string, orderDirection string, search string, buildingStatus string, sellable string, connectivity string, resourceType string, competitorLocation *bool, cbdArea string) ([]models.Building, error) {
 	SQL := `SELECT id, external_building_id, iris_code, name, project_name, audience, 
 		impression, cbd_area, building_status, competitor_location, sellable, connectivity, 
-		resource_type, synced_at, created_at, updated_at 
+		resource_type, images, synced_at, created_at, updated_at 
 		FROM ` + models.BuildingTable
 
 	args := []interface{}{}
@@ -225,6 +238,7 @@ func (repository *RepositoryBuildingImpl) FindAll(ctx context.Context, tx *sql.T
 			&building.Sellable,
 			&building.Connectivity,
 			&building.ResourceType,
+			&building.Images,
 			&building.SyncedAt,
 			&building.CreatedAt,
 			&building.UpdatedAt,
@@ -372,14 +386,23 @@ func (repository *RepositoryBuildingImpl) Update(ctx context.Context, tx *sql.Tx
 
 // UpdateFromSync updates ERP-sourced fields only (preserves user inputs)
 func (repository *RepositoryBuildingImpl) UpdateFromSync(ctx context.Context, tx *sql.Tx, building models.Building) (models.Building, error) {
+	// Marshal images to JSON
+	imagesJSON, err := json.Marshal(building.Images)
+	if err != nil {
+		imagesJSON = []byte("[]")
+	}
+	if len(building.Images) == 0 {
+		imagesJSON = nil
+	}
+
 	SQL := `UPDATE ` + models.BuildingTable + ` 
 		SET external_building_id = $1, iris_code = $2, name = $3, project_name = $4, 
 		audience = $5, impression = $6, cbd_area = $7, building_status = $8, 
-		competitor_location = $9, synced_at = $10, updated_at = $11 
-		WHERE id = $12 
+		competitor_location = $9, images = $10, synced_at = $11, updated_at = $12 
+		WHERE id = $13 
 		RETURNING updated_at`
 
-	err := tx.QueryRowContext(ctx, SQL,
+	err = tx.QueryRowContext(ctx, SQL,
 		building.ExternalBuildingId,
 		building.IrisCode,
 		building.Name,
@@ -389,6 +412,7 @@ func (repository *RepositoryBuildingImpl) UpdateFromSync(ctx context.Context, tx
 		building.CbdArea,
 		building.BuildingStatus,
 		building.CompetitorLocation,
+		imagesJSON,
 		time.Now(),
 		time.Now(),
 		building.Id,
@@ -415,4 +439,3 @@ func nullIfEmpty(value string) interface{} {
 	}
 	return value
 }
-

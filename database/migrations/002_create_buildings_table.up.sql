@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS buildings (
     sellable VARCHAR(20),
     connectivity VARCHAR(50),
     resource_type VARCHAR(255),
+    images JSONB,
     synced_at TIMESTAMP,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP

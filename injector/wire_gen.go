@@ -11,6 +11,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	auth3 "github.com/malikabdulaziz/tmn-backend/controllers/auth"
 	building3 "github.com/malikabdulaziz/tmn-backend/controllers/building"
+	"github.com/malikabdulaziz/tmn-backend/controllers/image"
 	"github.com/malikabdulaziz/tmn-backend/libs"
 	"github.com/malikabdulaziz/tmn-backend/middlewares"
 	"github.com/malikabdulaziz/tmn-backend/repositories/auth"
@@ -37,7 +38,8 @@ func InitializeRouter() *httprouter.Router {
 	logger := libs.NewLogger()
 	serviceBuildingInterface := building2.NewServiceBuildingImpl(db, repositoryBuildingInterface, erpClient, logger)
 	controllerBuildingInterface := building3.NewControllerBuildingImpl(serviceBuildingInterface)
-	router := libs.NewRouter(authMiddleware, buildingMiddleware, loggingMiddleware, controllerAuthInterface, controllerBuildingInterface)
+	controllerImageInterface := image.NewControllerImageImpl()
+	router := libs.NewRouter(authMiddleware, buildingMiddleware, loggingMiddleware, controllerAuthInterface, controllerBuildingInterface, controllerImageInterface)
 	return router
 }
 
@@ -55,5 +57,7 @@ func InitializeBuildingService() building2.ServiceBuildingInterface {
 var authSet = wire.NewSet(auth.NewRepositoryAuthJWTImpl, user.NewRepositoryUserImpl, auth2.NewServiceAuthImpl, auth3.NewControllerAuthImpl)
 
 var buildingSet = wire.NewSet(building.NewRepositoryBuildingImpl, building2.NewServiceBuildingImpl, building3.NewControllerBuildingImpl)
+
+var imageSet = wire.NewSet(image.NewControllerImageImpl)
 
 var middlewareSet = wire.NewSet(middlewares.NewAuthMiddleware, middlewares.NewBuildingMiddleware, middlewares.NewLoggingMiddleware)

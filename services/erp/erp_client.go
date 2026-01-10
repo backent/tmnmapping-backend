@@ -19,6 +19,10 @@ type ERPBuilding struct {
 	CbdArea            string `json:"cbd_area"`
 	Eligible           int    `json:"eligible"`
 	CompetitorPresence int    `json:"competitor_presence"`
+	FrontSidePhoto     string `json:"front_side_photo"`
+	BackSidePhoto      string `json:"back_side_photo"`
+	LeftSidePhoto      string `json:"left_side_photo"`
+	RightSidePhoto     string `json:"right_side_photo"`
 }
 
 // ERPResponse represents the API response from Frappe
@@ -28,10 +32,10 @@ type ERPResponse struct {
 
 // ERPAcquisition represents the acquisition data from Frappe ERP
 type ERPAcquisition struct {
-	Name           string `json:"name"`
+	Name            string `json:"name"`
 	BuildingProject string `json:"building_project"`
-	Status         string `json:"status"`
-	Modified       string `json:"modified"`
+	Status          string `json:"status"`
+	Modified        string `json:"modified"`
 }
 
 // ERPAcquisitionResponse represents the Acquisition API response from Frappe

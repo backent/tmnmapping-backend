@@ -120,7 +120,7 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 	sort.Slice(erpAcquisitions, func(i, j int) bool {
 		timeI, errI := time.Parse("2006-01-02 15:04:05.999999", erpAcquisitions[i].Modified)
 		timeJ, errJ := time.Parse("2006-01-02 15:04:05.999999", erpAcquisitions[j].Modified)
-		
+
 		// If parsing fails, treat as older
 		if errI != nil {
 			return false
@@ -128,7 +128,7 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 		if errJ != nil {
 			return true
 		}
-		
+
 		return timeI.After(timeJ)
 	})
 
@@ -168,6 +168,21 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 				}
 			}
 
+			// Convert ERP image fields to JSON array format
+			images := []models.BuildingImage{}
+			if erpBuilding.FrontSidePhoto != "" {
+				images = append(images, models.BuildingImage{Name: "front_side", Path: erpBuilding.FrontSidePhoto})
+			}
+			if erpBuilding.BackSidePhoto != "" {
+				images = append(images, models.BuildingImage{Name: "back_side", Path: erpBuilding.BackSidePhoto})
+			}
+			if erpBuilding.LeftSidePhoto != "" {
+				images = append(images, models.BuildingImage{Name: "left_side", Path: erpBuilding.LeftSidePhoto})
+			}
+			if erpBuilding.RightSidePhoto != "" {
+				images = append(images, models.BuildingImage{Name: "right_side", Path: erpBuilding.RightSidePhoto})
+			}
+
 			// Create new building
 			newBuilding := models.Building{
 				ExternalBuildingId: erpBuilding.BuildingId,
@@ -179,6 +194,7 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 				CbdArea:            erpBuilding.CbdArea,
 				BuildingStatus:     buildingStatus,
 				CompetitorLocation: erpBuilding.CompetitorPresence != 0,
+				Images:             images,
 				SyncedAt:           time.Now().Format(time.RFC3339),
 			}
 
@@ -199,6 +215,21 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 				}
 			}
 
+			// Convert ERP image fields to JSON array format
+			images := []models.BuildingImage{}
+			if erpBuilding.FrontSidePhoto != "" {
+				images = append(images, models.BuildingImage{Name: "front_side", Path: erpBuilding.FrontSidePhoto})
+			}
+			if erpBuilding.BackSidePhoto != "" {
+				images = append(images, models.BuildingImage{Name: "back_side", Path: erpBuilding.BackSidePhoto})
+			}
+			if erpBuilding.LeftSidePhoto != "" {
+				images = append(images, models.BuildingImage{Name: "left_side", Path: erpBuilding.LeftSidePhoto})
+			}
+			if erpBuilding.RightSidePhoto != "" {
+				images = append(images, models.BuildingImage{Name: "right_side", Path: erpBuilding.RightSidePhoto})
+			}
+
 			// Update existing building (ERP fields only)
 			existingBuilding.ExternalBuildingId = erpBuilding.BuildingId
 			existingBuilding.IrisCode = erpBuilding.IrisCode
@@ -209,6 +240,7 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 			existingBuilding.CbdArea = erpBuilding.CbdArea
 			existingBuilding.BuildingStatus = buildingStatus
 			existingBuilding.CompetitorLocation = erpBuilding.CompetitorPresence != 0
+			existingBuilding.Images = images
 			existingBuilding.SyncedAt = time.Now().Format(time.RFC3339)
 
 			_, err = service.RepositoryBuildingInterface.UpdateFromSync(ctx, tx, existingBuilding)

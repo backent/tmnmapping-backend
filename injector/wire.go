@@ -8,6 +8,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	controllersAuth "github.com/malikabdulaziz/tmn-backend/controllers/auth"
 	controllersBuilding "github.com/malikabdulaziz/tmn-backend/controllers/building"
+	controllersImage "github.com/malikabdulaziz/tmn-backend/controllers/image"
 	"github.com/malikabdulaziz/tmn-backend/libs"
 	"github.com/malikabdulaziz/tmn-backend/middlewares"
 	repositoriesAuth "github.com/malikabdulaziz/tmn-backend/repositories/auth"
@@ -30,6 +31,10 @@ var buildingSet = wire.NewSet(
 	controllersBuilding.NewControllerBuildingImpl,
 )
 
+var imageSet = wire.NewSet(
+	controllersImage.NewControllerImageImpl,
+)
+
 var middlewareSet = wire.NewSet(
 	middlewares.NewAuthMiddleware,
 	middlewares.NewBuildingMiddleware,
@@ -44,6 +49,7 @@ func InitializeRouter() *httprouter.Router {
 		libs.ProvideERPClient,
 		authSet,
 		buildingSet,
+		imageSet,
 		middlewareSet,
 		libs.NewRouter,
 	)

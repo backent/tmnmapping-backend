@@ -6,6 +6,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	controllersAuth "github.com/malikabdulaziz/tmn-backend/controllers/auth"
 	controllersBuilding "github.com/malikabdulaziz/tmn-backend/controllers/building"
+	controllersImage "github.com/malikabdulaziz/tmn-backend/controllers/image"
 	"github.com/malikabdulaziz/tmn-backend/exceptions"
 	"github.com/malikabdulaziz/tmn-backend/middlewares"
 )
@@ -16,6 +17,7 @@ func NewRouter(
 	loggingMiddleware *middlewares.LoggingMiddleware,
 	controllersAuth controllersAuth.ControllerAuthInterface,
 	controllersBuilding controllersBuilding.ControllerBuildingInterface,
+	controllersImage controllersImage.ControllerImageInterface,
 ) *httprouter.Router {
 	router := httprouter.New()
 
@@ -63,6 +65,11 @@ func NewRouter(
 		loggingMiddleware.Log(
 			authMiddleware.RequireAuth(controllersBuilding.GetFilterOptions)))
 
+	// Image proxy route (protected)
+	// Using catch-all pattern - httprouter will match /erp-images/ and everything after
+	router.GET("/erp-images/*filepath",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(controllersImage.ProxyImage)))
+
 	return router
 }
-
