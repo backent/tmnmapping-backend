@@ -12,6 +12,10 @@ CREATE TABLE IF NOT EXISTS buildings (
     sellable VARCHAR(20),
     connectivity VARCHAR(50),
     resource_type VARCHAR(255),
+    subdistrict VARCHAR(255),
+    citytown VARCHAR(255),
+    province VARCHAR(255),
+    grade_resource VARCHAR(255),
     images JSONB,
     synced_at TIMESTAMP,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -26,4 +30,8 @@ CREATE INDEX IF NOT EXISTS idx_buildings_competitor_location ON buildings(compet
 CREATE INDEX IF NOT EXISTS idx_buildings_sellable ON buildings(sellable);
 CREATE INDEX IF NOT EXISTS idx_buildings_connectivity ON buildings(connectivity);
 CREATE INDEX IF NOT EXISTS idx_buildings_resource_type ON buildings(resource_type);
+CREATE INDEX IF NOT EXISTS idx_buildings_subdistrict ON buildings(subdistrict);
+CREATE INDEX IF NOT EXISTS idx_buildings_citytown ON buildings(citytown);
+CREATE INDEX IF NOT EXISTS idx_buildings_province ON buildings(province);
+CREATE INDEX IF NOT EXISTS idx_buildings_grade_resource ON buildings(grade_resource);
 

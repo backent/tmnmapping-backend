@@ -24,6 +24,10 @@ type BuildingRequestFindAll struct {
 	resourceType      string
 	competitorLocation *bool
 	cbdArea           string
+	subdistrict       string
+	citytown          string
+	province          string
+	gradeResource     string
 }
 
 func (r *BuildingRequestFindAll) SetSkip(skip int) {
@@ -120,6 +124,38 @@ func (r *BuildingRequestFindAll) SetCbdArea(cbdArea string) {
 
 func (r *BuildingRequestFindAll) GetCbdArea() string {
 	return r.cbdArea
+}
+
+func (r *BuildingRequestFindAll) SetSubdistrict(subdistrict string) {
+	r.subdistrict = subdistrict
+}
+
+func (r *BuildingRequestFindAll) GetSubdistrict() string {
+	return r.subdistrict
+}
+
+func (r *BuildingRequestFindAll) SetCitytown(citytown string) {
+	r.citytown = citytown
+}
+
+func (r *BuildingRequestFindAll) GetCitytown() string {
+	return r.citytown
+}
+
+func (r *BuildingRequestFindAll) SetProvince(province string) {
+	r.province = province
+}
+
+func (r *BuildingRequestFindAll) GetProvince() string {
+	return r.province
+}
+
+func (r *BuildingRequestFindAll) SetGradeResource(gradeResource string) {
+	r.gradeResource = gradeResource
+}
+
+func (r *BuildingRequestFindAll) GetGradeResource() string {
+	return r.gradeResource
 }
 
 var _ web.RequestPagination = (*BuildingRequestFindAll)(nil)

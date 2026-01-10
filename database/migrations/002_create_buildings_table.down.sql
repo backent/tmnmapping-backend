@@ -1,3 +1,7 @@
+DROP INDEX IF EXISTS idx_buildings_grade_resource;
+DROP INDEX IF EXISTS idx_buildings_province;
+DROP INDEX IF EXISTS idx_buildings_citytown;
+DROP INDEX IF EXISTS idx_buildings_subdistrict;
 DROP INDEX IF EXISTS idx_buildings_resource_type;
 DROP INDEX IF EXISTS idx_buildings_connectivity;
 DROP INDEX IF EXISTS idx_buildings_sellable;

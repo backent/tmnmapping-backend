@@ -17,6 +17,10 @@ type ERPBuilding struct {
 	AudienceActual     int    `json:"audience_actual"`
 	AudienceProjection int    `json:"audience_projection"`
 	CbdArea            string `json:"cbd_area"`
+	Subdistrict        string `json:"subdistrict"`
+	Citytown           string `json:"citytown"`
+	Province           string `json:"province"`
+	GradeResource      string `json:"grade_resource"`
 	Eligible           int    `json:"eligible"`
 	CompetitorPresence int    `json:"competitor_presence"`
 	FrontSidePhoto     string `json:"front_side_photo"`

@@ -73,6 +73,10 @@ type RequestFilter interface {
 	SetResourceType(resourceType string)
 	SetCompetitorLocation(competitorLocation *bool)
 	SetCbdArea(cbdArea string)
+	SetSubdistrict(subdistrict string)
+	SetCitytown(citytown string)
+	SetProvince(province string)
+	SetGradeResource(gradeResource string)
 }
 
 func SetFilters(request RequestFilter, r *http.Request) {
@@ -118,6 +122,34 @@ func SetFilters(request RequestFilter, r *http.Request) {
 		cbdArea := r.URL.Query().Get("cbd_area")
 		if cbdArea != "" {
 			request.SetCbdArea(cbdArea)
+		}
+	}
+
+	if r.URL.Query().Has("subdistrict") {
+		subdistrict := r.URL.Query().Get("subdistrict")
+		if subdistrict != "" {
+			request.SetSubdistrict(subdistrict)
+		}
+	}
+
+	if r.URL.Query().Has("citytown") {
+		citytown := r.URL.Query().Get("citytown")
+		if citytown != "" {
+			request.SetCitytown(citytown)
+		}
+	}
+
+	if r.URL.Query().Has("province") {
+		province := r.URL.Query().Get("province")
+		if province != "" {
+			request.SetProvince(province)
+		}
+	}
+
+	if r.URL.Query().Has("grade_resource") {
+		gradeResource := r.URL.Query().Get("grade_resource")
+		if gradeResource != "" {
+			request.SetGradeResource(gradeResource)
 		}
 	}
 }

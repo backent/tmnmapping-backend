@@ -24,6 +24,10 @@ type Building struct {
 	Sellable           string          `json:"sellable"`
 	Connectivity       string          `json:"connectivity"`
 	ResourceType       string          `json:"resource_type"`
+	Subdistrict        string          `json:"subdistrict"`
+	Citytown           string          `json:"citytown"`
+	Province           string          `json:"province"`
+	GradeResource      string          `json:"grade_resource"`
 	Images             []BuildingImage `json:"images"`
 	SyncedAt           string          `json:"synced_at"`
 	CreatedAt          string          `json:"created_at"`
@@ -44,6 +48,10 @@ type NullAbleBuilding struct {
 	Sellable           sql.NullString
 	Connectivity       sql.NullString
 	ResourceType       sql.NullString
+	Subdistrict        sql.NullString
+	Citytown           sql.NullString
+	Province           sql.NullString
+	GradeResource      sql.NullString
 	Images             sql.NullString
 	SyncedAt           sql.NullString
 	CreatedAt          sql.NullString
@@ -76,6 +84,10 @@ func NullAbleBuildingToBuilding(nullable NullAbleBuilding) Building {
 		Sellable:           nullable.Sellable.String,
 		Connectivity:       nullable.Connectivity.String,
 		ResourceType:       nullable.ResourceType.String,
+		Subdistrict:        nullable.Subdistrict.String,
+		Citytown:           nullable.Citytown.String,
+		Province:           nullable.Province.String,
+		GradeResource:      nullable.GradeResource.String,
 		Images:             images,
 		SyncedAt:           nullable.SyncedAt.String,
 		CreatedAt:          nullable.CreatedAt.String,

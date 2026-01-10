@@ -21,6 +21,10 @@ type BuildingResponse struct {
 	Sellable           string                  `json:"sellable"`
 	Connectivity       string                  `json:"connectivity"`
 	ResourceType       string                  `json:"resource_type"`
+	Subdistrict        string                  `json:"subdistrict"`
+	Citytown           string                  `json:"citytown"`
+	Province           string                  `json:"province"`
+	GradeResource      string                  `json:"grade_resource"`
 	Images             []BuildingImageResponse `json:"images"`
 	SyncedAt           string                  `json:"synced_at"`
 	CreatedAt          string                  `json:"created_at"`
@@ -51,6 +55,10 @@ func BuildingModelToBuildingResponse(building models.Building) BuildingResponse 
 		Sellable:           building.Sellable,
 		Connectivity:       building.Connectivity,
 		ResourceType:       building.ResourceType,
+		Subdistrict:        building.Subdistrict,
+		Citytown:           building.Citytown,
+		Province:           building.Province,
+		GradeResource:      building.GradeResource,
 		Images:             images,
 		SyncedAt:           building.SyncedAt,
 		CreatedAt:          building.CreatedAt,
