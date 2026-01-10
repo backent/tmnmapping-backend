@@ -3,6 +3,7 @@ package building
 import (
 	"context"
 	"database/sql"
+	"strconv"
 	"time"
 
 	"github.com/malikabdulaziz/tmn-backend/models"
@@ -130,14 +131,27 @@ func (repository *RepositoryBuildingImpl) FindByExternalId(ctx context.Context, 
 	return models.Building{}, sql.ErrNoRows
 }
 
-// FindAll retrieves all buildings with pagination and sorting
-func (repository *RepositoryBuildingImpl) FindAll(ctx context.Context, tx *sql.Tx, take int, skip int, orderBy string, orderDirection string) ([]models.Building, error) {
+// FindAll retrieves all buildings with pagination, sorting, and search
+func (repository *RepositoryBuildingImpl) FindAll(ctx context.Context, tx *sql.Tx, take int, skip int, orderBy string, orderDirection string, search string) ([]models.Building, error) {
 	SQL := `SELECT id, external_building_id, iris_code, name, project_name, audience, 
 		impression, cbd_area, building_status, competitor_location, sellable, connectivity, 
 		resource_type, synced_at, created_at, updated_at 
-		FROM ` + models.BuildingTable + ` ORDER BY ` + orderBy + ` ` + orderDirection + ` LIMIT $1 OFFSET $2`
+		FROM ` + models.BuildingTable
 
-	rows, err := tx.QueryContext(ctx, SQL, take, skip)
+	args := []interface{}{}
+	argIndex := 1
+
+	// Add WHERE clause if search is provided
+	if search != "" {
+		SQL += ` WHERE name ILIKE $` + strconv.Itoa(argIndex)
+		args = append(args, "%"+search+"%")
+		argIndex++
+	}
+
+	SQL += ` ORDER BY ` + orderBy + ` ` + orderDirection + ` LIMIT $` + strconv.Itoa(argIndex) + ` OFFSET $` + strconv.Itoa(argIndex+1)
+	args = append(args, take, skip)
+
+	rows, err := tx.QueryContext(ctx, SQL, args...)
 	if err != nil {
 		return []models.Building{}, err
 	}
@@ -173,17 +187,27 @@ func (repository *RepositoryBuildingImpl) FindAll(ctx context.Context, tx *sql.T
 	return buildings, nil
 }
 
-// CountAll returns the total count of buildings
-func (repository *RepositoryBuildingImpl) CountAll(ctx context.Context, tx *sql.Tx) (int, error) {
+// CountAll returns the total count of buildings with optional search
+func (repository *RepositoryBuildingImpl) CountAll(ctx context.Context, tx *sql.Tx, search string) (int, error) {
 	SQL := "SELECT COUNT(*) FROM " + models.BuildingTable
-	row := tx.QueryRowContext(ctx, SQL)
 
+	if search != "" {
+		SQL += " WHERE name ILIKE $1"
+		row := tx.QueryRowContext(ctx, SQL, "%"+search+"%")
+		var total int
+		err := row.Scan(&total)
+		if err != nil {
+			return 0, err
+		}
+		return total, nil
+	}
+
+	row := tx.QueryRowContext(ctx, SQL)
 	var total int
 	err := row.Scan(&total)
 	if err != nil {
 		return 0, err
 	}
-
 	return total, nil
 }
 

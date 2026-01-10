@@ -26,6 +26,19 @@ type ERPResponse struct {
 	Data []ERPBuilding `json:"data"`
 }
 
+// ERPAcquisition represents the acquisition data from Frappe ERP
+type ERPAcquisition struct {
+	Name           string `json:"name"`
+	BuildingProject string `json:"building_project"`
+	Status         string `json:"status"`
+	Modified       string `json:"modified"`
+}
+
+// ERPAcquisitionResponse represents the Acquisition API response from Frappe
+type ERPAcquisitionResponse struct {
+	Data []ERPAcquisition `json:"data"`
+}
+
 // ERPClient handles communication with Frappe ERP API
 type ERPClient struct {
 	BaseURL    string
@@ -74,6 +87,41 @@ func (c *ERPClient) FetchBuildings() ([]ERPBuilding, error) {
 	}
 
 	var erpResponse ERPResponse
+	if err := json.NewDecoder(resp.Body).Decode(&erpResponse); err != nil {
+		return nil, fmt.Errorf("failed to decode ERP response: %w", err)
+	}
+
+	return erpResponse.Data, nil
+}
+
+// FetchAcquisitions fetches all acquisitions from the ERP API
+func (c *ERPClient) FetchAcquisitions() ([]ERPAcquisition, error) {
+	// Build URL with query parameters to get all fields and all records
+	url := fmt.Sprintf("%s/api/resource/Acquisition?fields=[\"*\"]&limit_page_length=99999", c.BaseURL)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set authorization header in format: Token API_KEY:API_SECRET
+	if c.APIKey != "" && c.APISecret != "" {
+		authValue := fmt.Sprintf("Token %s:%s", c.APIKey, c.APISecret)
+		req.Header.Set("Authorization", authValue)
+	}
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch acquisitions from ERP: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("ERP API returned status %d", resp.StatusCode)
+	}
+
+	var erpResponse ERPAcquisitionResponse
 	if err := json.NewDecoder(resp.Body).Decode(&erpResponse); err != nil {
 		return nil, fmt.Errorf("failed to decode ERP response: %w", err)
 	}

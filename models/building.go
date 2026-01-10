@@ -11,7 +11,7 @@ type Building struct {
 	Audience            int     `json:"audience"`
 	Impression          int     `json:"impression"`
 	CbdArea             string  `json:"cbd_area"`
-	BuildingStatus      int     `json:"building_status"`
+	BuildingStatus      string  `json:"building_status"`
 	CompetitorLocation  bool    `json:"competitor_location"`
 	Sellable            string  `json:"sellable"`
 	Connectivity        string  `json:"connectivity"`
@@ -30,7 +30,7 @@ type NullAbleBuilding struct {
 	Audience            sql.NullInt64
 	Impression          sql.NullInt64
 	CbdArea             sql.NullString
-	BuildingStatus      sql.NullInt64
+	BuildingStatus      sql.NullString
 	CompetitorLocation  sql.NullBool
 	Sellable            sql.NullString
 	Connectivity        sql.NullString
@@ -52,7 +52,7 @@ func NullAbleBuildingToBuilding(nullable NullAbleBuilding) Building {
 		Audience:            int(nullable.Audience.Int64),
 		Impression:          int(nullable.Impression.Int64),
 		CbdArea:             nullable.CbdArea.String,
-		BuildingStatus:      int(nullable.BuildingStatus.Int64),
+		BuildingStatus:      nullable.BuildingStatus.String,
 		CompetitorLocation:  nullable.CompetitorLocation.Bool,
 		Sellable:            nullable.Sellable.String,
 		Connectivity:        nullable.Connectivity.String,

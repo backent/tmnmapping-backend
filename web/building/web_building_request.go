@@ -17,6 +17,7 @@ type BuildingRequestFindAll struct {
 	skip           int
 	orderBy        string
 	orderDirection string
+	search         string
 }
 
 func (r *BuildingRequestFindAll) SetSkip(skip int) {
@@ -57,6 +58,14 @@ func (r *BuildingRequestFindAll) GetOrderDirection() string {
 		return "DESC"
 	}
 	return r.orderDirection
+}
+
+func (r *BuildingRequestFindAll) SetSearch(search string) {
+	r.search = search
+}
+
+func (r *BuildingRequestFindAll) GetSearch() string {
+	return r.search
 }
 
 var _ web.RequestPagination = (*BuildingRequestFindAll)(nil)

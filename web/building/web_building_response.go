@@ -11,7 +11,7 @@ type BuildingResponse struct {
 	Audience            int    `json:"audience"`
 	Impression          int    `json:"impression"`
 	CbdArea             string `json:"cbd_area"`
-	BuildingStatus      int    `json:"building_status"`
+	BuildingStatus      string `json:"building_status"`
 	CompetitorLocation  bool   `json:"competitor_location"`
 	Sellable            string `json:"sellable"`
 	Connectivity        string `json:"connectivity"`

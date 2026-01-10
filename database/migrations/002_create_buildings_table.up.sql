@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS buildings (
     audience INTEGER,
     impression INTEGER,
     cbd_area VARCHAR(255),
-    building_status INTEGER DEFAULT 0,
+    building_status VARCHAR(255),
     competitor_location BOOLEAN DEFAULT FALSE,
     sellable VARCHAR(20),
     connectivity VARCHAR(50),

@@ -53,3 +53,16 @@ func SetOrder(request RequestOrder, r *http.Request) {
 	}
 }
 
+type RequestSearch interface {
+	SetSearch(search string)
+}
+
+func SetSearch(request RequestSearch, r *http.Request) {
+	if r.URL.Query().Has("search") {
+		search := r.URL.Query().Get("search")
+		if search != "" {
+			request.SetSearch(search)
+		}
+	}
+}
+

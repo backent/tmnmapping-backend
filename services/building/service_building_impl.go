@@ -3,6 +3,7 @@ package building
 import (
 	"context"
 	"database/sql"
+	"sort"
 	"time"
 
 	"github.com/malikabdulaziz/tmn-backend/exceptions"
@@ -56,10 +57,10 @@ func (service *ServiceBuildingImpl) FindAll(ctx context.Context, request webBuil
 	helpers.PanicIfError(err)
 	defer helpers.CommitOrRollback(tx)
 
-	buildings, err := service.RepositoryBuildingInterface.FindAll(ctx, tx, request.GetTake(), request.GetSkip(), request.GetOrderBy(), request.GetOrderDirection())
+	buildings, err := service.RepositoryBuildingInterface.FindAll(ctx, tx, request.GetTake(), request.GetSkip(), request.GetOrderBy(), request.GetOrderDirection(), request.GetSearch())
 	helpers.PanicIfError(err)
 
-	total, err := service.RepositoryBuildingInterface.CountAll(ctx, tx)
+	total, err := service.RepositoryBuildingInterface.CountAll(ctx, tx, request.GetSearch())
 	helpers.PanicIfError(err)
 
 	return webBuilding.BuildingModelsToListBuildingResponse(buildings), total
@@ -102,6 +103,47 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 
 	service.Logger.WithField("count", len(erpBuildings)).Info("Fetched buildings from ERP")
 
+	// Fetch acquisitions from ERP
+	erpAcquisitions, err := service.ERPClient.FetchAcquisitions()
+	if err != nil {
+		service.Logger.WithError(err).Error("Failed to fetch acquisitions from ERP")
+		return err
+	}
+
+	service.Logger.WithField("count", len(erpAcquisitions)).Info("Fetched acquisitions from ERP")
+
+	// Handle duplicate acquisitions: sort by modified timestamp (descending) and group by building_project
+	// Keep only the most recent acquisition for each building_project
+	acquisitionMap := make(map[string]string) // building_project -> status
+
+	// Sort acquisitions by modified timestamp (descending)
+	sort.Slice(erpAcquisitions, func(i, j int) bool {
+		timeI, errI := time.Parse("2006-01-02 15:04:05.999999", erpAcquisitions[i].Modified)
+		timeJ, errJ := time.Parse("2006-01-02 15:04:05.999999", erpAcquisitions[j].Modified)
+		
+		// If parsing fails, treat as older
+		if errI != nil {
+			return false
+		}
+		if errJ != nil {
+			return true
+		}
+		
+		return timeI.After(timeJ)
+	})
+
+	// Create map of building_project -> status (taking first/latest for each project)
+	for _, acquisition := range erpAcquisitions {
+		if acquisition.BuildingProject != "" {
+			// Only add if not already in map (since sorted, first one is latest)
+			if _, exists := acquisitionMap[acquisition.BuildingProject]; !exists {
+				acquisitionMap[acquisition.BuildingProject] = acquisition.Status
+			}
+		}
+	}
+
+	service.Logger.WithField("unique_projects", len(acquisitionMap)).Info("Processed acquisitions (deduplicated)")
+
 	// Sync each building
 	syncedCount := 0
 	createdCount := 0
@@ -118,6 +160,14 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 		existingBuilding, err := service.RepositoryBuildingInterface.FindByExternalId(ctx, tx, erpBuilding.BuildingId)
 
 		if err == sql.ErrNoRows {
+			// Get building status from acquisition map
+			buildingStatus := ""
+			if erpBuilding.BuildingProject != "" {
+				if status, exists := acquisitionMap[erpBuilding.BuildingProject]; exists {
+					buildingStatus = status
+				}
+			}
+
 			// Create new building
 			newBuilding := models.Building{
 				ExternalBuildingId: erpBuilding.BuildingId,
@@ -127,7 +177,7 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 				Audience:           erpBuilding.AudienceActual,
 				Impression:         erpBuilding.AudienceProjection,
 				CbdArea:            erpBuilding.CbdArea,
-				BuildingStatus:     erpBuilding.Eligible,
+				BuildingStatus:     buildingStatus,
 				CompetitorLocation: erpBuilding.CompetitorPresence != 0,
 				SyncedAt:           time.Now().Format(time.RFC3339),
 			}
@@ -141,6 +191,14 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 
 			createdCount++
 		} else if err == nil {
+			// Get building status from acquisition map
+			buildingStatus := ""
+			if erpBuilding.BuildingProject != "" {
+				if status, exists := acquisitionMap[erpBuilding.BuildingProject]; exists {
+					buildingStatus = status
+				}
+			}
+
 			// Update existing building (ERP fields only)
 			existingBuilding.ExternalBuildingId = erpBuilding.BuildingId
 			existingBuilding.IrisCode = erpBuilding.IrisCode
@@ -149,7 +207,7 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 			existingBuilding.Audience = erpBuilding.AudienceActual
 			existingBuilding.Impression = erpBuilding.AudienceProjection
 			existingBuilding.CbdArea = erpBuilding.CbdArea
-			existingBuilding.BuildingStatus = erpBuilding.Eligible
+			existingBuilding.BuildingStatus = buildingStatus
 			existingBuilding.CompetitorLocation = erpBuilding.CompetitorPresence != 0
 			existingBuilding.SyncedAt = time.Now().Format(time.RFC3339)
 

@@ -46,6 +46,7 @@ func (controller *ControllerBuildingImpl) FindAll(w http.ResponseWriter, r *http
 
 	web.SetPagination(&request, r)
 	web.SetOrder(&request, r)
+	web.SetSearch(&request, r)
 
 	buildingResponses, total := controller.ServiceBuildingInterface.FindAll(r.Context(), request)
 
