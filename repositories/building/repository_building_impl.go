@@ -131,8 +131,8 @@ func (repository *RepositoryBuildingImpl) FindByExternalId(ctx context.Context, 
 	return models.Building{}, sql.ErrNoRows
 }
 
-// FindAll retrieves all buildings with pagination, sorting, and search
-func (repository *RepositoryBuildingImpl) FindAll(ctx context.Context, tx *sql.Tx, take int, skip int, orderBy string, orderDirection string, search string) ([]models.Building, error) {
+// FindAll retrieves all buildings with pagination, sorting, search, and filters
+func (repository *RepositoryBuildingImpl) FindAll(ctx context.Context, tx *sql.Tx, take int, skip int, orderBy string, orderDirection string, search string, buildingStatus string, sellable string, connectivity string, resourceType string, competitorLocation *bool, cbdArea string) ([]models.Building, error) {
 	SQL := `SELECT id, external_building_id, iris_code, name, project_name, audience, 
 		impression, cbd_area, building_status, competitor_location, sellable, connectivity, 
 		resource_type, synced_at, created_at, updated_at 
@@ -140,12 +140,63 @@ func (repository *RepositoryBuildingImpl) FindAll(ctx context.Context, tx *sql.T
 
 	args := []interface{}{}
 	argIndex := 1
+	whereConditions := []string{}
 
-	// Add WHERE clause if search is provided
+	// Add search filter
 	if search != "" {
-		SQL += ` WHERE name ILIKE $` + strconv.Itoa(argIndex)
+		whereConditions = append(whereConditions, `name ILIKE $`+strconv.Itoa(argIndex))
 		args = append(args, "%"+search+"%")
 		argIndex++
+	}
+
+	// Add building_status filter
+	if buildingStatus != "" {
+		whereConditions = append(whereConditions, `building_status = $`+strconv.Itoa(argIndex))
+		args = append(args, buildingStatus)
+		argIndex++
+	}
+
+	// Add sellable filter
+	if sellable != "" {
+		whereConditions = append(whereConditions, `sellable = $`+strconv.Itoa(argIndex))
+		args = append(args, sellable)
+		argIndex++
+	}
+
+	// Add connectivity filter
+	if connectivity != "" {
+		whereConditions = append(whereConditions, `connectivity = $`+strconv.Itoa(argIndex))
+		args = append(args, connectivity)
+		argIndex++
+	}
+
+	// Add resource_type filter
+	if resourceType != "" {
+		whereConditions = append(whereConditions, `resource_type = $`+strconv.Itoa(argIndex))
+		args = append(args, resourceType)
+		argIndex++
+	}
+
+	// Add competitor_location filter
+	if competitorLocation != nil {
+		whereConditions = append(whereConditions, `competitor_location = $`+strconv.Itoa(argIndex))
+		args = append(args, *competitorLocation)
+		argIndex++
+	}
+
+	// Add cbd_area filter
+	if cbdArea != "" {
+		whereConditions = append(whereConditions, `cbd_area ILIKE $`+strconv.Itoa(argIndex))
+		args = append(args, "%"+cbdArea+"%")
+		argIndex++
+	}
+
+	// Build WHERE clause
+	if len(whereConditions) > 0 {
+		SQL += ` WHERE ` + whereConditions[0]
+		for i := 1; i < len(whereConditions); i++ {
+			SQL += ` AND ` + whereConditions[i]
+		}
 	}
 
 	SQL += ` ORDER BY ` + orderBy + ` ` + orderDirection + ` LIMIT $` + strconv.Itoa(argIndex) + ` OFFSET $` + strconv.Itoa(argIndex+1)
@@ -187,28 +238,114 @@ func (repository *RepositoryBuildingImpl) FindAll(ctx context.Context, tx *sql.T
 	return buildings, nil
 }
 
-// CountAll returns the total count of buildings with optional search
-func (repository *RepositoryBuildingImpl) CountAll(ctx context.Context, tx *sql.Tx, search string) (int, error) {
+// CountAll returns the total count of buildings with optional search and filters
+func (repository *RepositoryBuildingImpl) CountAll(ctx context.Context, tx *sql.Tx, search string, buildingStatus string, sellable string, connectivity string, resourceType string, competitorLocation *bool, cbdArea string) (int, error) {
 	SQL := "SELECT COUNT(*) FROM " + models.BuildingTable
 
+	args := []interface{}{}
+	argIndex := 1
+	whereConditions := []string{}
+
+	// Add search filter
 	if search != "" {
-		SQL += " WHERE name ILIKE $1"
-		row := tx.QueryRowContext(ctx, SQL, "%"+search+"%")
-		var total int
-		err := row.Scan(&total)
-		if err != nil {
-			return 0, err
-		}
-		return total, nil
+		whereConditions = append(whereConditions, `name ILIKE $`+strconv.Itoa(argIndex))
+		args = append(args, "%"+search+"%")
+		argIndex++
 	}
 
-	row := tx.QueryRowContext(ctx, SQL)
+	// Add building_status filter
+	if buildingStatus != "" {
+		whereConditions = append(whereConditions, `building_status = $`+strconv.Itoa(argIndex))
+		args = append(args, buildingStatus)
+		argIndex++
+	}
+
+	// Add sellable filter
+	if sellable != "" {
+		whereConditions = append(whereConditions, `sellable = $`+strconv.Itoa(argIndex))
+		args = append(args, sellable)
+		argIndex++
+	}
+
+	// Add connectivity filter
+	if connectivity != "" {
+		whereConditions = append(whereConditions, `connectivity = $`+strconv.Itoa(argIndex))
+		args = append(args, connectivity)
+		argIndex++
+	}
+
+	// Add resource_type filter
+	if resourceType != "" {
+		whereConditions = append(whereConditions, `resource_type = $`+strconv.Itoa(argIndex))
+		args = append(args, resourceType)
+		argIndex++
+	}
+
+	// Add competitor_location filter
+	if competitorLocation != nil {
+		whereConditions = append(whereConditions, `competitor_location = $`+strconv.Itoa(argIndex))
+		args = append(args, *competitorLocation)
+		argIndex++
+	}
+
+	// Add cbd_area filter
+	if cbdArea != "" {
+		whereConditions = append(whereConditions, `cbd_area ILIKE $`+strconv.Itoa(argIndex))
+		args = append(args, "%"+cbdArea+"%")
+		argIndex++
+	}
+
+	// Build WHERE clause
+	if len(whereConditions) > 0 {
+		SQL += " WHERE " + whereConditions[0]
+		for i := 1; i < len(whereConditions); i++ {
+			SQL += " AND " + whereConditions[i]
+		}
+	}
+
+	row := tx.QueryRowContext(ctx, SQL, args...)
 	var total int
 	err := row.Scan(&total)
 	if err != nil {
 		return 0, err
 	}
 	return total, nil
+}
+
+// GetDistinctValues returns distinct values for a given column
+func (repository *RepositoryBuildingImpl) GetDistinctValues(ctx context.Context, tx *sql.Tx, columnName string) ([]string, error) {
+	// Validate column name to prevent SQL injection
+	validColumns := map[string]bool{
+		"building_status": true,
+		"sellable":        true,
+		"connectivity":    true,
+		"resource_type":   true,
+		"cbd_area":        true,
+	}
+
+	if !validColumns[columnName] {
+		return []string{}, nil
+	}
+
+	SQL := "SELECT DISTINCT " + columnName + " FROM " + models.BuildingTable + " WHERE " + columnName + " IS NOT NULL AND " + columnName + " != '' ORDER BY " + columnName
+
+	rows, err := tx.QueryContext(ctx, SQL)
+	if err != nil {
+		return []string{}, err
+	}
+	defer rows.Close()
+
+	var values []string
+	for rows.Next() {
+		var value string
+		err := rows.Scan(&value)
+		if err != nil {
+			return []string{}, err
+		}
+		values = append(values, value)
+	}
+
+	return values, nil
 }
 
 // Update updates user-editable fields only

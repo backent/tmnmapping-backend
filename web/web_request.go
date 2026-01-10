@@ -66,3 +66,59 @@ func SetSearch(request RequestSearch, r *http.Request) {
 	}
 }
 
+type RequestFilter interface {
+	SetBuildingStatus(buildingStatus string)
+	SetSellable(sellable string)
+	SetConnectivity(connectivity string)
+	SetResourceType(resourceType string)
+	SetCompetitorLocation(competitorLocation *bool)
+	SetCbdArea(cbdArea string)
+}
+
+func SetFilters(request RequestFilter, r *http.Request) {
+	if r.URL.Query().Has("building_status") {
+		buildingStatus := r.URL.Query().Get("building_status")
+		if buildingStatus != "" {
+			request.SetBuildingStatus(buildingStatus)
+		}
+	}
+
+	if r.URL.Query().Has("sellable") {
+		sellable := r.URL.Query().Get("sellable")
+		if sellable != "" {
+			request.SetSellable(sellable)
+		}
+	}
+
+	if r.URL.Query().Has("connectivity") {
+		connectivity := r.URL.Query().Get("connectivity")
+		if connectivity != "" {
+			request.SetConnectivity(connectivity)
+		}
+	}
+
+	if r.URL.Query().Has("resource_type") {
+		resourceType := r.URL.Query().Get("resource_type")
+		if resourceType != "" {
+			request.SetResourceType(resourceType)
+		}
+	}
+
+	if r.URL.Query().Has("competitor_location") {
+		competitorLocationStr := r.URL.Query().Get("competitor_location")
+		if competitorLocationStr != "" {
+			competitorLocation, err := strconv.ParseBool(competitorLocationStr)
+			if err == nil {
+				request.SetCompetitorLocation(&competitorLocation)
+			}
+		}
+	}
+
+	if r.URL.Query().Has("cbd_area") {
+		cbdArea := r.URL.Query().Get("cbd_area")
+		if cbdArea != "" {
+			request.SetCbdArea(cbdArea)
+		}
+	}
+}
+

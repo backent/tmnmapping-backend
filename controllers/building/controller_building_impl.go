@@ -47,6 +47,7 @@ func (controller *ControllerBuildingImpl) FindAll(w http.ResponseWriter, r *http
 	web.SetPagination(&request, r)
 	web.SetOrder(&request, r)
 	web.SetSearch(&request, r)
+	web.SetFilters(&request, r)
 
 	buildingResponses, total := controller.ServiceBuildingInterface.FindAll(r.Context(), request)
 
@@ -93,6 +94,19 @@ func (controller *ControllerBuildingImpl) SyncManual(w http.ResponseWriter, r *h
 		Status: "OK",
 		Code:   http.StatusOK,
 		Data:   "sync completed successfully",
+	}
+
+	helpers.ReturnReponseJSON(w, response)
+}
+
+// GetFilterOptions handles GET /buildings/filter-options
+func (controller *ControllerBuildingImpl) GetFilterOptions(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	filterOptions := controller.ServiceBuildingInterface.GetFilterOptions(r.Context())
+
+	response := web.WebResponse{
+		Status: "OK",
+		Code:   http.StatusOK,
+		Data:   filterOptions,
 	}
 
 	helpers.ReturnReponseJSON(w, response)

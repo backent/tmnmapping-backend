@@ -11,5 +11,6 @@ type ServiceBuildingInterface interface {
 	FindAll(ctx context.Context, request webBuilding.BuildingRequestFindAll) ([]webBuilding.BuildingResponse, int)
 	Update(ctx context.Context, request webBuilding.UpdateBuildingRequest, id int) webBuilding.BuildingResponse
 	SyncFromERP(ctx context.Context) error
+	GetFilterOptions(ctx context.Context) map[string][]string
 }
 

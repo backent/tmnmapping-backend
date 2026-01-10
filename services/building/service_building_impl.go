@@ -57,10 +57,10 @@ func (service *ServiceBuildingImpl) FindAll(ctx context.Context, request webBuil
 	helpers.PanicIfError(err)
 	defer helpers.CommitOrRollback(tx)
 
-	buildings, err := service.RepositoryBuildingInterface.FindAll(ctx, tx, request.GetTake(), request.GetSkip(), request.GetOrderBy(), request.GetOrderDirection(), request.GetSearch())
+	buildings, err := service.RepositoryBuildingInterface.FindAll(ctx, tx, request.GetTake(), request.GetSkip(), request.GetOrderBy(), request.GetOrderDirection(), request.GetSearch(), request.GetBuildingStatus(), request.GetSellable(), request.GetConnectivity(), request.GetResourceType(), request.GetCompetitorLocation(), request.GetCbdArea())
 	helpers.PanicIfError(err)
 
-	total, err := service.RepositoryBuildingInterface.CountAll(ctx, tx, request.GetSearch())
+	total, err := service.RepositoryBuildingInterface.CountAll(ctx, tx, request.GetSearch(), request.GetBuildingStatus(), request.GetSellable(), request.GetConnectivity(), request.GetResourceType(), request.GetCompetitorLocation(), request.GetCbdArea())
 	helpers.PanicIfError(err)
 
 	return webBuilding.BuildingModelsToListBuildingResponse(buildings), total
@@ -241,4 +241,27 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 	}).Info("Building sync completed")
 
 	return nil
+}
+
+// GetFilterOptions returns distinct values for filter dropdowns
+func (service *ServiceBuildingImpl) GetFilterOptions(ctx context.Context) map[string][]string {
+	tx, err := service.DB.Begin()
+	helpers.PanicIfError(err)
+	defer helpers.CommitOrRollback(tx)
+
+	filterOptions := make(map[string][]string)
+
+	// Get distinct values for each filter field
+	columns := []string{"building_status", "sellable", "connectivity", "resource_type", "cbd_area"}
+
+	for _, column := range columns {
+		values, err := service.RepositoryBuildingInterface.GetDistinctValues(ctx, tx, column)
+		if err != nil {
+			service.Logger.WithError(err).WithField("column", column).Error("Failed to get distinct values")
+			continue
+		}
+		filterOptions[column] = values
+	}
+
+	return filterOptions
 }

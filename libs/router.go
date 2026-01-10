@@ -59,6 +59,10 @@ func NewRouter(
 		loggingMiddleware.Log(
 			authMiddleware.RequireAuth(controllersBuilding.SyncManual)))
 
+	router.GET("/building-filter-options",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(controllersBuilding.GetFilterOptions)))
+
 	return router
 }
 

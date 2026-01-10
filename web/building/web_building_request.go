@@ -13,11 +13,17 @@ type UpdateBuildingRequest struct {
 }
 
 type BuildingRequestFindAll struct {
-	take           int
-	skip           int
-	orderBy        string
-	orderDirection string
-	search         string
+	take              int
+	skip              int
+	orderBy           string
+	orderDirection    string
+	search            string
+	buildingStatus    string
+	sellable          string
+	connectivity      string
+	resourceType      string
+	competitorLocation *bool
+	cbdArea           string
 }
 
 func (r *BuildingRequestFindAll) SetSkip(skip int) {
@@ -66,6 +72,54 @@ func (r *BuildingRequestFindAll) SetSearch(search string) {
 
 func (r *BuildingRequestFindAll) GetSearch() string {
 	return r.search
+}
+
+func (r *BuildingRequestFindAll) SetBuildingStatus(buildingStatus string) {
+	r.buildingStatus = buildingStatus
+}
+
+func (r *BuildingRequestFindAll) GetBuildingStatus() string {
+	return r.buildingStatus
+}
+
+func (r *BuildingRequestFindAll) SetSellable(sellable string) {
+	r.sellable = sellable
+}
+
+func (r *BuildingRequestFindAll) GetSellable() string {
+	return r.sellable
+}
+
+func (r *BuildingRequestFindAll) SetConnectivity(connectivity string) {
+	r.connectivity = connectivity
+}
+
+func (r *BuildingRequestFindAll) GetConnectivity() string {
+	return r.connectivity
+}
+
+func (r *BuildingRequestFindAll) SetResourceType(resourceType string) {
+	r.resourceType = resourceType
+}
+
+func (r *BuildingRequestFindAll) GetResourceType() string {
+	return r.resourceType
+}
+
+func (r *BuildingRequestFindAll) SetCompetitorLocation(competitorLocation *bool) {
+	r.competitorLocation = competitorLocation
+}
+
+func (r *BuildingRequestFindAll) GetCompetitorLocation() *bool {
+	return r.competitorLocation
+}
+
+func (r *BuildingRequestFindAll) SetCbdArea(cbdArea string) {
+	r.cbdArea = cbdArea
+}
+
+func (r *BuildingRequestFindAll) GetCbdArea() string {
+	return r.cbdArea
 }
 
 var _ web.RequestPagination = (*BuildingRequestFindAll)(nil)
