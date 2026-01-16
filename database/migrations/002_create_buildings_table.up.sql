@@ -1,3 +1,6 @@
+-- Enable PostGIS extension for spatial queries
+CREATE EXTENSION IF NOT EXISTS postgis;
+
 CREATE TABLE IF NOT EXISTS buildings (
     id BIGSERIAL PRIMARY KEY,
     external_building_id VARCHAR(100) UNIQUE,
@@ -18,6 +21,9 @@ CREATE TABLE IF NOT EXISTS buildings (
     grade_resource VARCHAR(255),
     building_type VARCHAR(255),
     completion_year INTEGER,
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
+    location GEOGRAPHY(POINT, 4326),
     images JSONB,
     synced_at TIMESTAMP,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -37,4 +43,5 @@ CREATE INDEX IF NOT EXISTS idx_buildings_citytown ON buildings(citytown);
 CREATE INDEX IF NOT EXISTS idx_buildings_province ON buildings(province);
 CREATE INDEX IF NOT EXISTS idx_buildings_grade_resource ON buildings(grade_resource);
 CREATE INDEX IF NOT EXISTS idx_buildings_building_type ON buildings(building_type);
+CREATE INDEX IF NOT EXISTS idx_buildings_location_gist ON buildings USING GIST(location);
 

@@ -31,8 +31,9 @@ func (repository *RepositoryBuildingImpl) Create(ctx context.Context, tx *sql.Tx
 	SQL := `INSERT INTO ` + models.BuildingTable + ` 
 		(external_building_id, iris_code, name, project_name, audience, impression, 
 		cbd_area, building_status, competitor_location, sellable, connectivity, 
-		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, images, synced_at) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20) 
+		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, latitude, longitude, location, images, synced_at) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, 
+		CASE WHEN $19::DOUBLE PRECISION IS NOT NULL AND $20::DOUBLE PRECISION IS NOT NULL AND ($19::DOUBLE PRECISION) != 0 AND ($20::DOUBLE PRECISION) != 0 THEN ST_SetSRID(ST_MakePoint($20::DOUBLE PRECISION, $19::DOUBLE PRECISION), 4326)::geography ELSE NULL END, $21, $22) 
 		RETURNING id, created_at, updated_at`
 
 	err = tx.QueryRowContext(ctx, SQL,
@@ -54,6 +55,8 @@ func (repository *RepositoryBuildingImpl) Create(ctx context.Context, tx *sql.Tx
 		nullIfEmpty(building.GradeResource),
 		nullIfEmpty(building.BuildingType),
 		nullIfZero(building.CompletionYear),
+		nullIfZeroFloat(building.Latitude),
+		nullIfZeroFloat(building.Longitude),
 		imagesJSON,
 		nullIfEmpty(building.SyncedAt),
 	).Scan(&building.Id, &building.CreatedAt, &building.UpdatedAt)
@@ -69,7 +72,7 @@ func (repository *RepositoryBuildingImpl) Create(ctx context.Context, tx *sql.Tx
 func (repository *RepositoryBuildingImpl) FindById(ctx context.Context, tx *sql.Tx, id int) (models.Building, error) {
 	SQL := `SELECT id, external_building_id, iris_code, name, project_name, audience, 
 		impression, cbd_area, building_status, competitor_location, sellable, connectivity, 
-		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, images, synced_at, created_at, updated_at 
+		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, latitude, longitude, images, synced_at, created_at, updated_at 
 		FROM ` + models.BuildingTable + ` WHERE id = $1`
 
 	rows, err := tx.QueryContext(ctx, SQL, id)
@@ -100,6 +103,8 @@ func (repository *RepositoryBuildingImpl) FindById(ctx context.Context, tx *sql.
 			&building.GradeResource,
 			&building.BuildingType,
 			&building.CompletionYear,
+			&building.Latitude,
+			&building.Longitude,
 			&building.Images,
 			&building.SyncedAt,
 			&building.CreatedAt,
@@ -118,7 +123,7 @@ func (repository *RepositoryBuildingImpl) FindById(ctx context.Context, tx *sql.
 func (repository *RepositoryBuildingImpl) FindByExternalId(ctx context.Context, tx *sql.Tx, externalId string) (models.Building, error) {
 	SQL := `SELECT id, external_building_id, iris_code, name, project_name, audience, 
 		impression, cbd_area, building_status, competitor_location, sellable, connectivity, 
-		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, images, synced_at, created_at, updated_at 
+		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, latitude, longitude, images, synced_at, created_at, updated_at 
 		FROM ` + models.BuildingTable + ` WHERE external_building_id = $1`
 
 	rows, err := tx.QueryContext(ctx, SQL, externalId)
@@ -149,6 +154,8 @@ func (repository *RepositoryBuildingImpl) FindByExternalId(ctx context.Context, 
 			&building.GradeResource,
 			&building.BuildingType,
 			&building.CompletionYear,
+			&building.Latitude,
+			&building.Longitude,
 			&building.Images,
 			&building.SyncedAt,
 			&building.CreatedAt,
@@ -167,7 +174,7 @@ func (repository *RepositoryBuildingImpl) FindByExternalId(ctx context.Context, 
 func (repository *RepositoryBuildingImpl) FindAll(ctx context.Context, tx *sql.Tx, take int, skip int, orderBy string, orderDirection string, search string, buildingStatus string, sellable string, connectivity string, resourceType string, competitorLocation *bool, cbdArea string, subdistrict string, citytown string, province string, gradeResource string, buildingType string) ([]models.Building, error) {
 	SQL := `SELECT id, external_building_id, iris_code, name, project_name, audience, 
 		impression, cbd_area, building_status, competitor_location, sellable, connectivity, 
-		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, images, synced_at, created_at, updated_at 
+		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, latitude, longitude, images, synced_at, created_at, updated_at 
 		FROM ` + models.BuildingTable
 
 	args := []interface{}{}
@@ -298,6 +305,8 @@ func (repository *RepositoryBuildingImpl) FindAll(ctx context.Context, tx *sql.T
 			&building.GradeResource,
 			&building.BuildingType,
 			&building.CompletionYear,
+			&building.Latitude,
+			&building.Longitude,
 			&building.Images,
 			&building.SyncedAt,
 			&building.CreatedAt,
@@ -466,7 +475,7 @@ func (repository *RepositoryBuildingImpl) GetDistinctValues(ctx context.Context,
 func (repository *RepositoryBuildingImpl) FindAllForMapping(ctx context.Context, tx *sql.Tx, buildingType string, buildingGrade string, year string, subdistrict string, progress string, sellable string, connectivity string) ([]models.Building, error) {
 	SQL := `SELECT id, external_building_id, iris_code, name, project_name, audience, 
 		impression, cbd_area, building_status, competitor_location, sellable, connectivity, 
-		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, images, synced_at, created_at, updated_at 
+		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, latitude, longitude, images, synced_at, created_at, updated_at 
 		FROM ` + models.BuildingTable
 
 	args := []interface{}{}
@@ -608,6 +617,8 @@ func (repository *RepositoryBuildingImpl) FindAllForMapping(ctx context.Context,
 			&building.GradeResource,
 			&building.BuildingType,
 			&building.CompletionYear,
+			&building.Latitude,
+			&building.Longitude,
 			&building.Images,
 			&building.SyncedAt,
 			&building.CreatedAt,
@@ -659,8 +670,11 @@ func (repository *RepositoryBuildingImpl) UpdateFromSync(ctx context.Context, tx
 		SET external_building_id = $1, iris_code = $2, name = $3, project_name = $4, 
 		audience = $5, impression = $6, cbd_area = $7, building_status = $8, 
 		competitor_location = $9, subdistrict = $10, citytown = $11, province = $12, 
-		grade_resource = $13, building_type = $14, completion_year = $15, images = $16, synced_at = $17, updated_at = $18 
-		WHERE id = $19 
+		grade_resource = $13, building_type = $14, completion_year = $15, 
+		latitude = $16, longitude = $17, 
+		location = CASE WHEN $16::DOUBLE PRECISION IS NOT NULL AND $17::DOUBLE PRECISION IS NOT NULL AND ($16::DOUBLE PRECISION) != 0 AND ($17::DOUBLE PRECISION) != 0 THEN ST_SetSRID(ST_MakePoint($17::DOUBLE PRECISION, $16::DOUBLE PRECISION), 4326)::geography ELSE NULL END,
+		images = $18, synced_at = $19, updated_at = $20 
+		WHERE id = $21 
 		RETURNING updated_at`
 
 	err = tx.QueryRowContext(ctx, SQL,
@@ -679,6 +693,8 @@ func (repository *RepositoryBuildingImpl) UpdateFromSync(ctx context.Context, tx
 		nullIfEmpty(building.GradeResource),
 		nullIfEmpty(building.BuildingType),
 		nullIfZero(building.CompletionYear),
+		nullIfZeroFloat(building.Latitude),
+		nullIfZeroFloat(building.Longitude),
 		imagesJSON,
 		time.Now(),
 		time.Now(),
@@ -702,6 +718,13 @@ func nullIfZero(value int) interface{} {
 
 func nullIfEmpty(value string) interface{} {
 	if value == "" {
+		return nil
+	}
+	return value
+}
+
+func nullIfZeroFloat(value float64) interface{} {
+	if value == 0 {
 		return nil
 	}
 	return value

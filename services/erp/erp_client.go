@@ -21,9 +21,11 @@ type ERPBuilding struct {
 	Citytown           string `json:"citytown"`
 	Province           string `json:"province"`
 	GradeResource      string `json:"grade_resource"`
-	BuildingType       string `json:"building_type"`
-	CompletionYear     int    `json:"completion_year"`
-	Eligible           int    `json:"eligible"`
+	BuildingType       string  `json:"building_type"`
+	CompletionYear     int     `json:"completion_year"`
+	Latitude           float64 `json:"latitude"`
+	Longitude          float64 `json:"longitude"`
+	Eligible           int     `json:"eligible"`
 	CompetitorPresence int    `json:"competitor_presence"`
 	FrontSidePhoto     string `json:"front_side_photo"`
 	BackSidePhoto      string `json:"back_side_photo"`

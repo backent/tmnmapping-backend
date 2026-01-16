@@ -198,6 +198,8 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 				GradeResource:      erpBuilding.GradeResource,
 				BuildingType:       erpBuilding.BuildingType,
 				CompletionYear:     erpBuilding.CompletionYear,
+				Latitude:           erpBuilding.Latitude,
+				Longitude:          erpBuilding.Longitude,
 				BuildingStatus:     buildingStatus,
 				CompetitorLocation: erpBuilding.CompetitorPresence != 0,
 				Images:             images,
@@ -250,6 +252,13 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 			existingBuilding.GradeResource = erpBuilding.GradeResource
 			existingBuilding.BuildingType = erpBuilding.BuildingType
 			existingBuilding.CompletionYear = erpBuilding.CompletionYear
+			// Zero-preservation logic: only update latitude/longitude if ERP provides non-zero values
+			if erpBuilding.Latitude != 0 {
+				existingBuilding.Latitude = erpBuilding.Latitude
+			}
+			if erpBuilding.Longitude != 0 {
+				existingBuilding.Longitude = erpBuilding.Longitude
+			}
 			existingBuilding.BuildingStatus = buildingStatus
 			existingBuilding.CompetitorLocation = erpBuilding.CompetitorPresence != 0
 			existingBuilding.Images = images

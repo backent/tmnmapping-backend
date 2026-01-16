@@ -1,0 +1,14 @@
+# Dockerfile for PostgreSQL with PostGIS (ARM64 compatible)
+# This uses Debian-based PostgreSQL image for better PostGIS package support on ARM64
+
+FROM postgres:17
+
+# Install PostGIS and required dependencies
+# Debian-based images have better PostGIS package support for ARM64
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    postgresql-17-postgis-3 \
+    postgresql-17-postgis-3-scripts \
+    && rm -rf /var/lib/apt/lists/*
+
+# The PostGIS extension will be available after the container starts
+# Users can then run: CREATE EXTENSION IF NOT EXISTS postgis;
