@@ -99,7 +99,7 @@ func calculateLcdPresenceStatus(competitorPresence, competitorExclusive bool, wo
 	isBastSigned := workflowStateNormalized == "bast signed"
 
 	// 1. TMN Check (requires all fields)
-	if workflowState != "" && screenCount > 0 {
+	if workflowState != "" {
 		if isBastSigned && !competitorPresence && !competitorExclusive {
 			return "TMN"
 		}
@@ -233,6 +233,38 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 	updatedCount := 0
 
 	for _, erpBuilding := range erpBuildings {
+		// Get workflow state and screen count for logging
+		workflowState := ""
+		screenCount := 0
+		if erpBuilding.BuildingProject != "" {
+			if ws, exists := workflowStateMap[erpBuilding.BuildingProject]; exists {
+				workflowState = ws
+			}
+			if count, exists := screenCountMap[erpBuilding.BuildingProject]; exists {
+				screenCount = count
+			}
+		}
+
+		// Calculate LCD presence status for logging
+		calculatedStatus := calculateLcdPresenceStatus(
+			erpBuilding.CompetitorPresence != 0,
+			erpBuilding.CompetitorExclusive != 0,
+			workflowState,
+			screenCount,
+		)
+
+		// Log building data for debugging
+		service.Logger.WithFields(logrus.Fields{
+			"building_name":        erpBuilding.BuildingName,
+			"building_project":     erpBuilding.BuildingProject,
+			"screen_count":         screenCount,
+			"workflow_state":       workflowState,
+			"competitor_presence":  erpBuilding.CompetitorPresence,
+			"competitor_exclusive": erpBuilding.CompetitorExclusive,
+			"lcd_presence_status":  calculatedStatus,
+			"external_building_id": erpBuilding.BuildingId,
+		}).Info("Processing building from ERP")
+
 		tx, err := service.DB.Begin()
 		if err != nil {
 			service.Logger.WithError(err).Error("Failed to start transaction")
@@ -243,24 +275,8 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 		existingBuilding, err := service.RepositoryBuildingInterface.FindByExternalId(ctx, tx, erpBuilding.BuildingId)
 
 		if err == sql.ErrNoRows {
-			// Get building status from workflow state map
-			buildingStatus := ""
-			workflowState := ""
-			if erpBuilding.BuildingProject != "" {
-				if ws, exists := workflowStateMap[erpBuilding.BuildingProject]; exists {
-					workflowState = ws
-					// Use workflow_state as building_status for now (keeping existing logic)
-					buildingStatus = ws
-				}
-			}
-
-			// Get screen count from building proposals map
-			screenCount := 0
-			if erpBuilding.BuildingProject != "" {
-				if count, exists := screenCountMap[erpBuilding.BuildingProject]; exists {
-					screenCount = count
-				}
-			}
+			// Use workflow_state as building_status for now (keeping existing logic)
+			buildingStatus := workflowState
 
 			// Convert ERP image fields to JSON array format
 			images := []models.BuildingImage{}
@@ -298,14 +314,9 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 				CompetitorLocation:  erpBuilding.CompetitorPresence != 0,
 				CompetitorExclusive: erpBuilding.CompetitorExclusive != 0,
 				CompetitorPresence:  erpBuilding.CompetitorPresence != 0,
-				LcdPresenceStatus: calculateLcdPresenceStatus(
-					erpBuilding.CompetitorPresence != 0,
-					erpBuilding.CompetitorExclusive != 0,
-					workflowState,
-					screenCount,
-				),
-				Images:   images,
-				SyncedAt: time.Now().Format(time.RFC3339),
+				LcdPresenceStatus:   calculatedStatus,
+				Images:              images,
+				SyncedAt:            time.Now().Format(time.RFC3339),
 			}
 
 			_, err = service.RepositoryBuildingInterface.Create(ctx, tx, newBuilding)
@@ -317,24 +328,8 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 
 			createdCount++
 		} else if err == nil {
-			// Get building status from workflow state map
-			buildingStatus := ""
-			workflowState := ""
-			if erpBuilding.BuildingProject != "" {
-				if ws, exists := workflowStateMap[erpBuilding.BuildingProject]; exists {
-					workflowState = ws
-					// Use workflow_state as building_status for now (keeping existing logic)
-					buildingStatus = ws
-				}
-			}
-
-			// Get screen count from building proposals map
-			screenCount := 0
-			if erpBuilding.BuildingProject != "" {
-				if count, exists := screenCountMap[erpBuilding.BuildingProject]; exists {
-					screenCount = count
-				}
-			}
+			// Use workflow_state as building_status for now (keeping existing logic)
+			buildingStatus := workflowState
 
 			// Convert ERP image fields to JSON array format
 			images := []models.BuildingImage{}
@@ -376,12 +371,7 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 			existingBuilding.CompetitorLocation = erpBuilding.CompetitorPresence != 0
 			existingBuilding.CompetitorExclusive = erpBuilding.CompetitorExclusive != 0
 			existingBuilding.CompetitorPresence = erpBuilding.CompetitorPresence != 0
-			existingBuilding.LcdPresenceStatus = calculateLcdPresenceStatus(
-				erpBuilding.CompetitorPresence != 0,
-				erpBuilding.CompetitorExclusive != 0,
-				workflowState,
-				screenCount,
-			)
+			existingBuilding.LcdPresenceStatus = calculatedStatus
 			existingBuilding.Images = images
 			existingBuilding.SyncedAt = time.Now().Format(time.RFC3339)
 
