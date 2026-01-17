@@ -16,6 +16,6 @@ type RepositoryBuildingInterface interface {
 	GetDistinctValues(ctx context.Context, tx *sql.Tx, columnName string) ([]string, error)
 	Update(ctx context.Context, tx *sql.Tx, building models.Building) (models.Building, error)
 	UpdateFromSync(ctx context.Context, tx *sql.Tx, building models.Building) (models.Building, error)
-	FindAllForMapping(ctx context.Context, tx *sql.Tx, buildingType string, buildingGrade string, year string, subdistrict string, progress string, sellable string, connectivity string) ([]models.Building, error)
+	FindAllForMapping(ctx context.Context, tx *sql.Tx, buildingType string, buildingGrade string, year string, subdistrict string, progress string, sellable string, connectivity string, lcdPresence string) ([]models.Building, error)
 }
 

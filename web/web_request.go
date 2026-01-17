@@ -171,6 +171,7 @@ type MappingFilter interface {
 	SetProgress(progress string)
 	SetSellable(sellable string)
 	SetConnectivity(connectivity string)
+	SetLCDPresence(lcdPresence string)
 }
 
 // SetMappingFilters parses mapping-specific filter parameters from query string
@@ -223,5 +224,10 @@ func SetMappingFilters(request MappingFilter, r *http.Request) {
 	// Connectivity
 	if connectivity := getFilterValue("connectivity"); connectivity != "" {
 		request.SetConnectivity(connectivity)
+	}
+
+	// LCD Presence
+	if lcdPresence := getFilterValue("lcd_presence"); lcdPresence != "" {
+		request.SetLCDPresence(lcdPresence)
 	}
 }

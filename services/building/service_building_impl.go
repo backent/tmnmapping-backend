@@ -446,6 +446,7 @@ func (service *ServiceBuildingImpl) FindAllForMapping(ctx context.Context, reque
 		request.GetProgress(),
 		request.GetSellable(),
 		request.GetConnectivity(),
+		request.GetLCDPresence(),
 	)
 	helpers.PanicIfError(err)
 

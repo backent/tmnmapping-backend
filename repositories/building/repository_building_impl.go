@@ -484,7 +484,7 @@ func (repository *RepositoryBuildingImpl) GetDistinctValues(ctx context.Context,
 }
 
 // FindAllForMapping retrieves all buildings for mapping with filters (no pagination)
-func (repository *RepositoryBuildingImpl) FindAllForMapping(ctx context.Context, tx *sql.Tx, buildingType string, buildingGrade string, year string, subdistrict string, progress string, sellable string, connectivity string) ([]models.Building, error) {
+func (repository *RepositoryBuildingImpl) FindAllForMapping(ctx context.Context, tx *sql.Tx, buildingType string, buildingGrade string, year string, subdistrict string, progress string, sellable string, connectivity string, lcdPresence string) ([]models.Building, error) {
 	SQL := `SELECT id, external_building_id, iris_code, name, project_name, audience, 
 		impression, cbd_area, building_status, competitor_location, competitor_exclusive, competitor_presence, sellable, connectivity, 
 		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, latitude, longitude, images, lcd_presence_status, synced_at, created_at, updated_at 
@@ -590,6 +590,48 @@ func (repository *RepositoryBuildingImpl) FindAllForMapping(ctx context.Context,
 		whereConditions = append(whereConditions, `connectivity = $`+strconv.Itoa(argIndex))
 		args = append(args, connectivity)
 		argIndex++
+	}
+
+	// Add lcd_presence_status filter - handle comma-separated values and null
+	if lcdPresence != "" {
+		if strings.Contains(lcdPresence, ",") {
+			// Multiple values: use IN clause or IS NULL
+			statuses := strings.Split(lcdPresence, ",")
+			placeholders := make([]string, 0, len(statuses))
+			hasNull := false
+			for _, status := range statuses {
+				trimmedStatus := strings.TrimSpace(status)
+				if trimmedStatus == "Opportunity" || trimmedStatus == "" {
+					// Include NULL values for Opportunity
+					hasNull = true
+				}
+				if trimmedStatus != "" {
+					placeholders = append(placeholders, "$"+strconv.Itoa(argIndex))
+					args = append(args, trimmedStatus)
+					argIndex++
+				}
+			}
+			if len(placeholders) > 0 && hasNull {
+				whereConditions = append(whereConditions, `(lcd_presence_status IN (`+strings.Join(placeholders, ",")+`) OR lcd_presence_status IS NULL)`)
+			} else if len(placeholders) > 0 {
+				whereConditions = append(whereConditions, `lcd_presence_status IN (`+strings.Join(placeholders, ",")+`)`)
+			} else if hasNull {
+				whereConditions = append(whereConditions, `lcd_presence_status IS NULL`)
+			}
+		} else {
+			// Single value
+			trimmedStatus := strings.TrimSpace(lcdPresence)
+			if trimmedStatus == "Opportunity" {
+				// For Opportunity, include both NULL and 'Opportunity' values
+				whereConditions = append(whereConditions, `(lcd_presence_status = $`+strconv.Itoa(argIndex)+` OR lcd_presence_status IS NULL)`)
+				args = append(args, trimmedStatus)
+				argIndex++
+			} else {
+				whereConditions = append(whereConditions, `lcd_presence_status = $`+strconv.Itoa(argIndex))
+				args = append(args, trimmedStatus)
+				argIndex++
+			}
+		}
 	}
 
 	// Build WHERE clause

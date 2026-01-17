@@ -8,6 +8,7 @@ type MappingBuildingRequest struct {
 	progress      string
 	sellable      string
 	connectivity  string
+	lcdPresence   string
 	lat           string
 	lng           string
 	radius        string
@@ -67,6 +68,14 @@ func (r *MappingBuildingRequest) SetConnectivity(connectivity string) {
 
 func (r *MappingBuildingRequest) GetConnectivity() string {
 	return r.connectivity
+}
+
+func (r *MappingBuildingRequest) SetLCDPresence(lcdPresence string) {
+	r.lcdPresence = lcdPresence
+}
+
+func (r *MappingBuildingRequest) GetLCDPresence() string {
+	return r.lcdPresence
 }
 
 func (r *MappingBuildingRequest) SetLat(lat string) {
