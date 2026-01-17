@@ -9,28 +9,29 @@ import (
 
 // ERPBuilding represents the building data from Frappe ERP
 type ERPBuilding struct {
-	Name               string `json:"name"`
-	BuildingName       string `json:"building_name"`
-	BuildingId         string `json:"building_id"`
-	IrisCode           string `json:"iris_code"`
-	BuildingProject    string `json:"building_project"`
-	AudienceActual     int    `json:"audience_actual"`
-	AudienceProjection int    `json:"audience_projection"`
-	CbdArea            string `json:"cbd_area"`
-	Subdistrict        string `json:"subdistrict"`
-	Citytown           string `json:"citytown"`
-	Province           string `json:"province"`
-	GradeResource      string `json:"grade_resource"`
-	BuildingType       string  `json:"building_type"`
-	CompletionYear     int     `json:"completion_year"`
-	Latitude           float64 `json:"latitude"`
-	Longitude          float64 `json:"longitude"`
-	Eligible           int     `json:"eligible"`
-	CompetitorPresence int    `json:"competitor_presence"`
-	FrontSidePhoto     string `json:"front_side_photo"`
-	BackSidePhoto      string `json:"back_side_photo"`
-	LeftSidePhoto      string `json:"left_side_photo"`
-	RightSidePhoto     string `json:"right_side_photo"`
+	Name                string  `json:"name"`
+	BuildingName        string  `json:"building_name"`
+	BuildingId          string  `json:"building_id"`
+	IrisCode            string  `json:"iris_code"`
+	BuildingProject     string  `json:"building_project"`
+	AudienceActual      int     `json:"audience_actual"`
+	AudienceProjection  int     `json:"audience_projection"`
+	CbdArea             string  `json:"cbd_area"`
+	Subdistrict         string  `json:"subdistrict"`
+	Citytown            string  `json:"citytown"`
+	Province            string  `json:"province"`
+	GradeResource       string  `json:"grade_resource"`
+	BuildingType        string  `json:"building_type"`
+	CompletionYear      int     `json:"completion_year"`
+	Latitude            float64 `json:"latitude"`
+	Longitude           float64 `json:"longitude"`
+	Eligible            int     `json:"eligible"`
+	CompetitorPresence  int     `json:"competitor_presence"`
+	CompetitorExclusive int     `json:"competitor_exclusive"`
+	FrontSidePhoto      string  `json:"front_side_photo"`
+	BackSidePhoto       string  `json:"back_side_photo"`
+	LeftSidePhoto       string  `json:"left_side_photo"`
+	RightSidePhoto      string  `json:"right_side_photo"`
 }
 
 // ERPResponse represents the API response from Frappe

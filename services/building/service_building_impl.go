@@ -185,25 +185,27 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 
 			// Create new building
 			newBuilding := models.Building{
-				ExternalBuildingId: erpBuilding.BuildingId,
-				IrisCode:           erpBuilding.IrisCode,
-				Name:               erpBuilding.BuildingName,
-				ProjectName:        erpBuilding.BuildingProject,
-				Audience:           erpBuilding.AudienceActual,
-				Impression:         erpBuilding.AudienceProjection,
-				CbdArea:            erpBuilding.CbdArea,
-				Subdistrict:        erpBuilding.Subdistrict,
-				Citytown:           erpBuilding.Citytown,
-				Province:           erpBuilding.Province,
-				GradeResource:      erpBuilding.GradeResource,
-				BuildingType:       erpBuilding.BuildingType,
-				CompletionYear:     erpBuilding.CompletionYear,
-				Latitude:           erpBuilding.Latitude,
-				Longitude:          erpBuilding.Longitude,
-				BuildingStatus:     buildingStatus,
-				CompetitorLocation: erpBuilding.CompetitorPresence != 0,
-				Images:             images,
-				SyncedAt:           time.Now().Format(time.RFC3339),
+				ExternalBuildingId:  erpBuilding.BuildingId,
+				IrisCode:            erpBuilding.IrisCode,
+				Name:                erpBuilding.BuildingName,
+				ProjectName:         erpBuilding.BuildingProject,
+				Audience:            erpBuilding.AudienceActual,
+				Impression:          erpBuilding.AudienceProjection,
+				CbdArea:             erpBuilding.CbdArea,
+				Subdistrict:         erpBuilding.Subdistrict,
+				Citytown:            erpBuilding.Citytown,
+				Province:            erpBuilding.Province,
+				GradeResource:       erpBuilding.GradeResource,
+				BuildingType:        erpBuilding.BuildingType,
+				CompletionYear:      erpBuilding.CompletionYear,
+				Latitude:            erpBuilding.Latitude,
+				Longitude:           erpBuilding.Longitude,
+				BuildingStatus:      buildingStatus,
+				CompetitorLocation:  erpBuilding.CompetitorPresence != 0,
+				CompetitorExclusive: erpBuilding.CompetitorExclusive != 0,
+				CompetitorPresence:  erpBuilding.CompetitorPresence != 0,
+				Images:              images,
+				SyncedAt:            time.Now().Format(time.RFC3339),
 			}
 
 			_, err = service.RepositoryBuildingInterface.Create(ctx, tx, newBuilding)
@@ -261,6 +263,8 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 			}
 			existingBuilding.BuildingStatus = buildingStatus
 			existingBuilding.CompetitorLocation = erpBuilding.CompetitorPresence != 0
+			existingBuilding.CompetitorExclusive = erpBuilding.CompetitorExclusive != 0
+			existingBuilding.CompetitorPresence = erpBuilding.CompetitorPresence != 0
 			existingBuilding.Images = images
 			existingBuilding.SyncedAt = time.Now().Format(time.RFC3339)
 
@@ -388,6 +392,8 @@ func (service *ServiceBuildingImpl) FindAllForMapping(ctx context.Context, reque
 			BuildingStatus: building.BuildingStatus,
 			Sellable:       building.Sellable,
 			Connectivity:   building.Connectivity,
+			Latitude:       building.Latitude,
+			Longitude:      building.Longitude,
 			Images:         images,
 		}
 
@@ -409,11 +415,11 @@ func (service *ServiceBuildingImpl) FindAllForMapping(ctx context.Context, reque
 	}
 
 	return webBuilding.MappingBuildingsResponse{
-		Data:            mappingBuildings,
-		TotalApartment:  totalApartment,
-		TotalHotel:      totalHotel,
-		TotalOffice:     totalOffice,
-		TotalRetail:     totalRetail,
-		TotalOthers:     totalOthers,
+		Data:           mappingBuildings,
+		TotalApartment: totalApartment,
+		TotalHotel:     totalHotel,
+		TotalOffice:    totalOffice,
+		TotalRetail:    totalRetail,
+		TotalOthers:    totalOthers,
 	}
 }

@@ -18,6 +18,8 @@ type MappingBuildingResponse struct {
 	BuildingStatus string                       `json:"building_status"`
 	Sellable      string                       `json:"sellable"`
 	Connectivity   string                       `json:"connectivity"`
+	Latitude       float64                      `json:"latitude"`
+	Longitude      float64                      `json:"longitude"`
 	Images         []MappingBuildingImageResponse `json:"images"`
 }
 

@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS buildings (
     cbd_area VARCHAR(255),
     building_status VARCHAR(255),
     competitor_location BOOLEAN DEFAULT FALSE,
+    competitor_exclusive BOOLEAN DEFAULT FALSE,
+    competitor_presence BOOLEAN DEFAULT FALSE,
     sellable VARCHAR(20),
     connectivity VARCHAR(50),
     resource_type VARCHAR(255),
@@ -35,6 +37,8 @@ CREATE INDEX IF NOT EXISTS idx_buildings_iris_code ON buildings(iris_code);
 CREATE INDEX IF NOT EXISTS idx_buildings_name ON buildings(name);
 CREATE INDEX IF NOT EXISTS idx_buildings_created_at ON buildings(created_at);
 CREATE INDEX IF NOT EXISTS idx_buildings_competitor_location ON buildings(competitor_location);
+CREATE INDEX IF NOT EXISTS idx_buildings_competitor_exclusive ON buildings(competitor_exclusive);
+CREATE INDEX IF NOT EXISTS idx_buildings_competitor_presence ON buildings(competitor_presence);
 CREATE INDEX IF NOT EXISTS idx_buildings_sellable ON buildings(sellable);
 CREATE INDEX IF NOT EXISTS idx_buildings_connectivity ON buildings(connectivity);
 CREATE INDEX IF NOT EXISTS idx_buildings_resource_type ON buildings(resource_type);
