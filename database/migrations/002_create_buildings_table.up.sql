@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS buildings (
     longitude DOUBLE PRECISION,
     location GEOGRAPHY(POINT, 4326),
     images JSONB,
+    lcd_presence_status VARCHAR(50),
     synced_at TIMESTAMP,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -48,4 +49,5 @@ CREATE INDEX IF NOT EXISTS idx_buildings_province ON buildings(province);
 CREATE INDEX IF NOT EXISTS idx_buildings_grade_resource ON buildings(grade_resource);
 CREATE INDEX IF NOT EXISTS idx_buildings_building_type ON buildings(building_type);
 CREATE INDEX IF NOT EXISTS idx_buildings_location_gist ON buildings USING GIST(location);
+CREATE INDEX IF NOT EXISTS idx_buildings_lcd_presence_status ON buildings(lcd_presence_status);
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/malikabdulaziz/tmn-backend/exceptions"
@@ -90,6 +91,47 @@ func (service *ServiceBuildingImpl) Update(ctx context.Context, request webBuild
 	return webBuilding.BuildingModelToBuildingResponse(building)
 }
 
+// calculateLcdPresenceStatus calculates the LCD presence status based on competitor fields, workflow state, and screen count
+// Returns: "TMN", "Competitor", "CoExist", "Opportunity", or empty string if insufficient data
+func calculateLcdPresenceStatus(competitorPresence, competitorExclusive bool, workflowState string, screenCount int) string {
+	// Normalize workflow_state for case-insensitive comparison
+	workflowStateNormalized := strings.ToLower(strings.TrimSpace(workflowState))
+	isBastSigned := workflowStateNormalized == "bast signed"
+
+	// 1. TMN Check (requires all fields)
+	if workflowState != "" && screenCount > 0 {
+		if isBastSigned && !competitorPresence && !competitorExclusive {
+			return "TMN"
+		}
+	}
+
+	// 2. Competitor Check (needs competitor + workflow_state)
+	// If workflow_state is empty, assume != "BAST Signed" (assumption)
+	if workflowState == "" || !isBastSigned {
+		if competitorPresence || competitorExclusive {
+			return "Competitor"
+		}
+	}
+
+	// 3. CoExist Check (requires all fields)
+	if workflowState != "" && screenCount > 0 {
+		if isBastSigned && !competitorExclusive && competitorPresence {
+			return "CoExist"
+		}
+	}
+
+	// 4. Opportunity Check (needs competitor + workflow_state)
+	// If workflow_state is empty, assume != "BAST Signed" (assumption)
+	if workflowState == "" || !isBastSigned {
+		if !competitorPresence && !competitorExclusive {
+			return "Opportunity"
+		}
+	}
+
+	// Default: Return empty string if no conditions match
+	return ""
+}
+
 // SyncFromERP fetches buildings from ERP and syncs them to the database
 func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 	service.Logger.Info("Starting building sync from ERP")
@@ -112,9 +154,18 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 
 	service.Logger.WithField("count", len(erpAcquisitions)).Info("Fetched acquisitions from ERP")
 
+	// Fetch building proposals from ERP
+	erpBuildingProposals, err := service.ERPClient.FetchBuildingProposals()
+	if err != nil {
+		service.Logger.WithError(err).Error("Failed to fetch building proposals from ERP")
+		return err
+	}
+
+	service.Logger.WithField("count", len(erpBuildingProposals)).Info("Fetched building proposals from ERP")
+
 	// Handle duplicate acquisitions: sort by modified timestamp (descending) and group by building_project
 	// Keep only the most recent acquisition for each building_project
-	acquisitionMap := make(map[string]string) // building_project -> status
+	workflowStateMap := make(map[string]string) // building_project -> workflow_state
 
 	// Sort acquisitions by modified timestamp (descending)
 	sort.Slice(erpAcquisitions, func(i, j int) bool {
@@ -132,17 +183,49 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 		return timeI.After(timeJ)
 	})
 
-	// Create map of building_project -> status (taking first/latest for each project)
+	// Create map of building_project -> workflow_state (taking first/latest for each project)
 	for _, acquisition := range erpAcquisitions {
 		if acquisition.BuildingProject != "" {
 			// Only add if not already in map (since sorted, first one is latest)
-			if _, exists := acquisitionMap[acquisition.BuildingProject]; !exists {
-				acquisitionMap[acquisition.BuildingProject] = acquisition.Status
+			if _, exists := workflowStateMap[acquisition.BuildingProject]; !exists {
+				workflowStateMap[acquisition.BuildingProject] = acquisition.WorkflowState
 			}
 		}
 	}
 
-	service.Logger.WithField("unique_projects", len(acquisitionMap)).Info("Processed acquisitions (deduplicated)")
+	service.Logger.WithField("unique_projects", len(workflowStateMap)).Info("Processed acquisitions (deduplicated)")
+
+	// Handle duplicate building proposals: sort by modified timestamp (descending) and group by building_project
+	// Keep only the most recent proposal for each building_project
+	screenCountMap := make(map[string]int) // building_project -> number_of_screen
+
+	// Sort building proposals by modified timestamp (descending)
+	sort.Slice(erpBuildingProposals, func(i, j int) bool {
+		timeI, errI := time.Parse("2006-01-02 15:04:05.999999", erpBuildingProposals[i].Modified)
+		timeJ, errJ := time.Parse("2006-01-02 15:04:05.999999", erpBuildingProposals[j].Modified)
+
+		// If parsing fails, treat as older
+		if errI != nil {
+			return false
+		}
+		if errJ != nil {
+			return true
+		}
+
+		return timeI.After(timeJ)
+	})
+
+	// Create map of building_project -> number_of_screen (taking first/latest for each project)
+	for _, proposal := range erpBuildingProposals {
+		if proposal.BuildingProject != "" {
+			// Only add if not already in map (since sorted, first one is latest)
+			if _, exists := screenCountMap[proposal.BuildingProject]; !exists {
+				screenCountMap[proposal.BuildingProject] = proposal.NumberOfScreen
+			}
+		}
+	}
+
+	service.Logger.WithField("unique_projects", len(screenCountMap)).Info("Processed building proposals (deduplicated)")
 
 	// Sync each building
 	syncedCount := 0
@@ -160,11 +243,22 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 		existingBuilding, err := service.RepositoryBuildingInterface.FindByExternalId(ctx, tx, erpBuilding.BuildingId)
 
 		if err == sql.ErrNoRows {
-			// Get building status from acquisition map
+			// Get building status from workflow state map
 			buildingStatus := ""
+			workflowState := ""
 			if erpBuilding.BuildingProject != "" {
-				if status, exists := acquisitionMap[erpBuilding.BuildingProject]; exists {
-					buildingStatus = status
+				if ws, exists := workflowStateMap[erpBuilding.BuildingProject]; exists {
+					workflowState = ws
+					// Use workflow_state as building_status for now (keeping existing logic)
+					buildingStatus = ws
+				}
+			}
+
+			// Get screen count from building proposals map
+			screenCount := 0
+			if erpBuilding.BuildingProject != "" {
+				if count, exists := screenCountMap[erpBuilding.BuildingProject]; exists {
+					screenCount = count
 				}
 			}
 
@@ -204,8 +298,14 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 				CompetitorLocation:  erpBuilding.CompetitorPresence != 0,
 				CompetitorExclusive: erpBuilding.CompetitorExclusive != 0,
 				CompetitorPresence:  erpBuilding.CompetitorPresence != 0,
-				Images:              images,
-				SyncedAt:            time.Now().Format(time.RFC3339),
+				LcdPresenceStatus: calculateLcdPresenceStatus(
+					erpBuilding.CompetitorPresence != 0,
+					erpBuilding.CompetitorExclusive != 0,
+					workflowState,
+					screenCount,
+				),
+				Images:   images,
+				SyncedAt: time.Now().Format(time.RFC3339),
 			}
 
 			_, err = service.RepositoryBuildingInterface.Create(ctx, tx, newBuilding)
@@ -217,11 +317,22 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 
 			createdCount++
 		} else if err == nil {
-			// Get building status from acquisition map
+			// Get building status from workflow state map
 			buildingStatus := ""
+			workflowState := ""
 			if erpBuilding.BuildingProject != "" {
-				if status, exists := acquisitionMap[erpBuilding.BuildingProject]; exists {
-					buildingStatus = status
+				if ws, exists := workflowStateMap[erpBuilding.BuildingProject]; exists {
+					workflowState = ws
+					// Use workflow_state as building_status for now (keeping existing logic)
+					buildingStatus = ws
+				}
+			}
+
+			// Get screen count from building proposals map
+			screenCount := 0
+			if erpBuilding.BuildingProject != "" {
+				if count, exists := screenCountMap[erpBuilding.BuildingProject]; exists {
+					screenCount = count
 				}
 			}
 
@@ -265,6 +376,12 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 			existingBuilding.CompetitorLocation = erpBuilding.CompetitorPresence != 0
 			existingBuilding.CompetitorExclusive = erpBuilding.CompetitorExclusive != 0
 			existingBuilding.CompetitorPresence = erpBuilding.CompetitorPresence != 0
+			existingBuilding.LcdPresenceStatus = calculateLcdPresenceStatus(
+				erpBuilding.CompetitorPresence != 0,
+				erpBuilding.CompetitorExclusive != 0,
+				workflowState,
+				screenCount,
+			)
 			existingBuilding.Images = images
 			existingBuilding.SyncedAt = time.Now().Format(time.RFC3339)
 
@@ -380,21 +497,22 @@ func (service *ServiceBuildingImpl) FindAllForMapping(ctx context.Context, reque
 		}
 
 		mappingBuilding := webBuilding.MappingBuildingResponse{
-			Id:             building.Id,
-			Name:           building.Name,
-			BuildingType:   building.BuildingType,
-			GradeResource:  building.GradeResource,
-			CompletionYear: building.CompletionYear,
-			Subdistrict:    building.Subdistrict,
-			Citytown:       building.Citytown,
-			Province:       building.Province,
-			Address:        address,
-			BuildingStatus: building.BuildingStatus,
-			Sellable:       building.Sellable,
-			Connectivity:   building.Connectivity,
-			Latitude:       building.Latitude,
-			Longitude:      building.Longitude,
-			Images:         images,
+			Id:                building.Id,
+			Name:              building.Name,
+			BuildingType:      building.BuildingType,
+			GradeResource:     building.GradeResource,
+			CompletionYear:    building.CompletionYear,
+			Subdistrict:       building.Subdistrict,
+			Citytown:          building.Citytown,
+			Province:          building.Province,
+			Address:           address,
+			BuildingStatus:    building.BuildingStatus,
+			Sellable:          building.Sellable,
+			Connectivity:      building.Connectivity,
+			Latitude:          building.Latitude,
+			Longitude:         building.Longitude,
+			LcdPresenceStatus: building.LcdPresenceStatus,
+			Images:            images,
 		}
 
 		mappingBuildings = append(mappingBuildings, mappingBuilding)

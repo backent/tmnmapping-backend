@@ -34,6 +34,7 @@ type Building struct {
 	CompletionYear      int             `json:"completion_year"`
 	Latitude            float64         `json:"latitude"`
 	Longitude           float64         `json:"longitude"`
+	LcdPresenceStatus   string          `json:"lcd_presence_status"`
 	Images              []BuildingImage `json:"images"`
 	SyncedAt            string          `json:"synced_at"`
 	CreatedAt           string          `json:"created_at"`
@@ -64,6 +65,7 @@ type NullAbleBuilding struct {
 	CompletionYear      sql.NullInt64
 	Latitude            sql.NullFloat64
 	Longitude           sql.NullFloat64
+	LcdPresenceStatus   sql.NullString
 	Images              sql.NullString
 	SyncedAt            sql.NullString
 	CreatedAt           sql.NullString
@@ -106,6 +108,7 @@ func NullAbleBuildingToBuilding(nullable NullAbleBuilding) Building {
 		CompletionYear:      int(nullable.CompletionYear.Int64),
 		Latitude:            nullable.Latitude.Float64,
 		Longitude:           nullable.Longitude.Float64,
+		LcdPresenceStatus:   nullable.LcdPresenceStatus.String,
 		Images:              images,
 		SyncedAt:            nullable.SyncedAt.String,
 		CreatedAt:           nullable.CreatedAt.String,

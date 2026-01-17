@@ -44,12 +44,25 @@ type ERPAcquisition struct {
 	Name            string `json:"name"`
 	BuildingProject string `json:"building_project"`
 	Status          string `json:"status"`
+	WorkflowState   string `json:"workflow_state"`
 	Modified        string `json:"modified"`
 }
 
 // ERPAcquisitionResponse represents the Acquisition API response from Frappe
 type ERPAcquisitionResponse struct {
 	Data []ERPAcquisition `json:"data"`
+}
+
+// ERPBuildingProposal represents the building proposal data from Frappe ERP
+type ERPBuildingProposal struct {
+	BuildingProject string `json:"building_project"`
+	NumberOfScreen  int    `json:"number_of_screen"`
+	Modified        string `json:"modified"`
+}
+
+// ERPBuildingProposalResponse represents the Building Proposal API response from Frappe
+type ERPBuildingProposalResponse struct {
+	Data []ERPBuildingProposal `json:"data"`
 }
 
 // ERPClient handles communication with Frappe ERP API
@@ -135,6 +148,41 @@ func (c *ERPClient) FetchAcquisitions() ([]ERPAcquisition, error) {
 	}
 
 	var erpResponse ERPAcquisitionResponse
+	if err := json.NewDecoder(resp.Body).Decode(&erpResponse); err != nil {
+		return nil, fmt.Errorf("failed to decode ERP response: %w", err)
+	}
+
+	return erpResponse.Data, nil
+}
+
+// FetchBuildingProposals fetches all building proposals from the ERP API
+func (c *ERPClient) FetchBuildingProposals() ([]ERPBuildingProposal, error) {
+	// Build URL with query parameters to get all fields and all records
+	url := fmt.Sprintf("%s/api/resource/Building Proposal?fields=[\"building_project\",\"number_of_screen\",\"modified\"]&limit_page_length=99999", c.BaseURL)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set authorization header in format: Token API_KEY:API_SECRET
+	if c.APIKey != "" && c.APISecret != "" {
+		authValue := fmt.Sprintf("Token %s:%s", c.APIKey, c.APISecret)
+		req.Header.Set("Authorization", authValue)
+	}
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch building proposals from ERP: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("ERP API returned status %d", resp.StatusCode)
+	}
+
+	var erpResponse ERPBuildingProposalResponse
 	if err := json.NewDecoder(resp.Body).Decode(&erpResponse); err != nil {
 		return nil, fmt.Errorf("failed to decode ERP response: %w", err)
 	}

@@ -31,6 +31,7 @@ type BuildingResponse struct {
 	CompletionYear      int                     `json:"completion_year"`
 	Latitude            float64                 `json:"latitude"`
 	Longitude           float64                 `json:"longitude"`
+	LcdPresenceStatus   string                  `json:"lcd_presence_status"`
 	Images              []BuildingImageResponse `json:"images"`
 	SyncedAt            string                  `json:"synced_at"`
 	CreatedAt           string                  `json:"created_at"`
@@ -71,6 +72,7 @@ func BuildingModelToBuildingResponse(building models.Building) BuildingResponse 
 		CompletionYear:      building.CompletionYear,
 		Latitude:            building.Latitude,
 		Longitude:           building.Longitude,
+		LcdPresenceStatus:   building.LcdPresenceStatus,
 		Images:              images,
 		SyncedAt:            building.SyncedAt,
 		CreatedAt:           building.CreatedAt,

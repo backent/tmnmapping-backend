@@ -1,4 +1,5 @@
 DROP INDEX IF EXISTS idx_buildings_location_gist;
+DROP INDEX IF EXISTS idx_buildings_lcd_presence_status;
 DROP INDEX IF EXISTS idx_buildings_building_type;
 DROP INDEX IF EXISTS idx_buildings_grade_resource;
 DROP INDEX IF EXISTS idx_buildings_province;
