@@ -624,11 +624,9 @@ func (service *ServiceBuildingImpl) FindAllForMapping(ctx context.Context, reque
 
 	// Convert to mapping response and calculate totals
 	mappingBuildings := make([]webBuilding.MappingBuildingResponse, 0, len(buildings))
-	totalApartment := 0
-	totalHotel := 0
-	totalOffice := 0
-	totalRetail := 0
-	totalOthers := 0
+
+	// Use a map for dynamic totals - count all building types
+	totalsMap := make(map[string]int)
 
 	for _, building := range buildings {
 		// Convert images
@@ -680,27 +678,19 @@ func (service *ServiceBuildingImpl) FindAllForMapping(ctx context.Context, reque
 
 		mappingBuildings = append(mappingBuildings, mappingBuilding)
 
-		// Count by building type
-		switch building.BuildingType {
-		case "Apartment":
-			totalApartment++
-		case "Hotel":
-			totalHotel++
-		case "Office":
-			totalOffice++
-		case "Retail":
-			totalRetail++
-		default:
-			totalOthers++
+		// Count by building type - dynamic approach
+		buildingType := building.BuildingType
+		if buildingType == "" {
+			buildingType = "Other" // Handle empty building types
 		}
+
+		// Increment dynamic totals map (case-insensitive key)
+		key := strings.ToLower(buildingType)
+		totalsMap[key]++
 	}
 
 	return webBuilding.MappingBuildingsResponse{
-		Data:           mappingBuildings,
-		TotalApartment: totalApartment,
-		TotalHotel:     totalHotel,
-		TotalOffice:    totalOffice,
-		TotalRetail:    totalRetail,
-		TotalOthers:    totalOthers,
+		Data:   mappingBuildings,
+		Totals: totalsMap,
 	}
 }

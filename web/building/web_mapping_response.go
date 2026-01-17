@@ -25,10 +25,6 @@ type MappingBuildingResponse struct {
 }
 
 type MappingBuildingsResponse struct {
-	Data           []MappingBuildingResponse `json:"data"`
-	TotalApartment int                       `json:"total_appartment"`
-	TotalHotel     int                       `json:"total_hotel"`
-	TotalOffice    int                       `json:"total_office"`
-	TotalRetail    int                       `json:"total_retail"`
-	TotalOthers    int                       `json:"total_others"`
+	Data   []MappingBuildingResponse `json:"data"`
+	Totals map[string]int            `json:"totals"` // Dynamic totals for all building types
 }

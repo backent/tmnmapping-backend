@@ -494,42 +494,46 @@ func (repository *RepositoryBuildingImpl) FindAllForMapping(ctx context.Context,
 	argIndex := 1
 	whereConditions := []string{}
 
-	// Add building_type filter - handle comma-separated values
+	// Add building_type filter - handle comma-separated values with case-insensitive comparison
 	if buildingType != "" {
 		if strings.Contains(buildingType, ",") {
-			// Multiple values: use IN clause
+			// Multiple values: use IN clause with case-insensitive comparison
 			types := strings.Split(buildingType, ",")
 			placeholders := make([]string, len(types))
 			for i := range types {
 				placeholders[i] = "$" + strconv.Itoa(argIndex+i)
-				args = append(args, strings.TrimSpace(types[i]))
+				// Convert to lowercase for case-insensitive comparison
+				args = append(args, strings.ToLower(strings.TrimSpace(types[i])))
 			}
-			whereConditions = append(whereConditions, `building_type IN (`+strings.Join(placeholders, ",")+`)`)
+			// Use LOWER() on database column for case-insensitive comparison
+			whereConditions = append(whereConditions, `LOWER(building_type) IN (`+strings.Join(placeholders, ",")+`)`)
 			argIndex += len(types)
 		} else {
-			// Single value
-			whereConditions = append(whereConditions, `building_type = $`+strconv.Itoa(argIndex))
-			args = append(args, buildingType)
+			// Single value with case-insensitive comparison
+			whereConditions = append(whereConditions, `LOWER(building_type) = $`+strconv.Itoa(argIndex))
+			args = append(args, strings.ToLower(buildingType))
 			argIndex++
 		}
 	}
 
-	// Add grade_resource filter (mapped from building_grade) - handle comma-separated values
+	// Add grade_resource filter (mapped from building_grade) - handle comma-separated values with case-insensitive comparison
 	if buildingGrade != "" {
 		if strings.Contains(buildingGrade, ",") {
-			// Multiple values: use IN clause
+			// Multiple values: use IN clause with case-insensitive comparison
 			grades := strings.Split(buildingGrade, ",")
 			placeholders := make([]string, len(grades))
 			for i := range grades {
 				placeholders[i] = "$" + strconv.Itoa(argIndex+i)
-				args = append(args, strings.TrimSpace(grades[i]))
+				// Convert to lowercase for case-insensitive comparison
+				args = append(args, strings.ToLower(strings.TrimSpace(grades[i])))
 			}
-			whereConditions = append(whereConditions, `grade_resource IN (`+strings.Join(placeholders, ",")+`)`)
+			// Use LOWER() on database column for case-insensitive comparison
+			whereConditions = append(whereConditions, `LOWER(grade_resource) IN (`+strings.Join(placeholders, ",")+`)`)
 			argIndex += len(grades)
 		} else {
-			// Single value
-			whereConditions = append(whereConditions, `grade_resource = $`+strconv.Itoa(argIndex))
-			args = append(args, buildingGrade)
+			// Single value with case-insensitive comparison
+			whereConditions = append(whereConditions, `LOWER(grade_resource) = $`+strconv.Itoa(argIndex))
+			args = append(args, strings.ToLower(buildingGrade))
 			argIndex++
 		}
 	}
