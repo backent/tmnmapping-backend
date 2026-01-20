@@ -172,6 +172,9 @@ type MappingFilter interface {
 	SetSellable(sellable string)
 	SetConnectivity(connectivity string)
 	SetLCDPresence(lcdPresence string)
+	SetLat(lat string)
+	SetLng(lng string)
+	SetRadius(radius string)
 }
 
 // SetMappingFilters parses mapping-specific filter parameters from query string
@@ -229,5 +232,20 @@ func SetMappingFilters(request MappingFilter, r *http.Request) {
 	// LCD Presence
 	if lcdPresence := getFilterValue("lcd_presence"); lcdPresence != "" {
 		request.SetLCDPresence(lcdPresence)
+	}
+
+	// Latitude
+	if lat := getFilterValue("lat"); lat != "" {
+		request.SetLat(lat)
+	}
+
+	// Longitude
+	if lng := getFilterValue("lng"); lng != "" {
+		request.SetLng(lng)
+	}
+
+	// Radius (in meters)
+	if radius := getFilterValue("radius"); radius != "" {
+		request.SetRadius(radius)
 	}
 }

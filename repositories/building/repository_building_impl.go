@@ -484,7 +484,7 @@ func (repository *RepositoryBuildingImpl) GetDistinctValues(ctx context.Context,
 }
 
 // FindAllForMapping retrieves all buildings for mapping with filters (no pagination)
-func (repository *RepositoryBuildingImpl) FindAllForMapping(ctx context.Context, tx *sql.Tx, buildingType string, buildingGrade string, year string, subdistrict string, progress string, sellable string, connectivity string, lcdPresence string) ([]models.Building, error) {
+func (repository *RepositoryBuildingImpl) FindAllForMapping(ctx context.Context, tx *sql.Tx, buildingType string, buildingGrade string, year string, subdistrict string, progress string, sellable string, connectivity string, lcdPresence string, lat *float64, lng *float64, radius *int) ([]models.Building, error) {
 	SQL := `SELECT id, external_building_id, iris_code, name, project_name, audience, 
 		impression, cbd_area, building_status, competitor_location, competitor_exclusive, competitor_presence, sellable, connectivity, 
 		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, latitude, longitude, images, lcd_presence_status, synced_at, created_at, updated_at 
@@ -636,6 +636,16 @@ func (repository *RepositoryBuildingImpl) FindAllForMapping(ctx context.Context,
 				argIndex++
 			}
 		}
+	}
+
+	// Add radius filter using PostGIS ST_DWithin (only if lat, lng, and radius are all provided)
+	if lat != nil && lng != nil && radius != nil && *radius > 0 {
+		// Create a geography point from lat/lng and filter buildings within radius (in meters)
+		// ST_DWithin uses the location column (GEOGRAPHY) and checks distance
+		// Note: PostGIS ST_MakePoint uses (lng, lat) order, not (lat, lng)
+		whereConditions = append(whereConditions, `ST_DWithin(location, ST_SetSRID(ST_MakePoint($`+strconv.Itoa(argIndex)+`, $`+strconv.Itoa(argIndex+1)+`), 4326)::geography, $`+strconv.Itoa(argIndex+2)+`)`)
+		args = append(args, *lng, *lat, *radius)
+		argIndex += 3
 	}
 
 	// Build WHERE clause
