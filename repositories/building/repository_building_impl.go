@@ -568,11 +568,24 @@ func (repository *RepositoryBuildingImpl) FindAllForMapping(ctx context.Context,
 		}
 	}
 
-	// Add subdistrict filter
+	// Add subdistrict filter - handle comma-separated values with OR logic
 	if subdistrict != "" {
-		whereConditions = append(whereConditions, `subdistrict ILIKE $`+strconv.Itoa(argIndex))
-		args = append(args, "%"+subdistrict+"%")
-		argIndex++
+		if strings.Contains(subdistrict, ",") {
+			// Multiple values: use OR conditions with ILIKE for each value
+			subdistricts := strings.Split(subdistrict, ",")
+			orConditions := make([]string, len(subdistricts))
+			for i, sd := range subdistricts {
+				orConditions[i] = `subdistrict ILIKE $` + strconv.Itoa(argIndex+i)
+				args = append(args, "%"+strings.TrimSpace(sd)+"%")
+			}
+			whereConditions = append(whereConditions, `(`+strings.Join(orConditions, " OR ")+`)`)
+			argIndex += len(subdistricts)
+		} else {
+			// Single value: use ILIKE pattern matching
+			whereConditions = append(whereConditions, `subdistrict ILIKE $`+strconv.Itoa(argIndex))
+			args = append(args, "%"+subdistrict+"%")
+			argIndex++
+		}
 	}
 
 	// Add building_status filter (mapped from progress)
