@@ -82,13 +82,14 @@ func (repository *RepositoryPOIImpl) CreatePoint(ctx context.Context, tx *sql.Tx
 	return point, nil
 }
 
-// FindAll retrieves all POIs with their points
-func (repository *RepositoryPOIImpl) FindAll(ctx context.Context, tx *sql.Tx) ([]models.POI, error) {
+// FindAll retrieves all POIs with their points, with pagination and ordering
+func (repository *RepositoryPOIImpl) FindAll(ctx context.Context, tx *sql.Tx, take int, skip int, orderBy string, orderDirection string) ([]models.POI, error) {
 	SQL := `SELECT id, name, color, created_at, updated_at 
 		FROM ` + models.POITable + ` 
-		ORDER BY created_at DESC`
+		ORDER BY ` + orderBy + ` ` + orderDirection + ` 
+		LIMIT $1 OFFSET $2`
 
-	rows, err := tx.QueryContext(ctx, SQL)
+	rows, err := tx.QueryContext(ctx, SQL, take, skip)
 	if err != nil {
 		return []models.POI{}, err
 	}
@@ -137,6 +138,19 @@ func (repository *RepositoryPOIImpl) FindAll(ctx context.Context, tx *sql.Tx) ([
 	}
 
 	return pois, nil
+}
+
+// CountAll returns the total count of POIs
+func (repository *RepositoryPOIImpl) CountAll(ctx context.Context, tx *sql.Tx) (int, error) {
+	SQL := `SELECT COUNT(*) FROM ` + models.POITable
+
+	var total int
+	err := tx.QueryRowContext(ctx, SQL).Scan(&total)
+	if err != nil {
+		return 0, err
+	}
+
+	return total, nil
 }
 
 // FindById retrieves a POI by ID with its points

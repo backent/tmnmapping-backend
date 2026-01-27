@@ -39,12 +39,24 @@ func (controller *ControllerPOIImpl) Create(w http.ResponseWriter, r *http.Reque
 
 // FindAll handles GET /pois
 func (controller *ControllerPOIImpl) FindAll(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-	poiResponses := controller.service.FindAll(r.Context())
+	var request webPOI.POIRequestFindAll
+
+	web.SetPagination(&request, r)
+	web.SetOrder(&request, r)
+
+	poiResponses, total := controller.service.FindAll(r.Context(), request)
+
+	pagination := web.Pagination{
+		Take:  request.GetTake(),
+		Skip:  request.GetSkip(),
+		Total: total,
+	}
 
 	response := web.WebResponse{
 		Status: "OK",
 		Code:   http.StatusOK,
 		Data:   poiResponses,
+		Extras: pagination,
 	}
 
 	helpers.ReturnReponseJSON(w, response)

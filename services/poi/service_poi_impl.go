@@ -56,13 +56,16 @@ func (service *ServicePOIImpl) Create(ctx context.Context, request webPOI.Create
 	return service.poiModelToResponse(createdPOI)
 }
 
-// FindAll retrieves all POIs with their points
-func (service *ServicePOIImpl) FindAll(ctx context.Context) []webPOI.POIResponse {
+// FindAll retrieves all POIs with their points, with pagination
+func (service *ServicePOIImpl) FindAll(ctx context.Context, request webPOI.POIRequestFindAll) ([]webPOI.POIResponse, int) {
 	tx, err := service.DB.Begin()
 	helpers.PanicIfError(err)
 	defer helpers.CommitOrRollback(tx)
 
-	pois, err := service.RepositoryPOIInterface.FindAll(ctx, tx)
+	pois, err := service.RepositoryPOIInterface.FindAll(ctx, tx, request.GetTake(), request.GetSkip(), request.GetOrderBy(), request.GetOrderDirection())
+	helpers.PanicIfError(err)
+
+	total, err := service.RepositoryPOIInterface.CountAll(ctx, tx)
 	helpers.PanicIfError(err)
 
 	responses := make([]webPOI.POIResponse, len(pois))
@@ -70,7 +73,7 @@ func (service *ServicePOIImpl) FindAll(ctx context.Context) []webPOI.POIResponse
 		responses[i] = service.poiModelToResponse(poi)
 	}
 
-	return responses
+	return responses, total
 }
 
 // FindById retrieves a POI by ID with its points
