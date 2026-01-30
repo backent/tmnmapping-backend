@@ -8,6 +8,7 @@ import (
 	controllersBuilding "github.com/malikabdulaziz/tmn-backend/controllers/building"
 	controllersImage "github.com/malikabdulaziz/tmn-backend/controllers/image"
 	controllersPOI "github.com/malikabdulaziz/tmn-backend/controllers/poi"
+	controllersSalesPackage "github.com/malikabdulaziz/tmn-backend/controllers/salespackage"
 	"github.com/malikabdulaziz/tmn-backend/exceptions"
 	"github.com/malikabdulaziz/tmn-backend/middlewares"
 )
@@ -16,11 +17,13 @@ func NewRouter(
 	authMiddleware *middlewares.AuthMiddleware,
 	buildingMiddleware *middlewares.BuildingMiddleware,
 	poiMiddleware *middlewares.POIMiddleware,
+	salesPackageMiddleware *middlewares.SalesPackageMiddleware,
 	loggingMiddleware *middlewares.LoggingMiddleware,
 	controllersAuth controllersAuth.ControllerAuthInterface,
 	controllersBuilding controllersBuilding.ControllerBuildingInterface,
 	controllersImage controllersImage.ControllerImageInterface,
 	controllersPOI controllersPOI.ControllerPOIInterface,
+	controllersSalesPackage controllersSalesPackage.ControllerSalesPackageInterface,
 ) *httprouter.Router {
 	router := httprouter.New()
 
@@ -100,6 +103,29 @@ func NewRouter(
 	router.DELETE("/pois/:id",
 		loggingMiddleware.Log(
 			authMiddleware.RequireAuth(controllersPOI.Delete)))
+
+	// Sales package routes (protected)
+	router.POST("/sales-packages",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				salesPackageMiddleware.ValidateCreate(controllersSalesPackage.Create))))
+
+	router.GET("/sales-packages",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(controllersSalesPackage.FindAll)))
+
+	router.GET("/sales-packages/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(controllersSalesPackage.FindById)))
+
+	router.PUT("/sales-packages/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				salesPackageMiddleware.ValidateUpdate(controllersSalesPackage.Update))))
+
+	router.DELETE("/sales-packages/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(controllersSalesPackage.Delete)))
 
 	return router
 }

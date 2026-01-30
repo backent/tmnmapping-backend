@@ -10,15 +10,18 @@ import (
 	controllersBuilding "github.com/malikabdulaziz/tmn-backend/controllers/building"
 	controllersImage "github.com/malikabdulaziz/tmn-backend/controllers/image"
 	controllersPOI "github.com/malikabdulaziz/tmn-backend/controllers/poi"
+	controllersSalesPackage "github.com/malikabdulaziz/tmn-backend/controllers/salespackage"
 	"github.com/malikabdulaziz/tmn-backend/libs"
 	"github.com/malikabdulaziz/tmn-backend/middlewares"
 	repositoriesAuth "github.com/malikabdulaziz/tmn-backend/repositories/auth"
 	repositoriesBuilding "github.com/malikabdulaziz/tmn-backend/repositories/building"
 	repositoriesPOI "github.com/malikabdulaziz/tmn-backend/repositories/poi"
+	repositoriesSalesPackage "github.com/malikabdulaziz/tmn-backend/repositories/salespackage"
 	repositoriesUser "github.com/malikabdulaziz/tmn-backend/repositories/user"
 	servicesAuth "github.com/malikabdulaziz/tmn-backend/services/auth"
 	servicesBuilding "github.com/malikabdulaziz/tmn-backend/services/building"
 	servicesPOI "github.com/malikabdulaziz/tmn-backend/services/poi"
+	servicesSalesPackage "github.com/malikabdulaziz/tmn-backend/services/salespackage"
 )
 
 var authSet = wire.NewSet(
@@ -44,10 +47,17 @@ var poiSet = wire.NewSet(
 	controllersPOI.NewControllerPOIImpl,
 )
 
+var salespackageSet = wire.NewSet(
+	repositoriesSalesPackage.NewRepositorySalesPackageImpl,
+	servicesSalesPackage.NewServiceSalesPackageImpl,
+	controllersSalesPackage.NewControllerSalesPackageImpl,
+)
+
 var middlewareSet = wire.NewSet(
 	middlewares.NewAuthMiddleware,
 	middlewares.NewBuildingMiddleware,
 	middlewares.NewPOIMiddleware,
+	middlewares.NewSalesPackageMiddleware,
 	middlewares.NewLoggingMiddleware,
 )
 
@@ -61,6 +71,7 @@ func InitializeRouter() *httprouter.Router {
 		buildingSet,
 		imageSet,
 		poiSet,
+		salespackageSet,
 		middlewareSet,
 		libs.NewRouter,
 	)

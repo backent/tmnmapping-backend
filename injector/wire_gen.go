@@ -13,15 +13,18 @@ import (
 	building3 "github.com/malikabdulaziz/tmn-backend/controllers/building"
 	"github.com/malikabdulaziz/tmn-backend/controllers/image"
 	poi3 "github.com/malikabdulaziz/tmn-backend/controllers/poi"
+	salespackage3 "github.com/malikabdulaziz/tmn-backend/controllers/salespackage"
 	"github.com/malikabdulaziz/tmn-backend/libs"
 	"github.com/malikabdulaziz/tmn-backend/middlewares"
 	"github.com/malikabdulaziz/tmn-backend/repositories/auth"
 	"github.com/malikabdulaziz/tmn-backend/repositories/building"
 	"github.com/malikabdulaziz/tmn-backend/repositories/poi"
+	"github.com/malikabdulaziz/tmn-backend/repositories/salespackage"
 	"github.com/malikabdulaziz/tmn-backend/repositories/user"
 	auth2 "github.com/malikabdulaziz/tmn-backend/services/auth"
 	building2 "github.com/malikabdulaziz/tmn-backend/services/building"
 	poi2 "github.com/malikabdulaziz/tmn-backend/services/poi"
+	salespackage2 "github.com/malikabdulaziz/tmn-backend/services/salespackage"
 )
 
 // Injectors from wire.go:
@@ -35,6 +38,8 @@ func InitializeRouter() *httprouter.Router {
 	buildingMiddleware := middlewares.NewBuildingMiddleware(validate, db, repositoryBuildingInterface)
 	repositoryPOIInterface := poi.NewRepositoryPOIImpl()
 	poiMiddleware := middlewares.NewPOIMiddleware(validate, db, repositoryPOIInterface)
+	repositorySalesPackageInterface := salespackage.NewRepositorySalesPackageImpl()
+	salesPackageMiddleware := middlewares.NewSalesPackageMiddleware(validate, db, repositorySalesPackageInterface)
 	loggingMiddleware := middlewares.NewLoggingMiddleware()
 	repositoryUserInterface := user.NewRepositoryUserImpl()
 	serviceAuthInterface := auth2.NewServiceAuthImpl(db, repositoryAuthInterface, repositoryUserInterface)
@@ -46,7 +51,9 @@ func InitializeRouter() *httprouter.Router {
 	controllerImageInterface := image.NewControllerImageImpl()
 	servicePOIInterface := poi2.NewServicePOIImpl(db, repositoryPOIInterface)
 	controllerPOIInterface := poi3.NewControllerPOIImpl(servicePOIInterface)
-	router := libs.NewRouter(authMiddleware, buildingMiddleware, poiMiddleware, loggingMiddleware, controllerAuthInterface, controllerBuildingInterface, controllerImageInterface, controllerPOIInterface)
+	serviceSalesPackageInterface := salespackage2.NewServiceSalesPackageImpl(db, repositorySalesPackageInterface, repositoryBuildingInterface)
+	controllerSalesPackageInterface := salespackage3.NewControllerSalesPackageImpl(serviceSalesPackageInterface)
+	router := libs.NewRouter(authMiddleware, buildingMiddleware, poiMiddleware, salesPackageMiddleware, loggingMiddleware, controllerAuthInterface, controllerBuildingInterface, controllerImageInterface, controllerPOIInterface, controllerSalesPackageInterface)
 	return router
 }
 
@@ -70,4 +77,6 @@ var imageSet = wire.NewSet(image.NewControllerImageImpl)
 
 var poiSet = wire.NewSet(poi.NewRepositoryPOIImpl, poi2.NewServicePOIImpl, poi3.NewControllerPOIImpl)
 
-var middlewareSet = wire.NewSet(middlewares.NewAuthMiddleware, middlewares.NewBuildingMiddleware, middlewares.NewPOIMiddleware, middlewares.NewLoggingMiddleware)
+var salespackageSet = wire.NewSet(salespackage.NewRepositorySalesPackageImpl, salespackage2.NewServiceSalesPackageImpl, salespackage3.NewControllerSalesPackageImpl)
+
+var middlewareSet = wire.NewSet(middlewares.NewAuthMiddleware, middlewares.NewBuildingMiddleware, middlewares.NewPOIMiddleware, middlewares.NewSalesPackageMiddleware, middlewares.NewLoggingMiddleware)
