@@ -3,6 +3,7 @@ package building
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"sort"
 	"strconv"
 	"strings"
@@ -613,49 +614,61 @@ func (service *ServiceBuildingImpl) FindAllForMapping(ctx context.Context, reque
 	helpers.PanicIfError(err)
 	defer helpers.CommitOrRollback(tx)
 
-	// Parse lat, lng, and radius from string to appropriate types
 	var latPtr *float64
 	var lngPtr *float64
 	var radiusPtr *int
 	var poiPoints []struct{ Lat float64; Lng float64 }
+	var polygonPoints []struct{ Lat float64; Lng float64 }
 
-	// Check if POI ID is provided
-	if poiIdStr := request.GetPOIId(); poiIdStr != "" {
-		poiId, err := strconv.Atoi(poiIdStr)
-		if err == nil && poiId > 0 {
-			// Fetch POI to get its points
-			poi, err := service.RepositoryPOIInterface.FindById(ctx, tx, poiId)
-			if err == nil && len(poi.Points) > 0 {
-				// Extract points array
-				poiPoints = make([]struct{ Lat float64; Lng float64 }, len(poi.Points))
-				for i, point := range poi.Points {
-					poiPoints[i] = struct{ Lat float64; Lng float64 }{
-						Lat: point.Latitude,
-						Lng: point.Longitude,
+	// Polygon filter takes priority: when set, use only polygon for spatial filter
+	if polygonStr := request.GetPolygon(); polygonStr != "" {
+		var parsed []struct {
+			Lat float64 `json:"lat"`
+			Lng float64 `json:"lng"`
+		}
+		if err := json.Unmarshal([]byte(polygonStr), &parsed); err == nil && len(parsed) >= 3 {
+			polygonPoints = make([]struct{ Lat float64; Lng float64 }, len(parsed))
+			for i, p := range parsed {
+				polygonPoints[i] = struct{ Lat float64; Lng float64 }{Lat: p.Lat, Lng: p.Lng}
+			}
+		}
+	}
+
+	// When polygon is not set, use POI / lat-lng / radius
+	if len(polygonPoints) == 0 {
+		if poiIdStr := request.GetPOIId(); poiIdStr != "" {
+			poiId, err := strconv.Atoi(poiIdStr)
+			if err == nil && poiId > 0 {
+				poi, err := service.RepositoryPOIInterface.FindById(ctx, tx, poiId)
+				if err == nil && len(poi.Points) > 0 {
+					poiPoints = make([]struct{ Lat float64; Lng float64 }, len(poi.Points))
+					for i, point := range poi.Points {
+						poiPoints[i] = struct{ Lat float64; Lng float64 }{
+							Lat: point.Latitude,
+							Lng: point.Longitude,
+						}
 					}
 				}
 			}
 		}
-	}
 
-	// Only parse lat/lng if POI is not provided (fallback to single point)
-	if len(poiPoints) == 0 {
-		if latStr := request.GetLat(); latStr != "" {
-			if lat, err := strconv.ParseFloat(latStr, 64); err == nil {
-				latPtr = &lat
+		if len(poiPoints) == 0 {
+			if latStr := request.GetLat(); latStr != "" {
+				if lat, err := strconv.ParseFloat(latStr, 64); err == nil {
+					latPtr = &lat
+				}
+			}
+			if lngStr := request.GetLng(); lngStr != "" {
+				if lng, err := strconv.ParseFloat(lngStr, 64); err == nil {
+					lngPtr = &lng
+				}
 			}
 		}
 
-		if lngStr := request.GetLng(); lngStr != "" {
-			if lng, err := strconv.ParseFloat(lngStr, 64); err == nil {
-				lngPtr = &lng
+		if radiusStr := request.GetRadius(); radiusStr != "" {
+			if radius, err := strconv.Atoi(radiusStr); err == nil && radius > 0 {
+				radiusPtr = &radius
 			}
-		}
-	}
-
-	if radiusStr := request.GetRadius(); radiusStr != "" {
-		if radius, err := strconv.Atoi(radiusStr); err == nil && radius > 0 {
-			radiusPtr = &radius
 		}
 	}
 
@@ -674,6 +687,7 @@ func (service *ServiceBuildingImpl) FindAllForMapping(ctx context.Context, reque
 		lngPtr,
 		radiusPtr,
 		poiPoints,
+		polygonPoints,
 	)
 	helpers.PanicIfError(err)
 

@@ -176,6 +176,7 @@ type MappingFilter interface {
 	SetLng(lng string)
 	SetRadius(radius string)
 	SetPOIId(poiId string)
+	SetPolygon(polygon string)
 }
 
 // SetMappingFilters parses mapping-specific filter parameters from query string
@@ -253,5 +254,10 @@ func SetMappingFilters(request MappingFilter, r *http.Request) {
 	// POI ID
 	if poiId := getFilterValue("poi_id"); poiId != "" {
 		request.SetPOIId(poiId)
+	}
+
+	// Polygon (JSON array of {lat, lng})
+	if polygon := getFilterValue("polygon"); polygon != "" {
+		request.SetPolygon(polygon)
 	}
 }

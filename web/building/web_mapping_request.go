@@ -13,6 +13,7 @@ type MappingBuildingRequest struct {
 	lng           string
 	radius        string
 	poiId         string
+	polygon       string
 }
 
 func (r *MappingBuildingRequest) SetBuildingType(buildingType string) {
@@ -109,4 +110,12 @@ func (r *MappingBuildingRequest) SetPOIId(poiId string) {
 
 func (r *MappingBuildingRequest) GetPOIId() string {
 	return r.poiId
+}
+
+func (r *MappingBuildingRequest) SetPolygon(polygon string) {
+	r.polygon = polygon
+}
+
+func (r *MappingBuildingRequest) GetPolygon() string {
+	return r.polygon
 }
