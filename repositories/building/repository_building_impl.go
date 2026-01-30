@@ -484,7 +484,7 @@ func (repository *RepositoryBuildingImpl) GetDistinctValues(ctx context.Context,
 }
 
 // FindAllForMapping retrieves all buildings for mapping with filters (no pagination)
-func (repository *RepositoryBuildingImpl) FindAllForMapping(ctx context.Context, tx *sql.Tx, buildingType string, buildingGrade string, year string, subdistrict string, progress string, sellable string, connectivity string, lcdPresence string, lat *float64, lng *float64, radius *int) ([]models.Building, error) {
+func (repository *RepositoryBuildingImpl) FindAllForMapping(ctx context.Context, tx *sql.Tx, buildingType string, buildingGrade string, year string, subdistrict string, progress string, sellable string, connectivity string, lcdPresence string, lat *float64, lng *float64, radius *int, poiPoints []struct{ Lat float64; Lng float64 }) ([]models.Building, error) {
 	SQL := `SELECT id, external_building_id, iris_code, name, project_name, audience, 
 		impression, cbd_area, building_status, competitor_location, competitor_exclusive, competitor_presence, sellable, connectivity, 
 		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, latitude, longitude, images, lcd_presence_status, synced_at, created_at, updated_at 
@@ -651,8 +651,23 @@ func (repository *RepositoryBuildingImpl) FindAllForMapping(ctx context.Context,
 		}
 	}
 
-	// Add radius filter using PostGIS ST_DWithin (only if lat, lng, and radius are all provided)
-	if lat != nil && lng != nil && radius != nil && *radius > 0 {
+	// Add radius filter using PostGIS ST_DWithin
+	// Priority: POI points > single lat/lng
+	if len(poiPoints) > 0 && radius != nil && *radius > 0 {
+		// Multiple POI points: use OR condition for each point
+		// ST_DWithin uses the location column (GEOGRAPHY) and checks distance
+		// Note: PostGIS ST_MakePoint uses (lng, lat) order, not (lat, lng)
+		orConditions := make([]string, len(poiPoints))
+		for i, point := range poiPoints {
+			orConditions[i] = `ST_DWithin(location, ST_SetSRID(ST_MakePoint($` + strconv.Itoa(argIndex+i*2) + `, $` + strconv.Itoa(argIndex+i*2+1) + `), 4326)::geography, $` + strconv.Itoa(argIndex+len(poiPoints)*2) + `)`
+			args = append(args, point.Lng, point.Lat)
+		}
+		// Add radius parameter once (shared by all points)
+		args = append(args, *radius)
+		whereConditions = append(whereConditions, `(`+strings.Join(orConditions, " OR ")+`)`)
+		argIndex += len(poiPoints)*2 + 1
+	} else if lat != nil && lng != nil && radius != nil && *radius > 0 {
+		// Single point fallback: use existing single point logic
 		// Create a geography point from lat/lng and filter buildings within radius (in meters)
 		// ST_DWithin uses the location column (GEOGRAPHY) and checks distance
 		// Note: PostGIS ST_MakePoint uses (lng, lat) order, not (lat, lng)

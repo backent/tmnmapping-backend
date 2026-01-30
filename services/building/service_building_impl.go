@@ -13,6 +13,7 @@ import (
 	"github.com/malikabdulaziz/tmn-backend/helpers"
 	"github.com/malikabdulaziz/tmn-backend/models"
 	repositoriesBuilding "github.com/malikabdulaziz/tmn-backend/repositories/building"
+	repositoriesPOI "github.com/malikabdulaziz/tmn-backend/repositories/poi"
 	"github.com/malikabdulaziz/tmn-backend/services/erp"
 	webBuilding "github.com/malikabdulaziz/tmn-backend/web/building"
 	"github.com/sirupsen/logrus"
@@ -26,6 +27,7 @@ const (
 type ServiceBuildingImpl struct {
 	DB                          *sql.DB
 	RepositoryBuildingInterface repositoriesBuilding.RepositoryBuildingInterface
+	RepositoryPOIInterface      repositoriesPOI.RepositoryPOIInterface
 	ERPClient                   *erp.ERPClient
 	Logger                      *logrus.Logger
 }
@@ -83,12 +85,14 @@ func (c *syncCounters) addError(buildingID, buildingName string, err error) {
 func NewServiceBuildingImpl(
 	db *sql.DB,
 	repositoryBuilding repositoriesBuilding.RepositoryBuildingInterface,
+	repositoryPOI repositoriesPOI.RepositoryPOIInterface,
 	erpClient *erp.ERPClient,
 	logger *logrus.Logger,
 ) ServiceBuildingInterface {
 	return &ServiceBuildingImpl{
 		DB:                          db,
 		RepositoryBuildingInterface: repositoryBuilding,
+		RepositoryPOIInterface:      repositoryPOI,
 		ERPClient:                   erpClient,
 		Logger:                      logger,
 	}
@@ -613,16 +617,39 @@ func (service *ServiceBuildingImpl) FindAllForMapping(ctx context.Context, reque
 	var latPtr *float64
 	var lngPtr *float64
 	var radiusPtr *int
+	var poiPoints []struct{ Lat float64; Lng float64 }
 
-	if latStr := request.GetLat(); latStr != "" {
-		if lat, err := strconv.ParseFloat(latStr, 64); err == nil {
-			latPtr = &lat
+	// Check if POI ID is provided
+	if poiIdStr := request.GetPOIId(); poiIdStr != "" {
+		poiId, err := strconv.Atoi(poiIdStr)
+		if err == nil && poiId > 0 {
+			// Fetch POI to get its points
+			poi, err := service.RepositoryPOIInterface.FindById(ctx, tx, poiId)
+			if err == nil && len(poi.Points) > 0 {
+				// Extract points array
+				poiPoints = make([]struct{ Lat float64; Lng float64 }, len(poi.Points))
+				for i, point := range poi.Points {
+					poiPoints[i] = struct{ Lat float64; Lng float64 }{
+						Lat: point.Latitude,
+						Lng: point.Longitude,
+					}
+				}
+			}
 		}
 	}
 
-	if lngStr := request.GetLng(); lngStr != "" {
-		if lng, err := strconv.ParseFloat(lngStr, 64); err == nil {
-			lngPtr = &lng
+	// Only parse lat/lng if POI is not provided (fallback to single point)
+	if len(poiPoints) == 0 {
+		if latStr := request.GetLat(); latStr != "" {
+			if lat, err := strconv.ParseFloat(latStr, 64); err == nil {
+				latPtr = &lat
+			}
+		}
+
+		if lngStr := request.GetLng(); lngStr != "" {
+			if lng, err := strconv.ParseFloat(lngStr, 64); err == nil {
+				lngPtr = &lng
+			}
 		}
 	}
 
@@ -646,6 +673,7 @@ func (service *ServiceBuildingImpl) FindAllForMapping(ctx context.Context, reque
 		latPtr,
 		lngPtr,
 		radiusPtr,
+		poiPoints,
 	)
 	helpers.PanicIfError(err)
 

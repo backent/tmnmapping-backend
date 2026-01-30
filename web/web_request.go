@@ -175,6 +175,7 @@ type MappingFilter interface {
 	SetLat(lat string)
 	SetLng(lng string)
 	SetRadius(radius string)
+	SetPOIId(poiId string)
 }
 
 // SetMappingFilters parses mapping-specific filter parameters from query string
@@ -247,5 +248,10 @@ func SetMappingFilters(request MappingFilter, r *http.Request) {
 	// Radius (in meters)
 	if radius := getFilterValue("radius"); radius != "" {
 		request.SetRadius(radius)
+	}
+
+	// POI ID
+	if poiId := getFilterValue("poi_id"); poiId != "" {
+		request.SetPOIId(poiId)
 	}
 }

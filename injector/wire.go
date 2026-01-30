@@ -73,6 +73,7 @@ func InitializeBuildingService() servicesBuilding.ServiceBuildingInterface {
 		libs.NewLogger,
 		libs.ProvideERPClient,
 		repositoriesBuilding.NewRepositoryBuildingImpl,
+		repositoriesPOI.NewRepositoryPOIImpl,
 		servicesBuilding.NewServiceBuildingImpl,
 	)
 	return nil

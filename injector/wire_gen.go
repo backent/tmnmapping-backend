@@ -41,7 +41,7 @@ func InitializeRouter() *httprouter.Router {
 	controllerAuthInterface := auth3.NewControllerAuthImpl(db, serviceAuthInterface, repositoryUserInterface)
 	erpClient := libs.ProvideERPClient()
 	logger := libs.NewLogger()
-	serviceBuildingInterface := building2.NewServiceBuildingImpl(db, repositoryBuildingInterface, erpClient, logger)
+	serviceBuildingInterface := building2.NewServiceBuildingImpl(db, repositoryBuildingInterface, repositoryPOIInterface, erpClient, logger)
 	controllerBuildingInterface := building3.NewControllerBuildingImpl(serviceBuildingInterface)
 	controllerImageInterface := image.NewControllerImageImpl()
 	servicePOIInterface := poi2.NewServicePOIImpl(db, repositoryPOIInterface)
@@ -53,9 +53,10 @@ func InitializeRouter() *httprouter.Router {
 func InitializeBuildingService() building2.ServiceBuildingInterface {
 	db := libs.NewDatabase()
 	repositoryBuildingInterface := building.NewRepositoryBuildingImpl()
+	repositoryPOIInterface := poi.NewRepositoryPOIImpl()
 	erpClient := libs.ProvideERPClient()
 	logger := libs.NewLogger()
-	serviceBuildingInterface := building2.NewServiceBuildingImpl(db, repositoryBuildingInterface, erpClient, logger)
+	serviceBuildingInterface := building2.NewServiceBuildingImpl(db, repositoryBuildingInterface, repositoryPOIInterface, erpClient, logger)
 	return serviceBuildingInterface
 }
 
