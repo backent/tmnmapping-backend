@@ -484,15 +484,38 @@ func (repository *RepositoryBuildingImpl) GetDistinctValues(ctx context.Context,
 }
 
 // FindAllForMapping retrieves all buildings for mapping with filters (no pagination)
-func (repository *RepositoryBuildingImpl) FindAllForMapping(ctx context.Context, tx *sql.Tx, buildingType string, buildingGrade string, year string, subdistrict string, progress string, sellable string, connectivity string, lcdPresence string, lat *float64, lng *float64, radius *int, poiPoints []struct{ Lat float64; Lng float64 }, polygonPoints []struct{ Lat float64; Lng float64 }) ([]models.Building, error) {
-	SQL := `SELECT id, external_building_id, iris_code, name, project_name, audience, 
-		impression, cbd_area, building_status, competitor_location, competitor_exclusive, competitor_presence, sellable, connectivity, 
-		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, latitude, longitude, images, lcd_presence_status, synced_at, created_at, updated_at 
-		FROM ` + models.BuildingTable
+func (repository *RepositoryBuildingImpl) FindAllForMapping(ctx context.Context, tx *sql.Tx, buildingType string, buildingGrade string, year string, subdistrict string, progress string, sellable string, connectivity string, lcdPresence string, salesPackageIds string, lat *float64, lng *float64, radius *int, poiPoints []struct{ Lat float64; Lng float64 }, polygonPoints []struct{ Lat float64; Lng float64 }, minLat *float64, maxLat *float64, minLng *float64, maxLng *float64) ([]models.Building, error) {
+	SQL := `SELECT DISTINCT b.id, b.external_building_id, b.iris_code, b.name, b.project_name, b.audience, 
+		b.impression, b.cbd_area, b.building_status, b.competitor_location, b.competitor_exclusive, b.competitor_presence, b.sellable, b.connectivity, 
+		b.resource_type, b.subdistrict, b.citytown, b.province, b.grade_resource, b.building_type, b.completion_year, b.latitude, b.longitude, b.images, b.lcd_presence_status, b.synced_at, b.created_at, b.updated_at 
+		FROM ` + models.BuildingTable + ` b`
 
 	args := []interface{}{}
 	argIndex := 1
 	whereConditions := []string{}
+	joinClauses := []string{}
+
+	// Add sales package filter - JOIN with sales_package_buildings table
+	if salesPackageIds != "" {
+		if strings.Contains(salesPackageIds, ",") {
+			// Multiple values: use IN clause
+			packageIds := strings.Split(salesPackageIds, ",")
+			placeholders := make([]string, len(packageIds))
+			for i := range packageIds {
+				placeholders[i] = "$" + strconv.Itoa(argIndex+i)
+				args = append(args, strings.TrimSpace(packageIds[i]))
+			}
+			joinClauses = append(joinClauses, `INNER JOIN `+models.SalesPackageBuildingTable+` spb ON b.id = spb.building_id`)
+			whereConditions = append(whereConditions, `spb.sales_package_id IN (`+strings.Join(placeholders, ",")+`)`)
+			argIndex += len(packageIds)
+		} else {
+			// Single value
+			joinClauses = append(joinClauses, `INNER JOIN `+models.SalesPackageBuildingTable+` spb ON b.id = spb.building_id`)
+			whereConditions = append(whereConditions, `spb.sales_package_id = $`+strconv.Itoa(argIndex))
+			args = append(args, strings.TrimSpace(salesPackageIds))
+			argIndex++
+		}
+	}
 
 	// Add building_type filter - handle comma-separated values with case-insensitive comparison
 	if buildingType != "" {
@@ -677,6 +700,20 @@ func (repository *RepositoryBuildingImpl) FindAllForMapping(ctx context.Context,
 		whereConditions = append(whereConditions, `ST_DWithin(location, ST_SetSRID(ST_MakePoint($`+strconv.Itoa(argIndex)+`, $`+strconv.Itoa(argIndex+1)+`), 4326)::geography, $`+strconv.Itoa(argIndex+2)+`)`)
 		args = append(args, *lng, *lat, *radius)
 		argIndex += 3
+	}
+
+	// Bounds filter (map viewport): only when all four are provided
+	if minLat != nil && maxLat != nil && minLng != nil && maxLng != nil {
+		whereConditions = append(whereConditions, `latitude >= $`+strconv.Itoa(argIndex)+` AND latitude <= $`+strconv.Itoa(argIndex+1)+` AND longitude >= $`+strconv.Itoa(argIndex+2)+` AND longitude <= $`+strconv.Itoa(argIndex+3))
+		args = append(args, *minLat, *maxLat, *minLng, *maxLng)
+		argIndex += 4
+	}
+
+	// Build JOIN clauses
+	if len(joinClauses) > 0 {
+		for _, join := range joinClauses {
+			SQL += ` ` + join
+		}
 	}
 
 	// Build WHERE clause

@@ -1,19 +1,24 @@
 package building
 
 type MappingBuildingRequest struct {
-	buildingType  string
-	buildingGrade string
-	year          string
-	subdistrict   string
-	progress      string
-	sellable      string
-	connectivity  string
-	lcdPresence   string
-	lat           string
-	lng           string
-	radius        string
-	poiId         string
-	polygon       string
+	buildingType    string
+	buildingGrade   string
+	year            string
+	subdistrict     string
+	progress        string
+	sellable        string
+	connectivity    string
+	lcdPresence     string
+	salesPackageIds string
+	lat             string
+	lng             string
+	radius          string
+	poiId           string
+	polygon         string
+	minLat          string
+	maxLat          string
+	minLng          string
+	maxLng          string
 }
 
 func (r *MappingBuildingRequest) SetBuildingType(buildingType string) {
@@ -118,4 +123,44 @@ func (r *MappingBuildingRequest) SetPolygon(polygon string) {
 
 func (r *MappingBuildingRequest) GetPolygon() string {
 	return r.polygon
+}
+
+func (r *MappingBuildingRequest) SetMinLat(minLat string) {
+	r.minLat = minLat
+}
+
+func (r *MappingBuildingRequest) GetMinLat() string {
+	return r.minLat
+}
+
+func (r *MappingBuildingRequest) SetMaxLat(maxLat string) {
+	r.maxLat = maxLat
+}
+
+func (r *MappingBuildingRequest) GetMaxLat() string {
+	return r.maxLat
+}
+
+func (r *MappingBuildingRequest) SetMinLng(minLng string) {
+	r.minLng = minLng
+}
+
+func (r *MappingBuildingRequest) GetMinLng() string {
+	return r.minLng
+}
+
+func (r *MappingBuildingRequest) SetMaxLng(maxLng string) {
+	r.maxLng = maxLng
+}
+
+func (r *MappingBuildingRequest) GetMaxLng() string {
+	return r.maxLng
+}
+
+func (r *MappingBuildingRequest) SetSalesPackageIds(salesPackageIds string) {
+	r.salesPackageIds = salesPackageIds
+}
+
+func (r *MappingBuildingRequest) GetSalesPackageIds() string {
+	return r.salesPackageIds
 }

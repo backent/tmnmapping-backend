@@ -672,6 +672,35 @@ func (service *ServiceBuildingImpl) FindAllForMapping(ctx context.Context, reque
 		}
 	}
 
+	// Parse optional map bounds (viewport); only apply when all four are valid and min < max
+	var minLatPtr, maxLatPtr, minLngPtr, maxLngPtr *float64
+	if minLatStr := request.GetMinLat(); minLatStr != "" {
+		if v, err := strconv.ParseFloat(minLatStr, 64); err == nil {
+			minLatPtr = &v
+		}
+	}
+	if maxLatStr := request.GetMaxLat(); maxLatStr != "" {
+		if v, err := strconv.ParseFloat(maxLatStr, 64); err == nil {
+			maxLatPtr = &v
+		}
+	}
+	if minLngStr := request.GetMinLng(); minLngStr != "" {
+		if v, err := strconv.ParseFloat(minLngStr, 64); err == nil {
+			minLngPtr = &v
+		}
+	}
+	if maxLngStr := request.GetMaxLng(); maxLngStr != "" {
+		if v, err := strconv.ParseFloat(maxLngStr, 64); err == nil {
+			maxLngPtr = &v
+		}
+	}
+	if minLatPtr != nil && maxLatPtr != nil && minLngPtr != nil && maxLngPtr != nil {
+		if *minLatPtr > *maxLatPtr || *minLngPtr > *maxLngPtr {
+			minLatPtr, maxLatPtr, minLngPtr, maxLngPtr = nil, nil, nil, nil
+		}
+	}
+
+	// Data: buildings in view (with bounds when provided)
 	buildings, err := service.RepositoryBuildingInterface.FindAllForMapping(
 		ctx,
 		tx,
@@ -683,19 +712,59 @@ func (service *ServiceBuildingImpl) FindAllForMapping(ctx context.Context, reque
 		request.GetSellable(),
 		request.GetConnectivity(),
 		request.GetLCDPresence(),
+		request.GetSalesPackageIds(),
 		latPtr,
 		lngPtr,
 		radiusPtr,
 		poiPoints,
 		polygonPoints,
+		minLatPtr,
+		maxLatPtr,
+		minLngPtr,
+		maxLngPtr,
 	)
 	helpers.PanicIfError(err)
 
-	// Convert to mapping response and calculate totals
-	mappingBuildings := make([]webBuilding.MappingBuildingResponse, 0, len(buildings))
+	// Totals: counts by building_type for the full filter set (no bounds), so totals are not scoped to viewport
+	var buildingsForTotals []models.Building
+	if minLatPtr != nil && maxLatPtr != nil && minLngPtr != nil && maxLngPtr != nil {
+		buildingsForTotals, err = service.RepositoryBuildingInterface.FindAllForMapping(
+			ctx,
+			tx,
+			request.GetBuildingType(),
+			request.GetBuildingGrade(),
+			request.GetYear(),
+			request.GetSubdistrict(),
+			request.GetProgress(),
+			request.GetSellable(),
+			request.GetConnectivity(),
+			request.GetLCDPresence(),
+			request.GetSalesPackageIds(),
+			latPtr,
+			lngPtr,
+			radiusPtr,
+			poiPoints,
+			polygonPoints,
+			nil, nil, nil, nil,
+		)
+		helpers.PanicIfError(err)
+	} else {
+		buildingsForTotals = buildings
+	}
 
-	// Use a map for dynamic totals - count all building types
+	// Use a map for dynamic totals - count all building types (from full filter set, no bounds)
 	totalsMap := make(map[string]int)
+	for _, building := range buildingsForTotals {
+		buildingType := building.BuildingType
+		if buildingType == "" {
+			buildingType = "Other"
+		}
+		key := strings.ToLower(buildingType)
+		totalsMap[key]++
+	}
+
+	// Convert to mapping response (Data = buildings in view)
+	mappingBuildings := make([]webBuilding.MappingBuildingResponse, 0, len(buildings))
 
 	for _, building := range buildings {
 		// Convert images
@@ -746,16 +815,6 @@ func (service *ServiceBuildingImpl) FindAllForMapping(ctx context.Context, reque
 		}
 
 		mappingBuildings = append(mappingBuildings, mappingBuilding)
-
-		// Count by building type - dynamic approach
-		buildingType := building.BuildingType
-		if buildingType == "" {
-			buildingType = "Other" // Handle empty building types
-		}
-
-		// Increment dynamic totals map (case-insensitive key)
-		key := strings.ToLower(buildingType)
-		totalsMap[key]++
 	}
 
 	return webBuilding.MappingBuildingsResponse{

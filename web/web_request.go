@@ -172,11 +172,16 @@ type MappingFilter interface {
 	SetSellable(sellable string)
 	SetConnectivity(connectivity string)
 	SetLCDPresence(lcdPresence string)
+	SetSalesPackageIds(salesPackageIds string)
 	SetLat(lat string)
 	SetLng(lng string)
 	SetRadius(radius string)
 	SetPOIId(poiId string)
 	SetPolygon(polygon string)
+	SetMinLat(minLat string)
+	SetMaxLat(maxLat string)
+	SetMinLng(minLng string)
+	SetMaxLng(maxLng string)
 }
 
 // SetMappingFilters parses mapping-specific filter parameters from query string
@@ -236,6 +241,11 @@ func SetMappingFilters(request MappingFilter, r *http.Request) {
 		request.SetLCDPresence(lcdPresence)
 	}
 
+	// Sales Package IDs - handle comma-separated values
+	if salesPackageIds := getFilterValue("sales_package_ids"); salesPackageIds != "" {
+		request.SetSalesPackageIds(salesPackageIds)
+	}
+
 	// Latitude
 	if lat := getFilterValue("lat"); lat != "" {
 		request.SetLat(lat)
@@ -259,5 +269,19 @@ func SetMappingFilters(request MappingFilter, r *http.Request) {
 	// Polygon (JSON array of {lat, lng})
 	if polygon := getFilterValue("polygon"); polygon != "" {
 		request.SetPolygon(polygon)
+	}
+
+	// Bounds (map viewport) - four separate params
+	if minLat := getFilterValue("min_lat"); minLat != "" {
+		request.SetMinLat(minLat)
+	}
+	if maxLat := getFilterValue("max_lat"); maxLat != "" {
+		request.SetMaxLat(maxLat)
+	}
+	if minLng := getFilterValue("min_lng"); minLng != "" {
+		request.SetMinLng(minLng)
+	}
+	if maxLng := getFilterValue("max_lng"); maxLng != "" {
+		request.SetMaxLng(maxLng)
 	}
 }
