@@ -9,6 +9,7 @@ import (
 	controllersImage "github.com/malikabdulaziz/tmn-backend/controllers/image"
 	controllersPOI "github.com/malikabdulaziz/tmn-backend/controllers/poi"
 	controllersSalesPackage "github.com/malikabdulaziz/tmn-backend/controllers/salespackage"
+	controllersBuildingRestriction "github.com/malikabdulaziz/tmn-backend/controllers/buildingrestriction"
 	"github.com/malikabdulaziz/tmn-backend/exceptions"
 	"github.com/malikabdulaziz/tmn-backend/middlewares"
 )
@@ -18,12 +19,14 @@ func NewRouter(
 	buildingMiddleware *middlewares.BuildingMiddleware,
 	poiMiddleware *middlewares.POIMiddleware,
 	salesPackageMiddleware *middlewares.SalesPackageMiddleware,
+	buildingRestrictionMiddleware *middlewares.BuildingRestrictionMiddleware,
 	loggingMiddleware *middlewares.LoggingMiddleware,
 	controllersAuth controllersAuth.ControllerAuthInterface,
 	controllersBuilding controllersBuilding.ControllerBuildingInterface,
 	controllersImage controllersImage.ControllerImageInterface,
 	controllersPOI controllersPOI.ControllerPOIInterface,
 	controllersSalesPackage controllersSalesPackage.ControllerSalesPackageInterface,
+	controllersBuildingRestriction controllersBuildingRestriction.ControllerBuildingRestrictionInterface,
 ) *httprouter.Router {
 	router := httprouter.New()
 
@@ -126,6 +129,29 @@ func NewRouter(
 	router.DELETE("/sales-packages/:id",
 		loggingMiddleware.Log(
 			authMiddleware.RequireAuth(controllersSalesPackage.Delete)))
+
+	// Building restriction routes (protected)
+	router.POST("/building-restrictions",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				buildingRestrictionMiddleware.ValidateCreate(controllersBuildingRestriction.Create))))
+
+	router.GET("/building-restrictions",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(controllersBuildingRestriction.FindAll)))
+
+	router.GET("/building-restrictions/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(controllersBuildingRestriction.FindById)))
+
+	router.PUT("/building-restrictions/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				buildingRestrictionMiddleware.ValidateUpdate(controllersBuildingRestriction.Update))))
+
+	router.DELETE("/building-restrictions/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(controllersBuildingRestriction.Delete)))
 
 	return router
 }

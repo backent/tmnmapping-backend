@@ -484,7 +484,7 @@ func (repository *RepositoryBuildingImpl) GetDistinctValues(ctx context.Context,
 }
 
 // FindAllForMapping retrieves all buildings for mapping with filters (no pagination)
-func (repository *RepositoryBuildingImpl) FindAllForMapping(ctx context.Context, tx *sql.Tx, buildingType string, buildingGrade string, year string, subdistrict string, progress string, sellable string, connectivity string, lcdPresence string, salesPackageIds string, lat *float64, lng *float64, radius *int, poiPoints []struct{ Lat float64; Lng float64 }, polygonPoints []struct{ Lat float64; Lng float64 }, minLat *float64, maxLat *float64, minLng *float64, maxLng *float64) ([]models.Building, error) {
+func (repository *RepositoryBuildingImpl) FindAllForMapping(ctx context.Context, tx *sql.Tx, buildingType string, buildingGrade string, year string, subdistrict string, progress string, sellable string, connectivity string, lcdPresence string, salesPackageIds string, buildingRestrictionIds string, lat *float64, lng *float64, radius *int, poiPoints []struct{ Lat float64; Lng float64 }, polygonPoints []struct{ Lat float64; Lng float64 }, minLat *float64, maxLat *float64, minLng *float64, maxLng *float64) ([]models.Building, error) {
 	SQL := `SELECT DISTINCT b.id, b.external_building_id, b.iris_code, b.name, b.project_name, b.audience, 
 		b.impression, b.cbd_area, b.building_status, b.competitor_location, b.competitor_exclusive, b.competitor_presence, b.sellable, b.connectivity, 
 		b.resource_type, b.subdistrict, b.citytown, b.province, b.grade_resource, b.building_type, b.completion_year, b.latitude, b.longitude, b.images, b.lcd_presence_status, b.synced_at, b.created_at, b.updated_at 
@@ -513,6 +513,30 @@ func (repository *RepositoryBuildingImpl) FindAllForMapping(ctx context.Context,
 			joinClauses = append(joinClauses, `INNER JOIN `+models.SalesPackageBuildingTable+` spb ON b.id = spb.building_id`)
 			whereConditions = append(whereConditions, `spb.sales_package_id = $`+strconv.Itoa(argIndex))
 			args = append(args, strings.TrimSpace(salesPackageIds))
+			argIndex++
+		}
+	}
+
+	// Add building restriction filter (NEGATION) - exclude buildings in selected restrictions
+	if buildingRestrictionIds != "" {
+		if strings.Contains(buildingRestrictionIds, ",") {
+			// Multiple values: use NOT IN subquery
+			restrictionIds := strings.Split(buildingRestrictionIds, ",")
+			placeholders := make([]string, len(restrictionIds))
+			for i := range restrictionIds {
+				placeholders[i] = "$" + strconv.Itoa(argIndex+i)
+				args = append(args, strings.TrimSpace(restrictionIds[i]))
+			}
+			whereConditions = append(whereConditions,
+				`b.id NOT IN (SELECT building_id FROM `+models.BuildingRestrictionBuildingTable+
+					` WHERE building_restriction_id IN (`+strings.Join(placeholders, ",")+`))`)
+			argIndex += len(restrictionIds)
+		} else {
+			// Single value
+			whereConditions = append(whereConditions,
+				`b.id NOT IN (SELECT building_id FROM `+models.BuildingRestrictionBuildingTable+
+					` WHERE building_restriction_id = $`+strconv.Itoa(argIndex)+`)`)
+			args = append(args, strings.TrimSpace(buildingRestrictionIds))
 			argIndex++
 		}
 	}

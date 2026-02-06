@@ -173,6 +173,7 @@ type MappingFilter interface {
 	SetConnectivity(connectivity string)
 	SetLCDPresence(lcdPresence string)
 	SetSalesPackageIds(salesPackageIds string)
+	SetBuildingRestrictionIds(buildingRestrictionIds string)
 	SetLat(lat string)
 	SetLng(lng string)
 	SetRadius(radius string)
@@ -244,6 +245,11 @@ func SetMappingFilters(request MappingFilter, r *http.Request) {
 	// Sales Package IDs - handle comma-separated values
 	if salesPackageIds := getFilterValue("sales_package_ids"); salesPackageIds != "" {
 		request.SetSalesPackageIds(salesPackageIds)
+	}
+
+	// Building Restriction IDs - handle comma-separated values (negation filter)
+	if buildingRestrictionIds := getFilterValue("building_restriction_ids"); buildingRestrictionIds != "" {
+		request.SetBuildingRestrictionIds(buildingRestrictionIds)
 	}
 
 	// Latitude

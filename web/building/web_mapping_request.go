@@ -1,24 +1,25 @@
 package building
 
 type MappingBuildingRequest struct {
-	buildingType    string
-	buildingGrade   string
-	year            string
-	subdistrict     string
-	progress        string
-	sellable        string
-	connectivity    string
-	lcdPresence     string
-	salesPackageIds string
-	lat             string
-	lng             string
-	radius          string
-	poiId           string
-	polygon         string
-	minLat          string
-	maxLat          string
-	minLng          string
-	maxLng          string
+	buildingType           string
+	buildingGrade          string
+	year                   string
+	subdistrict            string
+	progress               string
+	sellable               string
+	connectivity           string
+	lcdPresence            string
+	salesPackageIds        string
+	buildingRestrictionIds string
+	lat                    string
+	lng                    string
+	radius                 string
+	poiId                  string
+	polygon                string
+	minLat                 string
+	maxLat                 string
+	minLng                 string
+	maxLng                 string
 }
 
 func (r *MappingBuildingRequest) SetBuildingType(buildingType string) {
@@ -163,4 +164,12 @@ func (r *MappingBuildingRequest) SetSalesPackageIds(salesPackageIds string) {
 
 func (r *MappingBuildingRequest) GetSalesPackageIds() string {
 	return r.salesPackageIds
+}
+
+func (r *MappingBuildingRequest) SetBuildingRestrictionIds(buildingRestrictionIds string) {
+	r.buildingRestrictionIds = buildingRestrictionIds
+}
+
+func (r *MappingBuildingRequest) GetBuildingRestrictionIds() string {
+	return r.buildingRestrictionIds
 }

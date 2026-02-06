@@ -11,17 +11,20 @@ import (
 	controllersImage "github.com/malikabdulaziz/tmn-backend/controllers/image"
 	controllersPOI "github.com/malikabdulaziz/tmn-backend/controllers/poi"
 	controllersSalesPackage "github.com/malikabdulaziz/tmn-backend/controllers/salespackage"
+	controllersBuildingRestriction "github.com/malikabdulaziz/tmn-backend/controllers/buildingrestriction"
 	"github.com/malikabdulaziz/tmn-backend/libs"
 	"github.com/malikabdulaziz/tmn-backend/middlewares"
 	repositoriesAuth "github.com/malikabdulaziz/tmn-backend/repositories/auth"
 	repositoriesBuilding "github.com/malikabdulaziz/tmn-backend/repositories/building"
 	repositoriesPOI "github.com/malikabdulaziz/tmn-backend/repositories/poi"
 	repositoriesSalesPackage "github.com/malikabdulaziz/tmn-backend/repositories/salespackage"
+	repositoriesBuildingRestriction "github.com/malikabdulaziz/tmn-backend/repositories/buildingrestriction"
 	repositoriesUser "github.com/malikabdulaziz/tmn-backend/repositories/user"
 	servicesAuth "github.com/malikabdulaziz/tmn-backend/services/auth"
 	servicesBuilding "github.com/malikabdulaziz/tmn-backend/services/building"
 	servicesPOI "github.com/malikabdulaziz/tmn-backend/services/poi"
 	servicesSalesPackage "github.com/malikabdulaziz/tmn-backend/services/salespackage"
+	servicesBuildingRestriction "github.com/malikabdulaziz/tmn-backend/services/buildingrestriction"
 )
 
 var authSet = wire.NewSet(
@@ -53,11 +56,18 @@ var salespackageSet = wire.NewSet(
 	controllersSalesPackage.NewControllerSalesPackageImpl,
 )
 
+var buildingrestrictionSet = wire.NewSet(
+	repositoriesBuildingRestriction.NewRepositoryBuildingRestrictionImpl,
+	servicesBuildingRestriction.NewServiceBuildingRestrictionImpl,
+	controllersBuildingRestriction.NewControllerBuildingRestrictionImpl,
+)
+
 var middlewareSet = wire.NewSet(
 	middlewares.NewAuthMiddleware,
 	middlewares.NewBuildingMiddleware,
 	middlewares.NewPOIMiddleware,
 	middlewares.NewSalesPackageMiddleware,
+	middlewares.NewBuildingRestrictionMiddleware,
 	middlewares.NewLoggingMiddleware,
 )
 
@@ -72,6 +82,7 @@ func InitializeRouter() *httprouter.Router {
 		imageSet,
 		poiSet,
 		salespackageSet,
+		buildingrestrictionSet,
 		middlewareSet,
 		libs.NewRouter,
 	)

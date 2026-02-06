@@ -11,6 +11,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	auth3 "github.com/malikabdulaziz/tmn-backend/controllers/auth"
 	building3 "github.com/malikabdulaziz/tmn-backend/controllers/building"
+	buildingrestriction3 "github.com/malikabdulaziz/tmn-backend/controllers/buildingrestriction"
 	"github.com/malikabdulaziz/tmn-backend/controllers/image"
 	poi3 "github.com/malikabdulaziz/tmn-backend/controllers/poi"
 	salespackage3 "github.com/malikabdulaziz/tmn-backend/controllers/salespackage"
@@ -18,11 +19,13 @@ import (
 	"github.com/malikabdulaziz/tmn-backend/middlewares"
 	"github.com/malikabdulaziz/tmn-backend/repositories/auth"
 	"github.com/malikabdulaziz/tmn-backend/repositories/building"
+	"github.com/malikabdulaziz/tmn-backend/repositories/buildingrestriction"
 	"github.com/malikabdulaziz/tmn-backend/repositories/poi"
 	"github.com/malikabdulaziz/tmn-backend/repositories/salespackage"
 	"github.com/malikabdulaziz/tmn-backend/repositories/user"
 	auth2 "github.com/malikabdulaziz/tmn-backend/services/auth"
 	building2 "github.com/malikabdulaziz/tmn-backend/services/building"
+	buildingrestriction2 "github.com/malikabdulaziz/tmn-backend/services/buildingrestriction"
 	poi2 "github.com/malikabdulaziz/tmn-backend/services/poi"
 	salespackage2 "github.com/malikabdulaziz/tmn-backend/services/salespackage"
 )
@@ -40,6 +43,8 @@ func InitializeRouter() *httprouter.Router {
 	poiMiddleware := middlewares.NewPOIMiddleware(validate, db, repositoryPOIInterface)
 	repositorySalesPackageInterface := salespackage.NewRepositorySalesPackageImpl()
 	salesPackageMiddleware := middlewares.NewSalesPackageMiddleware(validate, db, repositorySalesPackageInterface)
+	repositoryBuildingRestrictionInterface := buildingrestriction.NewRepositoryBuildingRestrictionImpl()
+	buildingRestrictionMiddleware := middlewares.NewBuildingRestrictionMiddleware(validate, db, repositoryBuildingRestrictionInterface)
 	loggingMiddleware := middlewares.NewLoggingMiddleware()
 	repositoryUserInterface := user.NewRepositoryUserImpl()
 	serviceAuthInterface := auth2.NewServiceAuthImpl(db, repositoryAuthInterface, repositoryUserInterface)
@@ -53,7 +58,9 @@ func InitializeRouter() *httprouter.Router {
 	controllerPOIInterface := poi3.NewControllerPOIImpl(servicePOIInterface)
 	serviceSalesPackageInterface := salespackage2.NewServiceSalesPackageImpl(db, repositorySalesPackageInterface, repositoryBuildingInterface)
 	controllerSalesPackageInterface := salespackage3.NewControllerSalesPackageImpl(serviceSalesPackageInterface)
-	router := libs.NewRouter(authMiddleware, buildingMiddleware, poiMiddleware, salesPackageMiddleware, loggingMiddleware, controllerAuthInterface, controllerBuildingInterface, controllerImageInterface, controllerPOIInterface, controllerSalesPackageInterface)
+	serviceBuildingRestrictionInterface := buildingrestriction2.NewServiceBuildingRestrictionImpl(db, repositoryBuildingRestrictionInterface, repositoryBuildingInterface)
+	controllerBuildingRestrictionInterface := buildingrestriction3.NewControllerBuildingRestrictionImpl(serviceBuildingRestrictionInterface)
+	router := libs.NewRouter(authMiddleware, buildingMiddleware, poiMiddleware, salesPackageMiddleware, buildingRestrictionMiddleware, loggingMiddleware, controllerAuthInterface, controllerBuildingInterface, controllerImageInterface, controllerPOIInterface, controllerSalesPackageInterface, controllerBuildingRestrictionInterface)
 	return router
 }
 
@@ -79,4 +86,6 @@ var poiSet = wire.NewSet(poi.NewRepositoryPOIImpl, poi2.NewServicePOIImpl, poi3.
 
 var salespackageSet = wire.NewSet(salespackage.NewRepositorySalesPackageImpl, salespackage2.NewServiceSalesPackageImpl, salespackage3.NewControllerSalesPackageImpl)
 
-var middlewareSet = wire.NewSet(middlewares.NewAuthMiddleware, middlewares.NewBuildingMiddleware, middlewares.NewPOIMiddleware, middlewares.NewSalesPackageMiddleware, middlewares.NewLoggingMiddleware)
+var buildingrestrictionSet = wire.NewSet(buildingrestriction.NewRepositoryBuildingRestrictionImpl, buildingrestriction2.NewServiceBuildingRestrictionImpl, buildingrestriction3.NewControllerBuildingRestrictionImpl)
+
+var middlewareSet = wire.NewSet(middlewares.NewAuthMiddleware, middlewares.NewBuildingMiddleware, middlewares.NewPOIMiddleware, middlewares.NewSalesPackageMiddleware, middlewares.NewBuildingRestrictionMiddleware, middlewares.NewLoggingMiddleware)
