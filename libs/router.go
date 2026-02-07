@@ -81,6 +81,10 @@ func NewRouter(
 		loggingMiddleware.Log(
 			authMiddleware.RequireAuth(controllersBuilding.FindAllForMapping)))
 
+	router.POST("/admin/mapping-building/export",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(controllersBuilding.ExportMappingBuildings)))
+
 	// Image proxy route (protected)
 	// Using catch-all pattern - httprouter will match /erp-images/ and everything after
 	router.GET("/erp-images/*filepath",

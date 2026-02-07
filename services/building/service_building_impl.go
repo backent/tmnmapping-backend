@@ -18,6 +18,7 @@ import (
 	"github.com/malikabdulaziz/tmn-backend/services/erp"
 	webBuilding "github.com/malikabdulaziz/tmn-backend/web/building"
 	"github.com/sirupsen/logrus"
+	"github.com/xuri/excelize/v2"
 )
 
 const (
@@ -823,4 +824,112 @@ func (service *ServiceBuildingImpl) FindAllForMapping(ctx context.Context, reque
 		Data:   mappingBuildings,
 		Totals: totalsMap,
 	}
+}
+
+// ExportForMapping returns Excel file bytes for the given building IDs
+func (service *ServiceBuildingImpl) ExportForMapping(ctx context.Context, ids []int) ([]byte, error) {
+	tx, err := service.DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer helpers.CommitOrRollback(tx)
+
+	buildings, err := service.RepositoryBuildingInterface.FindByIds(ctx, tx, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	f := excelize.NewFile()
+	sheetName := "Buildings"
+	const sheet = "Sheet1"
+	headers := []string{"ID", "Name", "Building Type", "Grade", "Completion Year", "Subdistrict", "City", "Province", "Address", "Status", "Sellable", "Connectivity", "Latitude", "Longitude", "LCD Presence"}
+	for i, h := range headers {
+		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
+		_ = f.SetCellValue(sheet, cell, h)
+	}
+	for row, building := range buildings {
+		addressParts := []string{}
+		if building.Subdistrict != "" {
+			addressParts = append(addressParts, building.Subdistrict)
+		}
+		if building.Citytown != "" {
+			addressParts = append(addressParts, building.Citytown)
+		}
+		if building.Province != "" {
+			addressParts = append(addressParts, building.Province)
+		}
+		address := strings.Join(addressParts, ", ")
+		rowIdx := row + 2
+		_ = f.SetCellValue(sheet, mustCell(1, rowIdx), building.Id)
+		_ = f.SetCellValue(sheet, mustCell(2, rowIdx), building.Name)
+		_ = f.SetCellValue(sheet, mustCell(3, rowIdx), building.BuildingType)
+		_ = f.SetCellValue(sheet, mustCell(4, rowIdx), building.GradeResource)
+		_ = f.SetCellValue(sheet, mustCell(5, rowIdx), building.CompletionYear)
+		_ = f.SetCellValue(sheet, mustCell(6, rowIdx), building.Subdistrict)
+		_ = f.SetCellValue(sheet, mustCell(7, rowIdx), building.Citytown)
+		_ = f.SetCellValue(sheet, mustCell(8, rowIdx), building.Province)
+		_ = f.SetCellValue(sheet, mustCell(9, rowIdx), address)
+		_ = f.SetCellValue(sheet, mustCell(10, rowIdx), building.BuildingStatus)
+		_ = f.SetCellValue(sheet, mustCell(11, rowIdx), building.Sellable)
+		_ = f.SetCellValue(sheet, mustCell(12, rowIdx), building.Connectivity)
+		_ = f.SetCellValue(sheet, mustCell(13, rowIdx), building.Latitude)
+		_ = f.SetCellValue(sheet, mustCell(14, rowIdx), building.Longitude)
+		_ = f.SetCellValue(sheet, mustCell(15, rowIdx), building.LcdPresenceStatus)
+	}
+	if sheetName != sheet {
+		_ = f.SetSheetName(sheet, sheetName)
+	}
+	buf, err := f.WriteToBuffer()
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func mustCell(col, row int) string {
+	s, _ := excelize.CoordinatesToCellName(col, row)
+	return s
+}
+
+// ExportForMappingWithFilters returns Excel bytes for all buildings matching the request (no bounds).
+func (service *ServiceBuildingImpl) ExportForMappingWithFilters(ctx context.Context, request webBuilding.MappingBuildingRequest) ([]byte, error) {
+	resp := service.FindAllForMapping(ctx, request)
+	return buildExcelFromMappingBuildings(resp.Data)
+}
+
+func buildExcelFromMappingBuildings(data []webBuilding.MappingBuildingResponse) ([]byte, error) {
+	f := excelize.NewFile()
+	sheetName := "Buildings"
+	const sheet = "Sheet1"
+	headers := []string{"ID", "Name", "Building Type", "Grade", "Completion Year", "Subdistrict", "City", "Province", "Address", "Status", "Sellable", "Connectivity", "Latitude", "Longitude", "LCD Presence"}
+	for i, h := range headers {
+		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
+		_ = f.SetCellValue(sheet, cell, h)
+	}
+	for row, b := range data {
+		rowIdx := row + 2
+		_ = f.SetCellValue(sheet, mustCell(1, rowIdx), b.Id)
+		_ = f.SetCellValue(sheet, mustCell(2, rowIdx), b.Name)
+		_ = f.SetCellValue(sheet, mustCell(3, rowIdx), b.BuildingType)
+		_ = f.SetCellValue(sheet, mustCell(4, rowIdx), b.GradeResource)
+		_ = f.SetCellValue(sheet, mustCell(5, rowIdx), b.CompletionYear)
+		_ = f.SetCellValue(sheet, mustCell(6, rowIdx), b.Subdistrict)
+		_ = f.SetCellValue(sheet, mustCell(7, rowIdx), b.Citytown)
+		_ = f.SetCellValue(sheet, mustCell(8, rowIdx), b.Province)
+		_ = f.SetCellValue(sheet, mustCell(9, rowIdx), b.Address)
+		_ = f.SetCellValue(sheet, mustCell(10, rowIdx), b.BuildingStatus)
+		_ = f.SetCellValue(sheet, mustCell(11, rowIdx), b.Sellable)
+		_ = f.SetCellValue(sheet, mustCell(12, rowIdx), b.Connectivity)
+		_ = f.SetCellValue(sheet, mustCell(13, rowIdx), b.Latitude)
+		_ = f.SetCellValue(sheet, mustCell(14, rowIdx), b.Longitude)
+		_ = f.SetCellValue(sheet, mustCell(15, rowIdx), b.LcdPresenceStatus)
+	}
+	if sheetName != sheet {
+		_ = f.SetSheetName(sheet, sheetName)
+	}
+	buf, err := f.WriteToBuffer()
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }

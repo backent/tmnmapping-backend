@@ -1,8 +1,10 @@
 package building
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/malikabdulaziz/tmn-backend/exceptions"
@@ -127,4 +129,22 @@ func (controller *ControllerBuildingImpl) FindAllForMapping(w http.ResponseWrite
 	}
 
 	helpers.ReturnReponseJSON(w, response)
+}
+
+// ExportMappingBuildings handles POST /admin/mapping-building/export (body: filters + map_center, bounds null)
+func (controller *ControllerBuildingImpl) ExportMappingBuildings(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	var body webBuilding.ExportMappingByFilterRequest
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		panic(exceptions.NewBadRequest("invalid request body"))
+	}
+	request := webBuilding.BuildMappingRequestFromExportBody(&body)
+	excelBytes, err := controller.service.ExportForMappingWithFilters(r.Context(), request)
+	if err != nil {
+		panic(exceptions.NewBadRequest("export failed: " + err.Error()))
+	}
+	filename := "Target Media Nusantara - Mapping Building List - " + time.Now().Format("02-01-2006") + ".xlsx"
+	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	w.Header().Set("Content-Disposition", "attachment; filename=\""+filename+"\"")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(excelBytes)
 }

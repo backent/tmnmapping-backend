@@ -13,5 +13,6 @@ type ControllerBuildingInterface interface {
 	SyncManual(w http.ResponseWriter, r *http.Request, p httprouter.Params)
 	GetFilterOptions(w http.ResponseWriter, r *http.Request, p httprouter.Params)
 	FindAllForMapping(w http.ResponseWriter, r *http.Request, p httprouter.Params)
+	ExportMappingBuildings(w http.ResponseWriter, r *http.Request, p httprouter.Params)
 }
 

@@ -13,5 +13,7 @@ type ServiceBuildingInterface interface {
 	SyncFromERP(ctx context.Context) error
 	GetFilterOptions(ctx context.Context) map[string][]string
 	FindAllForMapping(ctx context.Context, request webBuilding.MappingBuildingRequest) webBuilding.MappingBuildingsResponse
+	ExportForMapping(ctx context.Context, ids []int) ([]byte, error)
+	ExportForMappingWithFilters(ctx context.Context, request webBuilding.MappingBuildingRequest) ([]byte, error)
 }
 

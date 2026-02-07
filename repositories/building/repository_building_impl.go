@@ -125,6 +125,67 @@ func (repository *RepositoryBuildingImpl) FindById(ctx context.Context, tx *sql.
 	return models.Building{}, sql.ErrNoRows
 }
 
+// FindByIds retrieves buildings by IDs (order not guaranteed)
+func (repository *RepositoryBuildingImpl) FindByIds(ctx context.Context, tx *sql.Tx, ids []int) ([]models.Building, error) {
+	if len(ids) == 0 {
+		return []models.Building{}, nil
+	}
+	placeholders := make([]string, len(ids))
+	args := make([]interface{}, len(ids))
+	for i, id := range ids {
+		placeholders[i] = "$" + strconv.Itoa(i+1)
+		args[i] = id
+	}
+	SQL := `SELECT id, external_building_id, iris_code, name, project_name, audience, 
+		impression, cbd_area, building_status, competitor_location, competitor_exclusive, competitor_presence, sellable, connectivity, 
+		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, latitude, longitude, images, lcd_presence_status, synced_at, created_at, updated_at 
+		FROM ` + models.BuildingTable + ` WHERE id IN (` + strings.Join(placeholders, ",") + `)`
+	rows, err := tx.QueryContext(ctx, SQL, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var result []models.Building
+	for rows.Next() {
+		building := models.NullAbleBuilding{}
+		err := rows.Scan(
+			&building.Id,
+			&building.ExternalBuildingId,
+			&building.IrisCode,
+			&building.Name,
+			&building.ProjectName,
+			&building.Audience,
+			&building.Impression,
+			&building.CbdArea,
+			&building.BuildingStatus,
+			&building.CompetitorLocation,
+			&building.CompetitorExclusive,
+			&building.CompetitorPresence,
+			&building.Sellable,
+			&building.Connectivity,
+			&building.ResourceType,
+			&building.Subdistrict,
+			&building.Citytown,
+			&building.Province,
+			&building.GradeResource,
+			&building.BuildingType,
+			&building.CompletionYear,
+			&building.Latitude,
+			&building.Longitude,
+			&building.Images,
+			&building.LcdPresenceStatus,
+			&building.SyncedAt,
+			&building.CreatedAt,
+			&building.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, models.NullAbleBuildingToBuilding(building))
+	}
+	return result, nil
+}
+
 // FindByExternalId retrieves a building by external ERP ID
 func (repository *RepositoryBuildingImpl) FindByExternalId(ctx context.Context, tx *sql.Tx, externalId string) (models.Building, error) {
 	SQL := `SELECT id, external_building_id, iris_code, name, project_name, audience, 

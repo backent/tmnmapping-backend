@@ -1,6 +1,9 @@
 package building
 
 import (
+	"encoding/json"
+	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/malikabdulaziz/tmn-backend/web"
@@ -165,6 +168,114 @@ func (r *BuildingRequestFindAll) SetBuildingType(buildingType string) {
 
 func (r *BuildingRequestFindAll) GetBuildingType() string {
 	return r.buildingType
+}
+
+// ExportMappingRequest is the request body for POST /admin/mapping-building/export (legacy, by IDs)
+type ExportMappingRequest struct {
+	Ids []int `json:"ids"`
+}
+
+// ExportMappingByFilterRequest is the POST body for export by filters (bounds always null = all matching)
+type ExportMappingByFilterRequest struct {
+	Filters   ExportMappingFilters `json:"filters"`
+	MapCenter *struct {
+		Lat float64 `json:"lat"`
+		Lng float64 `json:"lng"`
+	} `json:"map_center"`
+	Bounds interface{} `json:"bounds"` // always null from frontend; do not use for export
+}
+
+// ExportMappingFilters mirrors frontend MappingFilters for export
+type ExportMappingFilters struct {
+	DistrictSubdistrict   []string `json:"district_subdistrict"`
+	BuildingType          []string `json:"building_type"`
+	BuildingGrade         []string `json:"building_grade"`
+	Progress              []string `json:"progress"`
+	LcdPresence           []string `json:"lcd_presence"`
+	Sellable              []string `json:"sellable"`
+	Connectivity          []string `json:"connectivity"`
+	Year                  [2]int   `json:"year"` // [min, max]
+	SalesPackageIds       []int    `json:"sales_package_ids"`
+	BuildingRestrictionIds []int   `json:"building_restriction_ids"`
+	Lat                   *float64 `json:"lat"`
+	Lng                   *float64 `json:"lng"`
+	Radius                *float64 `json:"radius"` // km; backend expects meters
+	PoiID                 *int     `json:"poi_id"`
+	Polygon []struct {
+		Lat float64 `json:"lat"`
+		Lng float64 `json:"lng"`
+	} `json:"polygon"`
+}
+
+// BuildMappingRequestFromExportBody maps ExportMappingByFilterRequest into MappingBuildingRequest.
+// Bounds are never set (export is always all buildings matching filters).
+func BuildMappingRequestFromExportBody(body *ExportMappingByFilterRequest) MappingBuildingRequest {
+	var req MappingBuildingRequest
+	f := body.Filters
+
+	if len(f.DistrictSubdistrict) > 0 {
+		req.SetSubdistrict(strings.Join(f.DistrictSubdistrict, ","))
+	}
+	if len(f.BuildingType) > 0 {
+		req.SetBuildingType(strings.Join(f.BuildingType, ","))
+	}
+	if len(f.BuildingGrade) > 0 {
+		req.SetBuildingGrade(strings.Join(f.BuildingGrade, ","))
+	}
+	if len(f.Progress) > 0 {
+		req.SetProgress(strings.Join(f.Progress, ","))
+	}
+	if len(f.Sellable) > 0 {
+		req.SetSellable(strings.Join(f.Sellable, ","))
+	}
+	if len(f.Connectivity) > 0 {
+		req.SetConnectivity(strings.Join(f.Connectivity, ","))
+	}
+	if len(f.LcdPresence) > 0 {
+		req.SetLCDPresence(strings.Join(f.LcdPresence, ","))
+	}
+	if f.Year[0] != 0 || f.Year[1] != 0 {
+		req.SetYear(fmt.Sprintf("%d,%d", f.Year[0], f.Year[1]))
+	}
+	if len(f.SalesPackageIds) > 0 {
+		req.SetSalesPackageIds(intSliceToComma(f.SalesPackageIds))
+	}
+	if len(f.BuildingRestrictionIds) > 0 {
+		req.SetBuildingRestrictionIds(intSliceToComma(f.BuildingRestrictionIds))
+	}
+	if f.Lat != nil {
+		req.SetLat(fmt.Sprintf("%v", *f.Lat))
+	} else if body.MapCenter != nil {
+		req.SetLat(fmt.Sprintf("%v", body.MapCenter.Lat))
+	}
+	if f.Lng != nil {
+		req.SetLng(fmt.Sprintf("%v", *f.Lng))
+	} else if body.MapCenter != nil {
+		req.SetLng(fmt.Sprintf("%v", body.MapCenter.Lng))
+	}
+	if f.Radius != nil {
+		req.SetRadius(fmt.Sprintf("%.0f", *f.Radius*1000)) // km -> meters
+	}
+	if f.PoiID != nil {
+		req.SetPOIId(strconv.Itoa(*f.PoiID))
+	}
+	if len(f.Polygon) >= 3 {
+		polyJSON, _ := json.Marshal(f.Polygon)
+		req.SetPolygon(string(polyJSON))
+	}
+	// Bounds are never set: export is all buildings matching filters
+	return req
+}
+
+func intSliceToComma(ids []int) string {
+	if len(ids) == 0 {
+		return ""
+	}
+	s := make([]string, len(ids))
+	for i, id := range ids {
+		s[i] = strconv.Itoa(id)
+	}
+	return strings.Join(s, ",")
 }
 
 var _ web.RequestPagination = (*BuildingRequestFindAll)(nil)
