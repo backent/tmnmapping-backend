@@ -12,6 +12,7 @@ import (
 	controllersPOI "github.com/malikabdulaziz/tmn-backend/controllers/poi"
 	controllersSalesPackage "github.com/malikabdulaziz/tmn-backend/controllers/salespackage"
 	controllersBuildingRestriction "github.com/malikabdulaziz/tmn-backend/controllers/buildingrestriction"
+	controllersSavedPolygon "github.com/malikabdulaziz/tmn-backend/controllers/savedpolygon"
 	"github.com/malikabdulaziz/tmn-backend/libs"
 	"github.com/malikabdulaziz/tmn-backend/middlewares"
 	repositoriesAuth "github.com/malikabdulaziz/tmn-backend/repositories/auth"
@@ -19,12 +20,14 @@ import (
 	repositoriesPOI "github.com/malikabdulaziz/tmn-backend/repositories/poi"
 	repositoriesSalesPackage "github.com/malikabdulaziz/tmn-backend/repositories/salespackage"
 	repositoriesBuildingRestriction "github.com/malikabdulaziz/tmn-backend/repositories/buildingrestriction"
+	repositoriesSavedPolygon "github.com/malikabdulaziz/tmn-backend/repositories/savedpolygon"
 	repositoriesUser "github.com/malikabdulaziz/tmn-backend/repositories/user"
 	servicesAuth "github.com/malikabdulaziz/tmn-backend/services/auth"
 	servicesBuilding "github.com/malikabdulaziz/tmn-backend/services/building"
 	servicesPOI "github.com/malikabdulaziz/tmn-backend/services/poi"
 	servicesSalesPackage "github.com/malikabdulaziz/tmn-backend/services/salespackage"
 	servicesBuildingRestriction "github.com/malikabdulaziz/tmn-backend/services/buildingrestriction"
+	servicesSavedPolygon "github.com/malikabdulaziz/tmn-backend/services/savedpolygon"
 )
 
 var authSet = wire.NewSet(
@@ -62,12 +65,19 @@ var buildingrestrictionSet = wire.NewSet(
 	controllersBuildingRestriction.NewControllerBuildingRestrictionImpl,
 )
 
+var savedpolygonSet = wire.NewSet(
+	repositoriesSavedPolygon.NewRepositorySavedPolygonImpl,
+	servicesSavedPolygon.NewServiceSavedPolygonImpl,
+	controllersSavedPolygon.NewControllerSavedPolygonImpl,
+)
+
 var middlewareSet = wire.NewSet(
 	middlewares.NewAuthMiddleware,
 	middlewares.NewBuildingMiddleware,
 	middlewares.NewPOIMiddleware,
 	middlewares.NewSalesPackageMiddleware,
 	middlewares.NewBuildingRestrictionMiddleware,
+	middlewares.NewSavedPolygonMiddleware,
 	middlewares.NewLoggingMiddleware,
 )
 
@@ -83,6 +93,7 @@ func InitializeRouter() *httprouter.Router {
 		poiSet,
 		salespackageSet,
 		buildingrestrictionSet,
+		savedpolygonSet,
 		middlewareSet,
 		libs.NewRouter,
 	)

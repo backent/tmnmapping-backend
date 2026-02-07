@@ -15,6 +15,7 @@ import (
 	"github.com/malikabdulaziz/tmn-backend/controllers/image"
 	poi3 "github.com/malikabdulaziz/tmn-backend/controllers/poi"
 	salespackage3 "github.com/malikabdulaziz/tmn-backend/controllers/salespackage"
+	savedpolygon3 "github.com/malikabdulaziz/tmn-backend/controllers/savedpolygon"
 	"github.com/malikabdulaziz/tmn-backend/libs"
 	"github.com/malikabdulaziz/tmn-backend/middlewares"
 	"github.com/malikabdulaziz/tmn-backend/repositories/auth"
@@ -22,12 +23,14 @@ import (
 	"github.com/malikabdulaziz/tmn-backend/repositories/buildingrestriction"
 	"github.com/malikabdulaziz/tmn-backend/repositories/poi"
 	"github.com/malikabdulaziz/tmn-backend/repositories/salespackage"
+	"github.com/malikabdulaziz/tmn-backend/repositories/savedpolygon"
 	"github.com/malikabdulaziz/tmn-backend/repositories/user"
 	auth2 "github.com/malikabdulaziz/tmn-backend/services/auth"
 	building2 "github.com/malikabdulaziz/tmn-backend/services/building"
 	buildingrestriction2 "github.com/malikabdulaziz/tmn-backend/services/buildingrestriction"
 	poi2 "github.com/malikabdulaziz/tmn-backend/services/poi"
 	salespackage2 "github.com/malikabdulaziz/tmn-backend/services/salespackage"
+	savedpolygon2 "github.com/malikabdulaziz/tmn-backend/services/savedpolygon"
 )
 
 // Injectors from wire.go:
@@ -45,6 +48,8 @@ func InitializeRouter() *httprouter.Router {
 	salesPackageMiddleware := middlewares.NewSalesPackageMiddleware(validate, db, repositorySalesPackageInterface)
 	repositoryBuildingRestrictionInterface := buildingrestriction.NewRepositoryBuildingRestrictionImpl()
 	buildingRestrictionMiddleware := middlewares.NewBuildingRestrictionMiddleware(validate, db, repositoryBuildingRestrictionInterface)
+	repositorySavedPolygonInterface := savedpolygon.NewRepositorySavedPolygonImpl()
+	savedPolygonMiddleware := middlewares.NewSavedPolygonMiddleware(validate, db, repositorySavedPolygonInterface)
 	loggingMiddleware := middlewares.NewLoggingMiddleware()
 	repositoryUserInterface := user.NewRepositoryUserImpl()
 	serviceAuthInterface := auth2.NewServiceAuthImpl(db, repositoryAuthInterface, repositoryUserInterface)
@@ -60,7 +65,9 @@ func InitializeRouter() *httprouter.Router {
 	controllerSalesPackageInterface := salespackage3.NewControllerSalesPackageImpl(serviceSalesPackageInterface)
 	serviceBuildingRestrictionInterface := buildingrestriction2.NewServiceBuildingRestrictionImpl(db, repositoryBuildingRestrictionInterface, repositoryBuildingInterface)
 	controllerBuildingRestrictionInterface := buildingrestriction3.NewControllerBuildingRestrictionImpl(serviceBuildingRestrictionInterface)
-	router := libs.NewRouter(authMiddleware, buildingMiddleware, poiMiddleware, salesPackageMiddleware, buildingRestrictionMiddleware, loggingMiddleware, controllerAuthInterface, controllerBuildingInterface, controllerImageInterface, controllerPOIInterface, controllerSalesPackageInterface, controllerBuildingRestrictionInterface)
+	serviceSavedPolygonInterface := savedpolygon2.NewServiceSavedPolygonImpl(db, repositorySavedPolygonInterface)
+	controllerSavedPolygonInterface := savedpolygon3.NewControllerSavedPolygonImpl(serviceSavedPolygonInterface)
+	router := libs.NewRouter(authMiddleware, buildingMiddleware, poiMiddleware, salesPackageMiddleware, buildingRestrictionMiddleware, savedPolygonMiddleware, loggingMiddleware, controllerAuthInterface, controllerBuildingInterface, controllerImageInterface, controllerPOIInterface, controllerSalesPackageInterface, controllerBuildingRestrictionInterface, controllerSavedPolygonInterface)
 	return router
 }
 
@@ -88,4 +95,6 @@ var salespackageSet = wire.NewSet(salespackage.NewRepositorySalesPackageImpl, sa
 
 var buildingrestrictionSet = wire.NewSet(buildingrestriction.NewRepositoryBuildingRestrictionImpl, buildingrestriction2.NewServiceBuildingRestrictionImpl, buildingrestriction3.NewControllerBuildingRestrictionImpl)
 
-var middlewareSet = wire.NewSet(middlewares.NewAuthMiddleware, middlewares.NewBuildingMiddleware, middlewares.NewPOIMiddleware, middlewares.NewSalesPackageMiddleware, middlewares.NewBuildingRestrictionMiddleware, middlewares.NewLoggingMiddleware)
+var savedpolygonSet = wire.NewSet(savedpolygon.NewRepositorySavedPolygonImpl, savedpolygon2.NewServiceSavedPolygonImpl, savedpolygon3.NewControllerSavedPolygonImpl)
+
+var middlewareSet = wire.NewSet(middlewares.NewAuthMiddleware, middlewares.NewBuildingMiddleware, middlewares.NewPOIMiddleware, middlewares.NewSalesPackageMiddleware, middlewares.NewBuildingRestrictionMiddleware, middlewares.NewSavedPolygonMiddleware, middlewares.NewLoggingMiddleware)

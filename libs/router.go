@@ -10,6 +10,7 @@ import (
 	controllersPOI "github.com/malikabdulaziz/tmn-backend/controllers/poi"
 	controllersSalesPackage "github.com/malikabdulaziz/tmn-backend/controllers/salespackage"
 	controllersBuildingRestriction "github.com/malikabdulaziz/tmn-backend/controllers/buildingrestriction"
+	controllersSavedPolygon "github.com/malikabdulaziz/tmn-backend/controllers/savedpolygon"
 	"github.com/malikabdulaziz/tmn-backend/exceptions"
 	"github.com/malikabdulaziz/tmn-backend/middlewares"
 )
@@ -20,6 +21,7 @@ func NewRouter(
 	poiMiddleware *middlewares.POIMiddleware,
 	salesPackageMiddleware *middlewares.SalesPackageMiddleware,
 	buildingRestrictionMiddleware *middlewares.BuildingRestrictionMiddleware,
+	savedPolygonMiddleware *middlewares.SavedPolygonMiddleware,
 	loggingMiddleware *middlewares.LoggingMiddleware,
 	controllersAuth controllersAuth.ControllerAuthInterface,
 	controllersBuilding controllersBuilding.ControllerBuildingInterface,
@@ -27,6 +29,7 @@ func NewRouter(
 	controllersPOI controllersPOI.ControllerPOIInterface,
 	controllersSalesPackage controllersSalesPackage.ControllerSalesPackageInterface,
 	controllersBuildingRestriction controllersBuildingRestriction.ControllerBuildingRestrictionInterface,
+	controllersSavedPolygon controllersSavedPolygon.ControllerSavedPolygonInterface,
 ) *httprouter.Router {
 	router := httprouter.New()
 
@@ -152,6 +155,29 @@ func NewRouter(
 	router.DELETE("/building-restrictions/:id",
 		loggingMiddleware.Log(
 			authMiddleware.RequireAuth(controllersBuildingRestriction.Delete)))
+
+	// Saved polygon routes (protected)
+	router.POST("/saved-polygons",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				savedPolygonMiddleware.ValidateCreate(controllersSavedPolygon.Create))))
+
+	router.GET("/saved-polygons",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(controllersSavedPolygon.FindAll)))
+
+	router.GET("/saved-polygons/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(controllersSavedPolygon.FindById)))
+
+	router.PUT("/saved-polygons/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				savedPolygonMiddleware.ValidateUpdate(controllersSavedPolygon.Update))))
+
+	router.DELETE("/saved-polygons/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(controllersSavedPolygon.Delete)))
 
 	return router
 }
