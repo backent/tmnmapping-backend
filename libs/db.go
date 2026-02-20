@@ -19,8 +19,9 @@ func NewDatabase() *sql.DB {
 	POSTGRES_USER := os.Getenv("POSTGRES_USER")
 	POSTGRES_PASSWORD := os.Getenv("POSTGRES_PASSWORD")
 	POSTGRES_DATABASE := os.Getenv("POSTGRES_DATABASE")
+	POSTGRES_SSLMODE := os.Getenv("POSTGRES_SSLMODE")
 
-	dataSourceName := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DATABASE)
+	dataSourceName := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DATABASE, POSTGRES_SSLMODE)
 
 	db, err := sql.Open("pgx", dataSourceName)
 	if err != nil {
@@ -77,4 +78,3 @@ func NewDatabase() *sql.DB {
 
 	return db
 }
-
