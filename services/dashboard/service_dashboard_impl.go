@@ -39,29 +39,29 @@ func dedupKeyFor(envKey string) string {
 	return "building_project"
 }
 
-func (s *ServiceDashboardImpl) GetAcquisitionReport(ctx context.Context, pic, month string) webDashboard.DashboardReport {
+func (s *ServiceDashboardImpl) GetAcquisitionReport(ctx context.Context, pic, year, month string) webDashboard.DashboardReport {
 	dedupField := dedupKeyFor("DASHBOARD_DEDUP_KEY_ACQUISITION")
-	return s.buildReport(ctx, models.AcquisitionTable, dedupField, pic, month)
+	return s.buildReport(ctx, models.AcquisitionTable, dedupField, pic, year, month)
 }
 
-func (s *ServiceDashboardImpl) GetBuildingProposalReport(ctx context.Context, pic, month string) webDashboard.DashboardReport {
+func (s *ServiceDashboardImpl) GetBuildingProposalReport(ctx context.Context, pic, year, month string) webDashboard.DashboardReport {
 	dedupField := dedupKeyFor("DASHBOARD_DEDUP_KEY_PROPOSAL")
-	return s.buildReport(ctx, models.BuildingProposalTable, dedupField, pic, month)
+	return s.buildReport(ctx, models.BuildingProposalTable, dedupField, pic, year, month)
 }
 
-func (s *ServiceDashboardImpl) GetLOIReport(ctx context.Context, pic, month string) webDashboard.DashboardReport {
+func (s *ServiceDashboardImpl) GetLOIReport(ctx context.Context, pic, year, month string) webDashboard.DashboardReport {
 	dedupField := dedupKeyFor("DASHBOARD_DEDUP_KEY_LOI")
-	return s.buildReport(ctx, models.LetterOfIntentTable, dedupField, pic, month)
+	return s.buildReport(ctx, models.LetterOfIntentTable, dedupField, pic, year, month)
 }
 
 // buildReport runs all 3 queries for the given table and assembles the response.
-func (s *ServiceDashboardImpl) buildReport(ctx context.Context, table, dedupField, pic, month string) webDashboard.DashboardReport {
+func (s *ServiceDashboardImpl) buildReport(ctx context.Context, table, dedupField, pic, year, month string) webDashboard.DashboardReport {
 	tx, err := s.DB.Begin()
 	helpers.PanicIfError(err)
 	defer helpers.CommitOrRollback(tx)
 
 	// 1. Status counts
-	statusCounts, err := s.Repository.GetStatusCounts(ctx, tx, table, dedupField, pic, month)
+	statusCounts, err := s.Repository.GetStatusCounts(ctx, tx, table, dedupField, pic, year, month)
 	helpers.PanicIfError(err)
 
 	stats := webDashboard.StatsSummary{
@@ -73,7 +73,7 @@ func (s *ServiceDashboardImpl) buildReport(ctx context.Context, table, dedupFiel
 	}
 
 	// 2. By person x building type
-	personTypeRows, err := s.Repository.GetByPersonAndType(ctx, tx, table, dedupField, pic, month)
+	personTypeRows, err := s.Repository.GetByPersonAndType(ctx, tx, table, dedupField, pic, year, month)
 	helpers.PanicIfError(err)
 
 	personTypeMap := make(map[string]map[string]int)
@@ -94,7 +94,7 @@ func (s *ServiceDashboardImpl) buildReport(ctx context.Context, table, dedupFiel
 	}
 
 	// 3. By person x status
-	personStatusRows, err := s.Repository.GetByPersonAndStatus(ctx, tx, table, dedupField, pic, month)
+	personStatusRows, err := s.Repository.GetByPersonAndStatus(ctx, tx, table, dedupField, pic, year, month)
 	helpers.PanicIfError(err)
 
 	personStatusMap := make(map[string]map[string]int)

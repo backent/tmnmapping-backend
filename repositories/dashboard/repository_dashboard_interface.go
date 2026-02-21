@@ -26,8 +26,8 @@ type PersonStatusCount struct {
 }
 
 type RepositoryDashboardInterface interface {
-	GetStatusCounts(ctx context.Context, tx *sql.Tx, table, dedupField, pic, month string) ([]StatusCount, error)
-	GetByPersonAndType(ctx context.Context, tx *sql.Tx, table, dedupField, pic, month string) ([]PersonTypeCount, error)
-	GetByPersonAndStatus(ctx context.Context, tx *sql.Tx, table, dedupField, pic, month string) ([]PersonStatusCount, error)
+	GetStatusCounts(ctx context.Context, tx *sql.Tx, table, dedupField, pic, year, month string) ([]StatusCount, error)
+	GetByPersonAndType(ctx context.Context, tx *sql.Tx, table, dedupField, pic, year, month string) ([]PersonTypeCount, error)
+	GetByPersonAndStatus(ctx context.Context, tx *sql.Tx, table, dedupField, pic, year, month string) ([]PersonStatusCount, error)
 	GetDistinctPICs(ctx context.Context, tx *sql.Tx, table string) ([]string, error)
 }

@@ -17,12 +17,13 @@ func NewControllerDashboardImpl(service servicesDashboard.ServiceDashboardInterf
 	return &ControllerDashboardImpl{service: service}
 }
 
-// GetAcquisitionReport handles GET /dashboard/acquisition?pic=&month=
+// GetAcquisitionReport handles GET /dashboard/acquisition?pic=&year=&month=
 func (c *ControllerDashboardImpl) GetAcquisitionReport(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 	pic := r.URL.Query().Get("pic")
+	year := r.URL.Query().Get("year")
 	month := r.URL.Query().Get("month")
 
-	report := c.service.GetAcquisitionReport(r.Context(), pic, month)
+	report := c.service.GetAcquisitionReport(r.Context(), pic, year, month)
 
 	helpers.ReturnReponseJSON(w, web.WebResponse{
 		Status: "OK",
@@ -31,12 +32,13 @@ func (c *ControllerDashboardImpl) GetAcquisitionReport(w http.ResponseWriter, r 
 	})
 }
 
-// GetBuildingProposalReport handles GET /dashboard/building-proposal?pic=&month=
+// GetBuildingProposalReport handles GET /dashboard/building-proposal?pic=&year=&month=
 func (c *ControllerDashboardImpl) GetBuildingProposalReport(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 	pic := r.URL.Query().Get("pic")
+	year := r.URL.Query().Get("year")
 	month := r.URL.Query().Get("month")
 
-	report := c.service.GetBuildingProposalReport(r.Context(), pic, month)
+	report := c.service.GetBuildingProposalReport(r.Context(), pic, year, month)
 
 	helpers.ReturnReponseJSON(w, web.WebResponse{
 		Status: "OK",
@@ -45,12 +47,13 @@ func (c *ControllerDashboardImpl) GetBuildingProposalReport(w http.ResponseWrite
 	})
 }
 
-// GetLOIReport handles GET /dashboard/loi?pic=&month=
+// GetLOIReport handles GET /dashboard/loi?pic=&year=&month=
 func (c *ControllerDashboardImpl) GetLOIReport(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 	pic := r.URL.Query().Get("pic")
+	year := r.URL.Query().Get("year")
 	month := r.URL.Query().Get("month")
 
-	report := c.service.GetLOIReport(r.Context(), pic, month)
+	report := c.service.GetLOIReport(r.Context(), pic, year, month)
 
 	helpers.ReturnReponseJSON(w, web.WebResponse{
 		Status: "OK",

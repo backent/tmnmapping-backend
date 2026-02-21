@@ -7,7 +7,7 @@ import (
 )
 
 type ServiceDashboardInterface interface {
-	GetAcquisitionReport(ctx context.Context, pic, month string) webDashboard.DashboardReport
-	GetBuildingProposalReport(ctx context.Context, pic, month string) webDashboard.DashboardReport
-	GetLOIReport(ctx context.Context, pic, month string) webDashboard.DashboardReport
+	GetAcquisitionReport(ctx context.Context, pic, year, month string) webDashboard.DashboardReport
+	GetBuildingProposalReport(ctx context.Context, pic, year, month string) webDashboard.DashboardReport
+	GetLOIReport(ctx context.Context, pic, year, month string) webDashboard.DashboardReport
 }
