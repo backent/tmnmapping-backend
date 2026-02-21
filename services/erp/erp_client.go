@@ -3,6 +3,7 @@ package erp
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 )
@@ -39,54 +40,50 @@ type ERPResponse struct {
 	Data []ERPBuilding `json:"data"`
 }
 
-// ERPAcquisition represents the acquisition data from Frappe ERP
+// ERPAcquisition represents the acquisition data from Frappe ERP.
+// RawJSON holds the complete original record from the API (all fields).
 type ERPAcquisition struct {
-	Name              string `json:"name"`
-	BuildingProject   string `json:"building_project"`
-	Status            string `json:"status"`
-	WorkflowState     string `json:"workflow_state"`
-	AcquisitionPerson string `json:"acquisition_person"`
-	Creation          string `json:"creation"`
-	Modified          string `json:"modified"`
+	Name              string          `json:"name"`
+	BuildingProject   string          `json:"building_project"`
+	Status            string          `json:"status"`
+	WorkflowState     string          `json:"workflow_state"`
+	AcquisitionPerson string          `json:"acquisition_person"`
+	Creation          string          `json:"creation"`
+	Modified          string          `json:"modified"`
+	RawJSON           json.RawMessage `json:"-"`
 }
 
-// ERPAcquisitionResponse represents the Acquisition API response from Frappe
-type ERPAcquisitionResponse struct {
-	Data []ERPAcquisition `json:"data"`
-}
-
-// ERPBuildingProposal represents the building proposal data from Frappe ERP
+// ERPBuildingProposal represents the building proposal data from Frappe ERP.
+// RawJSON holds the complete original record from the API (all fields).
 type ERPBuildingProposal struct {
-	Name              string `json:"name"`
-	BuildingProject   string `json:"building_project"`
-	Status            string `json:"status"`
-	WorkflowState     string `json:"workflow_state"`
-	AcquisitionPerson string `json:"acquisition_person"`
-	NumberOfScreen    int    `json:"number_of_screen"`
-	Creation          string `json:"creation"`
-	Modified          string `json:"modified"`
+	Name              string          `json:"name"`
+	BuildingProject   string          `json:"building_project"`
+	Status            string          `json:"status"`
+	WorkflowState     string          `json:"workflow_state"`
+	AcquisitionPerson string          `json:"acquisition_person"`
+	NumberOfScreen    int             `json:"number_of_screen"`
+	Creation          string          `json:"creation"`
+	Modified          string          `json:"modified"`
+	RawJSON           json.RawMessage `json:"-"`
 }
 
-// ERPBuildingProposalResponse represents the Building Proposal API response from Frappe
-type ERPBuildingProposalResponse struct {
-	Data []ERPBuildingProposal `json:"data"`
-}
-
-// ERPLetterOfIntent represents the Letter of Intent data from Frappe ERP
+// ERPLetterOfIntent represents the Letter of Intent data from Frappe ERP.
+// RawJSON holds the complete original record from the API (all fields).
 type ERPLetterOfIntent struct {
-	Name              string `json:"name"`
-	BuildingProject   string `json:"building_project"`
-	Status            string `json:"status"`
-	WorkflowState     string `json:"workflow_state"`
-	AcquisitionPerson string `json:"acquisition_person"`
-	NumberOfScreen    int    `json:"number_of_screen"`
-	Creation          string `json:"creation"`
-	Modified          string `json:"modified"`
+	Name              string          `json:"name"`
+	BuildingProject   string          `json:"building_project"`
+	Status            string          `json:"status"`
+	WorkflowState     string          `json:"workflow_state"`
+	AcquisitionPerson string          `json:"acquisition_person"`
+	NumberOfScreen    int             `json:"number_of_screen"`
+	Creation          string          `json:"creation"`
+	Modified          string          `json:"modified"`
+	RawJSON           json.RawMessage `json:"-"`
 }
 
-// ERPLetterOfIntentResponse represents the LOI API response from Frappe
-type ERPLetterOfIntentResponse struct {
-	Data []ERPLetterOfIntent `json:"data"`
+// erpRawResponse is used to decode ERP list responses into raw per-record JSON.
+type erpRawResponse struct {
+	Data []json.RawMessage `json:"data"`
 }
 
 // ERPClient handles communication with Frappe ERP API
@@ -144,9 +141,9 @@ func (c *ERPClient) FetchBuildings() ([]ERPBuilding, error) {
 	return erpResponse.Data, nil
 }
 
-// FetchAcquisitions fetches all acquisitions from the ERP API
+// FetchAcquisitions fetches all acquisitions from the ERP API.
+// Each record's RawJSON field contains the full original JSON object (all fields).
 func (c *ERPClient) FetchAcquisitions() ([]ERPAcquisition, error) {
-	// Build URL with query parameters to get all fields and all records
 	url := fmt.Sprintf("%s/api/resource/Acquisition?fields=[\"*\"]&limit_page_length=99999", c.BaseURL)
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -154,10 +151,8 @@ func (c *ERPClient) FetchAcquisitions() ([]ERPAcquisition, error) {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	// Set authorization header in format: Token API_KEY:API_SECRET
 	if c.APIKey != "" && c.APISecret != "" {
-		authValue := fmt.Sprintf("Token %s:%s", c.APIKey, c.APISecret)
-		req.Header.Set("Authorization", authValue)
+		req.Header.Set("Authorization", fmt.Sprintf("Token %s:%s", c.APIKey, c.APISecret))
 	}
 	req.Header.Set("Accept", "application/json")
 
@@ -171,17 +166,31 @@ func (c *ERPClient) FetchAcquisitions() ([]ERPAcquisition, error) {
 		return nil, fmt.Errorf("ERP API returned status %d", resp.StatusCode)
 	}
 
-	var erpResponse ERPAcquisitionResponse
-	if err := json.NewDecoder(resp.Body).Decode(&erpResponse); err != nil {
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read ERP response body: %w", err)
+	}
+
+	var raw erpRawResponse
+	if err := json.Unmarshal(body, &raw); err != nil {
 		return nil, fmt.Errorf("failed to decode ERP response: %w", err)
 	}
 
-	return erpResponse.Data, nil
+	result := make([]ERPAcquisition, 0, len(raw.Data))
+	for _, item := range raw.Data {
+		var a ERPAcquisition
+		if err := json.Unmarshal(item, &a); err != nil {
+			continue
+		}
+		a.RawJSON = item
+		result = append(result, a)
+	}
+	return result, nil
 }
 
-// FetchBuildingProposals fetches all building proposals from the ERP API
+// FetchBuildingProposals fetches all building proposals from the ERP API.
+// Each record's RawJSON field contains the full original JSON object (all fields).
 func (c *ERPClient) FetchBuildingProposals() ([]ERPBuildingProposal, error) {
-	// Build URL with query parameters to get all fields and all records
 	url := fmt.Sprintf("%s/api/resource/Building Proposal?fields=[\"*\"]&limit_page_length=99999", c.BaseURL)
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -189,10 +198,8 @@ func (c *ERPClient) FetchBuildingProposals() ([]ERPBuildingProposal, error) {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	// Set authorization header in format: Token API_KEY:API_SECRET
 	if c.APIKey != "" && c.APISecret != "" {
-		authValue := fmt.Sprintf("Token %s:%s", c.APIKey, c.APISecret)
-		req.Header.Set("Authorization", authValue)
+		req.Header.Set("Authorization", fmt.Sprintf("Token %s:%s", c.APIKey, c.APISecret))
 	}
 	req.Header.Set("Accept", "application/json")
 
@@ -206,15 +213,30 @@ func (c *ERPClient) FetchBuildingProposals() ([]ERPBuildingProposal, error) {
 		return nil, fmt.Errorf("ERP API returned status %d", resp.StatusCode)
 	}
 
-	var erpResponse ERPBuildingProposalResponse
-	if err := json.NewDecoder(resp.Body).Decode(&erpResponse); err != nil {
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read ERP response body: %w", err)
+	}
+
+	var raw erpRawResponse
+	if err := json.Unmarshal(body, &raw); err != nil {
 		return nil, fmt.Errorf("failed to decode ERP response: %w", err)
 	}
 
-	return erpResponse.Data, nil
+	result := make([]ERPBuildingProposal, 0, len(raw.Data))
+	for _, item := range raw.Data {
+		var bp ERPBuildingProposal
+		if err := json.Unmarshal(item, &bp); err != nil {
+			continue
+		}
+		bp.RawJSON = item
+		result = append(result, bp)
+	}
+	return result, nil
 }
 
-// FetchLOIs fetches all Letters of Intent from the ERP API
+// FetchLOIs fetches all Letters of Intent from the ERP API.
+// Each record's RawJSON field contains the full original JSON object (all fields).
 func (c *ERPClient) FetchLOIs() ([]ERPLetterOfIntent, error) {
 	url := fmt.Sprintf("%s/api/resource/Letter of Intent?fields=[\"*\"]&limit_page_length=99999", c.BaseURL)
 
@@ -224,8 +246,7 @@ func (c *ERPClient) FetchLOIs() ([]ERPLetterOfIntent, error) {
 	}
 
 	if c.APIKey != "" && c.APISecret != "" {
-		authValue := fmt.Sprintf("Token %s:%s", c.APIKey, c.APISecret)
-		req.Header.Set("Authorization", authValue)
+		req.Header.Set("Authorization", fmt.Sprintf("Token %s:%s", c.APIKey, c.APISecret))
 	}
 	req.Header.Set("Accept", "application/json")
 
@@ -239,10 +260,24 @@ func (c *ERPClient) FetchLOIs() ([]ERPLetterOfIntent, error) {
 		return nil, fmt.Errorf("ERP API returned status %d", resp.StatusCode)
 	}
 
-	var erpResponse ERPLetterOfIntentResponse
-	if err := json.NewDecoder(resp.Body).Decode(&erpResponse); err != nil {
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read ERP response body: %w", err)
+	}
+
+	var raw erpRawResponse
+	if err := json.Unmarshal(body, &raw); err != nil {
 		return nil, fmt.Errorf("failed to decode ERP LOI response: %w", err)
 	}
 
-	return erpResponse.Data, nil
+	result := make([]ERPLetterOfIntent, 0, len(raw.Data))
+	for _, item := range raw.Data {
+		var l ERPLetterOfIntent
+		if err := json.Unmarshal(item, &l); err != nil {
+			continue
+		}
+		l.RawJSON = item
+		result = append(result, l)
+	}
+	return result, nil
 }

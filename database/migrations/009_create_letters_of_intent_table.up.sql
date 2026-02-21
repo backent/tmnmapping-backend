@@ -10,7 +10,8 @@ CREATE TABLE letters_of_intent (
     created_at_erp TIMESTAMP,
     synced_at TIMESTAMP DEFAULT NOW(),
     created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+    updated_at TIMESTAMP DEFAULT NOW(),
+    raw_data JSONB
 );
 
 CREATE INDEX idx_loi_person ON letters_of_intent(acquisition_person);

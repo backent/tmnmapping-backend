@@ -10,7 +10,8 @@ CREATE TABLE building_proposals (
     created_at_erp TIMESTAMP,
     synced_at TIMESTAMP DEFAULT NOW(),
     created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+    updated_at TIMESTAMP DEFAULT NOW(),
+    raw_data JSONB
 );
 
 CREATE INDEX idx_building_proposals_person ON building_proposals(acquisition_person);

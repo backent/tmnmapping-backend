@@ -53,8 +53,8 @@ func (s *ServiceAcquisitionImpl) SyncFromERP(ctx context.Context) error {
 
 	now := time.Now()
 	insertSQL := `INSERT INTO ` + models.AcquisitionTable + `
-		(external_id, workflow_state, acquisition_person, building_project, status, modified, created_at_erp, synced_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
+		(external_id, workflow_state, acquisition_person, building_project, status, modified, created_at_erp, synced_at, raw_data)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 
 	inserted := 0
 	for _, r := range erpRecords {
@@ -70,6 +70,7 @@ func (s *ServiceAcquisitionImpl) SyncFromERP(ctx context.Context) error {
 			modifiedTime,
 			creationTime,
 			now,
+			[]byte(r.RawJSON),
 		)
 		if err != nil {
 			s.Logger.WithError(err).WithField("name", r.Name).Warn("Failed to insert acquisition, skipping")

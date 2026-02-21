@@ -53,8 +53,8 @@ func (s *ServiceLOIImpl) SyncFromERP(ctx context.Context) error {
 
 	now := time.Now()
 	insertSQL := `INSERT INTO ` + models.LetterOfIntentTable + `
-		(external_id, workflow_state, acquisition_person, building_project, status, number_of_screen, modified, created_at_erp, synced_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
+		(external_id, workflow_state, acquisition_person, building_project, status, number_of_screen, modified, created_at_erp, synced_at, raw_data)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
 
 	inserted := 0
 	for _, r := range erpRecords {
@@ -71,6 +71,7 @@ func (s *ServiceLOIImpl) SyncFromERP(ctx context.Context) error {
 			modifiedTime,
 			creationTime,
 			now,
+			[]byte(r.RawJSON),
 		)
 		if err != nil {
 			s.Logger.WithError(err).WithField("name", r.Name).Warn("Failed to insert LOI, skipping")
