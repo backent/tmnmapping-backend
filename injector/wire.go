@@ -8,6 +8,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	controllersAuth "github.com/malikabdulaziz/tmn-backend/controllers/auth"
 	controllersBuilding "github.com/malikabdulaziz/tmn-backend/controllers/building"
+	controllersDashboard "github.com/malikabdulaziz/tmn-backend/controllers/dashboard"
 	controllersImage "github.com/malikabdulaziz/tmn-backend/controllers/image"
 	controllersPOI "github.com/malikabdulaziz/tmn-backend/controllers/poi"
 	controllersSalesPackage "github.com/malikabdulaziz/tmn-backend/controllers/salespackage"
@@ -17,13 +18,18 @@ import (
 	"github.com/malikabdulaziz/tmn-backend/middlewares"
 	repositoriesAuth "github.com/malikabdulaziz/tmn-backend/repositories/auth"
 	repositoriesBuilding "github.com/malikabdulaziz/tmn-backend/repositories/building"
+	repositoriesDashboard "github.com/malikabdulaziz/tmn-backend/repositories/dashboard"
 	repositoriesPOI "github.com/malikabdulaziz/tmn-backend/repositories/poi"
 	repositoriesSalesPackage "github.com/malikabdulaziz/tmn-backend/repositories/salespackage"
 	repositoriesBuildingRestriction "github.com/malikabdulaziz/tmn-backend/repositories/buildingrestriction"
 	repositoriesSavedPolygon "github.com/malikabdulaziz/tmn-backend/repositories/savedpolygon"
 	repositoriesUser "github.com/malikabdulaziz/tmn-backend/repositories/user"
+	servicesAcquisition "github.com/malikabdulaziz/tmn-backend/services/acquisition"
 	servicesAuth "github.com/malikabdulaziz/tmn-backend/services/auth"
 	servicesBuilding "github.com/malikabdulaziz/tmn-backend/services/building"
+	servicesBuildingProposal "github.com/malikabdulaziz/tmn-backend/services/buildingproposal"
+	servicesDashboard "github.com/malikabdulaziz/tmn-backend/services/dashboard"
+	servicesLOI "github.com/malikabdulaziz/tmn-backend/services/loi"
 	servicesPOI "github.com/malikabdulaziz/tmn-backend/services/poi"
 	servicesSalesPackage "github.com/malikabdulaziz/tmn-backend/services/salespackage"
 	servicesBuildingRestriction "github.com/malikabdulaziz/tmn-backend/services/buildingrestriction"
@@ -71,6 +77,12 @@ var savedpolygonSet = wire.NewSet(
 	controllersSavedPolygon.NewControllerSavedPolygonImpl,
 )
 
+var dashboardSet = wire.NewSet(
+	repositoriesDashboard.NewRepositoryDashboardImpl,
+	servicesDashboard.NewServiceDashboardImpl,
+	controllersDashboard.NewControllerDashboardImpl,
+)
+
 var middlewareSet = wire.NewSet(
 	middlewares.NewAuthMiddleware,
 	middlewares.NewBuildingMiddleware,
@@ -94,6 +106,7 @@ func InitializeRouter() *httprouter.Router {
 		salespackageSet,
 		buildingrestrictionSet,
 		savedpolygonSet,
+		dashboardSet,
 		middlewareSet,
 		libs.NewRouter,
 	)
@@ -108,6 +121,36 @@ func InitializeBuildingService() servicesBuilding.ServiceBuildingInterface {
 		repositoriesBuilding.NewRepositoryBuildingImpl,
 		repositoriesPOI.NewRepositoryPOIImpl,
 		servicesBuilding.NewServiceBuildingImpl,
+	)
+	return nil
+}
+
+func InitializeAcquisitionService() servicesAcquisition.ServiceAcquisitionInterface {
+	wire.Build(
+		libs.NewDatabase,
+		libs.NewLogger,
+		libs.ProvideERPClient,
+		servicesAcquisition.NewServiceAcquisitionImpl,
+	)
+	return nil
+}
+
+func InitializeBuildingProposalService() servicesBuildingProposal.ServiceBuildingProposalInterface {
+	wire.Build(
+		libs.NewDatabase,
+		libs.NewLogger,
+		libs.ProvideERPClient,
+		servicesBuildingProposal.NewServiceBuildingProposalImpl,
+	)
+	return nil
+}
+
+func InitializeLOIService() servicesLOI.ServiceLOIInterface {
+	wire.Build(
+		libs.NewDatabase,
+		libs.NewLogger,
+		libs.ProvideERPClient,
+		servicesLOI.NewServiceLOIImpl,
 	)
 	return nil
 }

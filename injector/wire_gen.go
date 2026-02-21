@@ -12,6 +12,7 @@ import (
 	auth3 "github.com/malikabdulaziz/tmn-backend/controllers/auth"
 	building3 "github.com/malikabdulaziz/tmn-backend/controllers/building"
 	buildingrestriction3 "github.com/malikabdulaziz/tmn-backend/controllers/buildingrestriction"
+	dashboard3 "github.com/malikabdulaziz/tmn-backend/controllers/dashboard"
 	"github.com/malikabdulaziz/tmn-backend/controllers/image"
 	poi3 "github.com/malikabdulaziz/tmn-backend/controllers/poi"
 	salespackage3 "github.com/malikabdulaziz/tmn-backend/controllers/salespackage"
@@ -21,13 +22,18 @@ import (
 	"github.com/malikabdulaziz/tmn-backend/repositories/auth"
 	"github.com/malikabdulaziz/tmn-backend/repositories/building"
 	"github.com/malikabdulaziz/tmn-backend/repositories/buildingrestriction"
+	"github.com/malikabdulaziz/tmn-backend/repositories/dashboard"
 	"github.com/malikabdulaziz/tmn-backend/repositories/poi"
 	"github.com/malikabdulaziz/tmn-backend/repositories/salespackage"
 	"github.com/malikabdulaziz/tmn-backend/repositories/savedpolygon"
 	"github.com/malikabdulaziz/tmn-backend/repositories/user"
+	"github.com/malikabdulaziz/tmn-backend/services/acquisition"
 	auth2 "github.com/malikabdulaziz/tmn-backend/services/auth"
 	building2 "github.com/malikabdulaziz/tmn-backend/services/building"
+	"github.com/malikabdulaziz/tmn-backend/services/buildingproposal"
 	buildingrestriction2 "github.com/malikabdulaziz/tmn-backend/services/buildingrestriction"
+	dashboard2 "github.com/malikabdulaziz/tmn-backend/services/dashboard"
+	"github.com/malikabdulaziz/tmn-backend/services/loi"
 	poi2 "github.com/malikabdulaziz/tmn-backend/services/poi"
 	salespackage2 "github.com/malikabdulaziz/tmn-backend/services/salespackage"
 	savedpolygon2 "github.com/malikabdulaziz/tmn-backend/services/savedpolygon"
@@ -67,7 +73,10 @@ func InitializeRouter() *httprouter.Router {
 	controllerBuildingRestrictionInterface := buildingrestriction3.NewControllerBuildingRestrictionImpl(serviceBuildingRestrictionInterface)
 	serviceSavedPolygonInterface := savedpolygon2.NewServiceSavedPolygonImpl(db, repositorySavedPolygonInterface)
 	controllerSavedPolygonInterface := savedpolygon3.NewControllerSavedPolygonImpl(serviceSavedPolygonInterface)
-	router := libs.NewRouter(authMiddleware, buildingMiddleware, poiMiddleware, salesPackageMiddleware, buildingRestrictionMiddleware, savedPolygonMiddleware, loggingMiddleware, controllerAuthInterface, controllerBuildingInterface, controllerImageInterface, controllerPOIInterface, controllerSalesPackageInterface, controllerBuildingRestrictionInterface, controllerSavedPolygonInterface)
+	repositoryDashboardInterface := dashboard.NewRepositoryDashboardImpl()
+	serviceDashboardInterface := dashboard2.NewServiceDashboardImpl(db, repositoryDashboardInterface, logger)
+	controllerDashboardInterface := dashboard3.NewControllerDashboardImpl(serviceDashboardInterface)
+	router := libs.NewRouter(authMiddleware, buildingMiddleware, poiMiddleware, salesPackageMiddleware, buildingRestrictionMiddleware, savedPolygonMiddleware, loggingMiddleware, controllerAuthInterface, controllerBuildingInterface, controllerImageInterface, controllerPOIInterface, controllerSalesPackageInterface, controllerBuildingRestrictionInterface, controllerSavedPolygonInterface, controllerDashboardInterface)
 	return router
 }
 
@@ -79,6 +88,30 @@ func InitializeBuildingService() building2.ServiceBuildingInterface {
 	logger := libs.NewLogger()
 	serviceBuildingInterface := building2.NewServiceBuildingImpl(db, repositoryBuildingInterface, repositoryPOIInterface, erpClient, logger)
 	return serviceBuildingInterface
+}
+
+func InitializeAcquisitionService() acquisition.ServiceAcquisitionInterface {
+	db := libs.NewDatabase()
+	erpClient := libs.ProvideERPClient()
+	logger := libs.NewLogger()
+	serviceAcquisitionInterface := acquisition.NewServiceAcquisitionImpl(db, erpClient, logger)
+	return serviceAcquisitionInterface
+}
+
+func InitializeBuildingProposalService() buildingproposal.ServiceBuildingProposalInterface {
+	db := libs.NewDatabase()
+	erpClient := libs.ProvideERPClient()
+	logger := libs.NewLogger()
+	serviceBuildingProposalInterface := buildingproposal.NewServiceBuildingProposalImpl(db, erpClient, logger)
+	return serviceBuildingProposalInterface
+}
+
+func InitializeLOIService() loi.ServiceLOIInterface {
+	db := libs.NewDatabase()
+	erpClient := libs.ProvideERPClient()
+	logger := libs.NewLogger()
+	serviceLOIInterface := loi.NewServiceLOIImpl(db, erpClient, logger)
+	return serviceLOIInterface
 }
 
 // wire.go:
@@ -96,5 +129,7 @@ var salespackageSet = wire.NewSet(salespackage.NewRepositorySalesPackageImpl, sa
 var buildingrestrictionSet = wire.NewSet(buildingrestriction.NewRepositoryBuildingRestrictionImpl, buildingrestriction2.NewServiceBuildingRestrictionImpl, buildingrestriction3.NewControllerBuildingRestrictionImpl)
 
 var savedpolygonSet = wire.NewSet(savedpolygon.NewRepositorySavedPolygonImpl, savedpolygon2.NewServiceSavedPolygonImpl, savedpolygon3.NewControllerSavedPolygonImpl)
+
+var dashboardSet = wire.NewSet(dashboard.NewRepositoryDashboardImpl, dashboard2.NewServiceDashboardImpl, dashboard3.NewControllerDashboardImpl)
 
 var middlewareSet = wire.NewSet(middlewares.NewAuthMiddleware, middlewares.NewBuildingMiddleware, middlewares.NewPOIMiddleware, middlewares.NewSalesPackageMiddleware, middlewares.NewBuildingRestrictionMiddleware, middlewares.NewSavedPolygonMiddleware, middlewares.NewLoggingMiddleware)

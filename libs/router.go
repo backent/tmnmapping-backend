@@ -6,6 +6,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	controllersAuth "github.com/malikabdulaziz/tmn-backend/controllers/auth"
 	controllersBuilding "github.com/malikabdulaziz/tmn-backend/controllers/building"
+	controllersDashboard "github.com/malikabdulaziz/tmn-backend/controllers/dashboard"
 	controllersImage "github.com/malikabdulaziz/tmn-backend/controllers/image"
 	controllersPOI "github.com/malikabdulaziz/tmn-backend/controllers/poi"
 	controllersSalesPackage "github.com/malikabdulaziz/tmn-backend/controllers/salespackage"
@@ -30,6 +31,7 @@ func NewRouter(
 	controllersSalesPackage controllersSalesPackage.ControllerSalesPackageInterface,
 	controllersBuildingRestriction controllersBuildingRestriction.ControllerBuildingRestrictionInterface,
 	controllersSavedPolygon controllersSavedPolygon.ControllerSavedPolygonInterface,
+	controllersDashboard controllersDashboard.ControllerDashboardInterface,
 ) *httprouter.Router {
 	router := httprouter.New()
 
@@ -182,6 +184,19 @@ func NewRouter(
 	router.DELETE("/saved-polygons/:id",
 		loggingMiddleware.Log(
 			authMiddleware.RequireAuth(controllersSavedPolygon.Delete)))
+
+	// Dashboard report routes (protected)
+	router.GET("/dashboard/acquisition",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(controllersDashboard.GetAcquisitionReport)))
+
+	router.GET("/dashboard/building-proposal",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(controllersDashboard.GetBuildingProposalReport)))
+
+	router.GET("/dashboard/loi",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(controllersDashboard.GetLOIReport)))
 
 	return router
 }

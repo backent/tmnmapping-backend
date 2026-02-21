@@ -1,0 +1,111 @@
+package loi
+
+import (
+	"context"
+	"database/sql"
+	"time"
+
+	"github.com/malikabdulaziz/tmn-backend/models"
+	"github.com/malikabdulaziz/tmn-backend/services/erp"
+	"github.com/sirupsen/logrus"
+)
+
+type ServiceLOIImpl struct {
+	DB        *sql.DB
+	ERPClient *erp.ERPClient
+	Logger    *logrus.Logger
+}
+
+func NewServiceLOIImpl(db *sql.DB, erpClient *erp.ERPClient, logger *logrus.Logger) ServiceLOIInterface {
+	return &ServiceLOIImpl{
+		DB:        db,
+		ERPClient: erpClient,
+		Logger:    logger,
+	}
+}
+
+// SyncFromERP fetches all LOIs from ERP and replaces local data (full refresh).
+func (s *ServiceLOIImpl) SyncFromERP(ctx context.Context) error {
+	s.Logger.Info("Starting LOI sync from ERP")
+
+	erpRecords, err := s.ERPClient.FetchLOIs()
+	if err != nil {
+		s.Logger.WithError(err).Error("Failed to fetch LOIs from ERP")
+		return err
+	}
+
+	s.Logger.WithField("count", len(erpRecords)).Info("Fetched LOIs from ERP")
+
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+
+	_, err = tx.ExecContext(ctx, "TRUNCATE TABLE "+models.LetterOfIntentTable)
+	if err != nil {
+		return err
+	}
+
+	now := time.Now()
+	insertSQL := `INSERT INTO ` + models.LetterOfIntentTable + `
+		(external_id, workflow_state, acquisition_person, building_project, status, number_of_screen, modified, created_at_erp, synced_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
+
+	inserted := 0
+	for _, r := range erpRecords {
+		modifiedTime := parseERPTime(r.Modified)
+		creationTime := parseERPTime(r.Creation)
+
+		_, err = tx.ExecContext(ctx, insertSQL,
+			r.Name,
+			r.WorkflowState,
+			r.AcquisitionPerson,
+			r.BuildingProject,
+			r.Status,
+			r.NumberOfScreen,
+			modifiedTime,
+			creationTime,
+			now,
+		)
+		if err != nil {
+			s.Logger.WithError(err).WithField("name", r.Name).Warn("Failed to insert LOI, skipping")
+			err = nil
+			continue
+		}
+		inserted++
+	}
+
+	if err = tx.Commit(); err != nil {
+		return err
+	}
+
+	s.Logger.WithFields(logrus.Fields{
+		"fetched":  len(erpRecords),
+		"inserted": inserted,
+	}).Info("LOI sync completed")
+
+	return nil
+}
+
+// parseERPTime parses ERP timestamp strings. Returns nil on failure (stored as NULL).
+func parseERPTime(s string) *time.Time {
+	if s == "" {
+		return nil
+	}
+	formats := []string{
+		"2006-01-02 15:04:05.999999",
+		"2006-01-02 15:04:05",
+		"2006-01-02",
+	}
+	for _, f := range formats {
+		if t, err := time.Parse(f, s); err == nil {
+			return &t
+		}
+	}
+	return nil
+}
