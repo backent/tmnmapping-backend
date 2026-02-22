@@ -15,5 +15,6 @@ type ServiceBuildingInterface interface {
 	FindAllForMapping(ctx context.Context, request webBuilding.MappingBuildingRequest) webBuilding.MappingBuildingsResponse
 	ExportForMapping(ctx context.Context, ids []int) ([]byte, error)
 	ExportForMappingWithFilters(ctx context.Context, request webBuilding.MappingBuildingRequest) ([]byte, error)
+	GetLCDPresenceSummary(ctx context.Context) webBuilding.LCDPresenceSummaryResponse
 }
 

@@ -185,6 +185,10 @@ func NewRouter(
 		loggingMiddleware.Log(
 			authMiddleware.RequireAuth(controllersSavedPolygon.Delete)))
 
+	router.GET("/dashboard/building-lcd-presence",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(controllersBuilding.GetLCDPresenceSummary)))
+
 	// Dashboard report routes (protected)
 	router.GET("/dashboard/acquisition",
 		loggingMiddleware.Log(

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"math"
 	"sort"
 	"strconv"
 	"strings"
@@ -895,6 +896,74 @@ func mustCell(col, row int) string {
 func (service *ServiceBuildingImpl) ExportForMappingWithFilters(ctx context.Context, request webBuilding.MappingBuildingRequest) ([]byte, error) {
 	resp := service.FindAllForMapping(ctx, request)
 	return buildExcelFromMappingBuildings(resp.Data)
+}
+
+// GetLCDPresenceSummary returns building counts and percentages grouped by city and LCD presence status
+func (service *ServiceBuildingImpl) GetLCDPresenceSummary(ctx context.Context) webBuilding.LCDPresenceSummaryResponse {
+	tx, err := service.DB.Begin()
+	helpers.PanicIfError(err)
+	defer helpers.CommitOrRollback(tx)
+
+	rawRows, err := service.RepositoryBuildingInterface.GetLCDPresenceSummary(ctx, tx)
+	helpers.PanicIfError(err)
+
+	type cityData struct {
+		byStatus map[string]int
+		total    int
+	}
+	cityMap := make(map[string]*cityData)
+	cityOrder := []string{}
+
+	for _, row := range rawRows {
+		if _, exists := cityMap[row.Citytown]; !exists {
+			cityMap[row.Citytown] = &cityData{byStatus: make(map[string]int)}
+			cityOrder = append(cityOrder, row.Citytown)
+		}
+		cityMap[row.Citytown].byStatus[row.LcdPresenceStatus] += row.Count
+		cityMap[row.Citytown].total += row.Count
+	}
+
+	sort.Strings(cityOrder)
+
+	summaries := make([]webBuilding.LCDPresenceCitySummary, 0, len(cityOrder))
+	grandTotal := 0
+	grandByStatus := make(map[string]int)
+
+	for _, city := range cityOrder {
+		cd := cityMap[city]
+		percentages := make(map[string]float64, len(cd.byStatus))
+		for status, count := range cd.byStatus {
+			if cd.total > 0 {
+				percentages[status] = math.Round(float64(count) / float64(cd.total) * 100)
+			}
+		}
+		summaries = append(summaries, webBuilding.LCDPresenceCitySummary{
+			Citytown:    city,
+			Total:       cd.total,
+			ByStatus:    cd.byStatus,
+			Percentages: percentages,
+		})
+		grandTotal += cd.total
+		for status, count := range cd.byStatus {
+			grandByStatus[status] += count
+		}
+	}
+
+	grandPercentages := make(map[string]float64, len(grandByStatus))
+	for status, count := range grandByStatus {
+		if grandTotal > 0 {
+			grandPercentages[status] = math.Round(float64(count) / float64(grandTotal) * 100)
+		}
+	}
+
+	return webBuilding.LCDPresenceSummaryResponse{
+		Data: summaries,
+		Totals: webBuilding.LCDPresenceTotals{
+			Total:       grandTotal,
+			ByStatus:    grandByStatus,
+			Percentages: grandPercentages,
+		},
+	}
 }
 
 func buildExcelFromMappingBuildings(data []webBuilding.MappingBuildingResponse) ([]byte, error) {

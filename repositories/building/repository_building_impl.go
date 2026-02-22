@@ -935,6 +935,34 @@ func (repository *RepositoryBuildingImpl) UpdateFromSync(ctx context.Context, tx
 	return building, nil
 }
 
+// GetLCDPresenceSummary returns building counts grouped by citytown and lcd_presence_status
+func (repository *RepositoryBuildingImpl) GetLCDPresenceSummary(ctx context.Context, tx *sql.Tx) ([]LCDPresenceCountRow, error) {
+	SQL := `
+		SELECT
+			COALESCE(citytown, 'Unknown') AS citytown,
+			COALESCE(lcd_presence_status, '') AS lcd_presence_status,
+			COUNT(*) AS count
+		FROM ` + models.BuildingTable + `
+		GROUP BY COALESCE(citytown, 'Unknown'), COALESCE(lcd_presence_status, '')
+		ORDER BY COALESCE(citytown, 'Unknown'), COALESCE(lcd_presence_status, '')`
+
+	rows, err := tx.QueryContext(ctx, SQL)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []LCDPresenceCountRow
+	for rows.Next() {
+		var row LCDPresenceCountRow
+		if err := rows.Scan(&row.Citytown, &row.LcdPresenceStatus, &row.Count); err != nil {
+			return nil, err
+		}
+		result = append(result, row)
+	}
+	return result, nil
+}
+
 // Helper functions
 func nullIfZero(value int) interface{} {
 	if value == 0 {

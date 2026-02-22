@@ -148,3 +148,16 @@ func (controller *ControllerBuildingImpl) ExportMappingBuildings(w http.Response
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(excelBytes)
 }
+
+// GetLCDPresenceSummary handles GET /dashboard/building-lcd-presence
+func (controller *ControllerBuildingImpl) GetLCDPresenceSummary(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	summaryResponse := controller.service.GetLCDPresenceSummary(r.Context())
+
+	response := web.WebResponse{
+		Status: "OK",
+		Code:   http.StatusOK,
+		Data:   summaryResponse,
+	}
+
+	helpers.ReturnReponseJSON(w, response)
+}
