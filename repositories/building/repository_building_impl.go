@@ -963,6 +963,27 @@ func (repository *RepositoryBuildingImpl) GetLCDPresenceSummary(ctx context.Cont
 	return result, nil
 }
 
+// FindAllDropdown retrieves all buildings with only id, name, and building_type fields
+func (repository *RepositoryBuildingImpl) FindAllDropdown(ctx context.Context, tx *sql.Tx) ([]models.Building, error) {
+	SQL := `SELECT id, name, COALESCE(building_type, '') FROM ` + models.BuildingTable + ` ORDER BY name ASC`
+
+	rows, err := tx.QueryContext(ctx, SQL)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var buildings []models.Building
+	for rows.Next() {
+		var b models.Building
+		if err := rows.Scan(&b.Id, &b.Name, &b.BuildingType); err != nil {
+			return nil, err
+		}
+		buildings = append(buildings, b)
+	}
+	return buildings, rows.Err()
+}
+
 // Helper functions
 func nullIfZero(value int) interface{} {
 	if value == 0 {

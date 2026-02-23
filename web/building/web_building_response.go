@@ -91,3 +91,9 @@ func BuildingModelsToListBuildingResponse(buildings []models.Building) []Buildin
 	}
 	return responses
 }
+
+type BuildingDropdownResponse struct {
+	Id           int    `json:"id"`
+	Name         string `json:"name"`
+	BuildingType string `json:"building_type"`
+}

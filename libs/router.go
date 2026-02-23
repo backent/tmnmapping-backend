@@ -79,6 +79,10 @@ func NewRouter(
 		loggingMiddleware.Log(
 			authMiddleware.RequireAuth(controllersBuilding.GetFilterOptions)))
 
+	router.GET("/building-dropdown",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(controllersBuilding.GetDropdownOptions)))
+
 	router.GET("/mapping-buildings",
 		loggingMiddleware.Log(
 			authMiddleware.RequireAuth(controllersBuilding.FindAllForMapping)))

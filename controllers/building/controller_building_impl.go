@@ -149,6 +149,19 @@ func (controller *ControllerBuildingImpl) ExportMappingBuildings(w http.Response
 	_, _ = w.Write(excelBytes)
 }
 
+// GetDropdownOptions handles GET /building-dropdown
+func (controller *ControllerBuildingImpl) GetDropdownOptions(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	dropdownOptions := controller.service.FindAllDropdown(r.Context())
+
+	response := web.WebResponse{
+		Status: "OK",
+		Code:   http.StatusOK,
+		Data:   dropdownOptions,
+	}
+
+	helpers.ReturnReponseJSON(w, response)
+}
+
 // GetLCDPresenceSummary handles GET /dashboard/building-lcd-presence
 func (controller *ControllerBuildingImpl) GetLCDPresenceSummary(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 	summaryResponse := controller.service.GetLCDPresenceSummary(r.Context())

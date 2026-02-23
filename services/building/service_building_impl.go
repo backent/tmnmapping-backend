@@ -966,6 +966,26 @@ func (service *ServiceBuildingImpl) GetLCDPresenceSummary(ctx context.Context) w
 	}
 }
 
+// FindAllDropdown retrieves all buildings with only id, name, and building_type for dropdown use
+func (service *ServiceBuildingImpl) FindAllDropdown(ctx context.Context) []webBuilding.BuildingDropdownResponse {
+	tx, err := service.DB.Begin()
+	helpers.PanicIfError(err)
+	defer helpers.CommitOrRollback(tx)
+
+	buildings, err := service.RepositoryBuildingInterface.FindAllDropdown(ctx, tx)
+	helpers.PanicIfError(err)
+
+	responses := make([]webBuilding.BuildingDropdownResponse, 0, len(buildings))
+	for _, b := range buildings {
+		responses = append(responses, webBuilding.BuildingDropdownResponse{
+			Id:           b.Id,
+			Name:         b.Name,
+			BuildingType: b.BuildingType,
+		})
+	}
+	return responses
+}
+
 func buildExcelFromMappingBuildings(data []webBuilding.MappingBuildingResponse) ([]byte, error) {
 	f := excelize.NewFile()
 	sheetName := "Buildings"

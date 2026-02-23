@@ -26,5 +26,6 @@ type RepositoryBuildingInterface interface {
 	FindAllForMapping(ctx context.Context, tx *sql.Tx, buildingType string, buildingGrade string, year string, subdistrict string, progress string, sellable string, connectivity string, lcdPresence string, salesPackageIds string, buildingRestrictionIds string, lat *float64, lng *float64, radius *int, poiPoints []struct{ Lat float64; Lng float64 }, polygonPoints []struct{ Lat float64; Lng float64 }, minLat *float64, maxLat *float64, minLng *float64, maxLng *float64) ([]models.Building, error)
 	FindByIds(ctx context.Context, tx *sql.Tx, ids []int) ([]models.Building, error)
 	GetLCDPresenceSummary(ctx context.Context, tx *sql.Tx) ([]LCDPresenceCountRow, error)
+	FindAllDropdown(ctx context.Context, tx *sql.Tx) ([]models.Building, error)
 }
 
