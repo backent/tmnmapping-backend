@@ -258,32 +258,36 @@ func (repository *RepositoryBuildingImpl) FindAll(ctx context.Context, tx *sql.T
 		argIndex++
 	}
 
-	// Add building_status filter
+	// Add building_status filter (supports comma-separated multi-values)
 	if buildingStatus != "" {
-		whereConditions = append(whereConditions, `building_status = $`+strconv.Itoa(argIndex))
-		args = append(args, buildingStatus)
-		argIndex++
+		cond, newArgs, newIndex := buildInCondition("building_status", buildingStatus, argIndex)
+		whereConditions = append(whereConditions, cond)
+		args = append(args, newArgs...)
+		argIndex = newIndex
 	}
 
-	// Add sellable filter
+	// Add sellable filter (supports comma-separated multi-values)
 	if sellable != "" {
-		whereConditions = append(whereConditions, `sellable = $`+strconv.Itoa(argIndex))
-		args = append(args, sellable)
-		argIndex++
+		cond, newArgs, newIndex := buildInCondition("sellable", sellable, argIndex)
+		whereConditions = append(whereConditions, cond)
+		args = append(args, newArgs...)
+		argIndex = newIndex
 	}
 
-	// Add connectivity filter
+	// Add connectivity filter (supports comma-separated multi-values)
 	if connectivity != "" {
-		whereConditions = append(whereConditions, `connectivity = $`+strconv.Itoa(argIndex))
-		args = append(args, connectivity)
-		argIndex++
+		cond, newArgs, newIndex := buildInCondition("connectivity", connectivity, argIndex)
+		whereConditions = append(whereConditions, cond)
+		args = append(args, newArgs...)
+		argIndex = newIndex
 	}
 
-	// Add resource_type filter
+	// Add resource_type filter (supports comma-separated multi-values)
 	if resourceType != "" {
-		whereConditions = append(whereConditions, `resource_type = $`+strconv.Itoa(argIndex))
-		args = append(args, resourceType)
-		argIndex++
+		cond, newArgs, newIndex := buildInCondition("resource_type", resourceType, argIndex)
+		whereConditions = append(whereConditions, cond)
+		args = append(args, newArgs...)
+		argIndex = newIndex
 	}
 
 	// Add competitor_location filter
@@ -293,46 +297,52 @@ func (repository *RepositoryBuildingImpl) FindAll(ctx context.Context, tx *sql.T
 		argIndex++
 	}
 
-	// Add cbd_area filter
+	// Add cbd_area filter (supports comma-separated multi-values with ILIKE)
 	if cbdArea != "" {
-		whereConditions = append(whereConditions, `cbd_area ILIKE $`+strconv.Itoa(argIndex))
-		args = append(args, "%"+cbdArea+"%")
-		argIndex++
+		cond, newArgs, newIndex := buildILikeOrCondition("cbd_area", cbdArea, argIndex)
+		whereConditions = append(whereConditions, cond)
+		args = append(args, newArgs...)
+		argIndex = newIndex
 	}
 
-	// Add subdistrict filter
+	// Add subdistrict filter (supports comma-separated multi-values with ILIKE)
 	if subdistrict != "" {
-		whereConditions = append(whereConditions, `subdistrict ILIKE $`+strconv.Itoa(argIndex))
-		args = append(args, "%"+subdistrict+"%")
-		argIndex++
+		cond, newArgs, newIndex := buildILikeOrCondition("subdistrict", subdistrict, argIndex)
+		whereConditions = append(whereConditions, cond)
+		args = append(args, newArgs...)
+		argIndex = newIndex
 	}
 
-	// Add citytown filter
+	// Add citytown filter (supports comma-separated multi-values with ILIKE)
 	if citytown != "" {
-		whereConditions = append(whereConditions, `citytown ILIKE $`+strconv.Itoa(argIndex))
-		args = append(args, "%"+citytown+"%")
-		argIndex++
+		cond, newArgs, newIndex := buildILikeOrCondition("citytown", citytown, argIndex)
+		whereConditions = append(whereConditions, cond)
+		args = append(args, newArgs...)
+		argIndex = newIndex
 	}
 
-	// Add province filter
+	// Add province filter (supports comma-separated multi-values with ILIKE)
 	if province != "" {
-		whereConditions = append(whereConditions, `province ILIKE $`+strconv.Itoa(argIndex))
-		args = append(args, "%"+province+"%")
-		argIndex++
+		cond, newArgs, newIndex := buildILikeOrCondition("province", province, argIndex)
+		whereConditions = append(whereConditions, cond)
+		args = append(args, newArgs...)
+		argIndex = newIndex
 	}
 
-	// Add grade_resource filter
+	// Add grade_resource filter (supports comma-separated multi-values)
 	if gradeResource != "" {
-		whereConditions = append(whereConditions, `grade_resource = $`+strconv.Itoa(argIndex))
-		args = append(args, gradeResource)
-		argIndex++
+		cond, newArgs, newIndex := buildInCondition("grade_resource", gradeResource, argIndex)
+		whereConditions = append(whereConditions, cond)
+		args = append(args, newArgs...)
+		argIndex = newIndex
 	}
 
-	// Add building_type filter
+	// Add building_type filter (supports comma-separated multi-values)
 	if buildingType != "" {
-		whereConditions = append(whereConditions, `building_type = $`+strconv.Itoa(argIndex))
-		args = append(args, buildingType)
-		argIndex++
+		cond, newArgs, newIndex := buildInCondition("building_type", buildingType, argIndex)
+		whereConditions = append(whereConditions, cond)
+		args = append(args, newArgs...)
+		argIndex = newIndex
 	}
 
 	// Build WHERE clause
@@ -409,32 +419,36 @@ func (repository *RepositoryBuildingImpl) CountAll(ctx context.Context, tx *sql.
 		argIndex++
 	}
 
-	// Add building_status filter
+	// Add building_status filter (supports comma-separated multi-values)
 	if buildingStatus != "" {
-		whereConditions = append(whereConditions, `building_status = $`+strconv.Itoa(argIndex))
-		args = append(args, buildingStatus)
-		argIndex++
+		cond, newArgs, newIndex := buildInCondition("building_status", buildingStatus, argIndex)
+		whereConditions = append(whereConditions, cond)
+		args = append(args, newArgs...)
+		argIndex = newIndex
 	}
 
-	// Add sellable filter
+	// Add sellable filter (supports comma-separated multi-values)
 	if sellable != "" {
-		whereConditions = append(whereConditions, `sellable = $`+strconv.Itoa(argIndex))
-		args = append(args, sellable)
-		argIndex++
+		cond, newArgs, newIndex := buildInCondition("sellable", sellable, argIndex)
+		whereConditions = append(whereConditions, cond)
+		args = append(args, newArgs...)
+		argIndex = newIndex
 	}
 
-	// Add connectivity filter
+	// Add connectivity filter (supports comma-separated multi-values)
 	if connectivity != "" {
-		whereConditions = append(whereConditions, `connectivity = $`+strconv.Itoa(argIndex))
-		args = append(args, connectivity)
-		argIndex++
+		cond, newArgs, newIndex := buildInCondition("connectivity", connectivity, argIndex)
+		whereConditions = append(whereConditions, cond)
+		args = append(args, newArgs...)
+		argIndex = newIndex
 	}
 
-	// Add resource_type filter
+	// Add resource_type filter (supports comma-separated multi-values)
 	if resourceType != "" {
-		whereConditions = append(whereConditions, `resource_type = $`+strconv.Itoa(argIndex))
-		args = append(args, resourceType)
-		argIndex++
+		cond, newArgs, newIndex := buildInCondition("resource_type", resourceType, argIndex)
+		whereConditions = append(whereConditions, cond)
+		args = append(args, newArgs...)
+		argIndex = newIndex
 	}
 
 	// Add competitor_location filter
@@ -444,46 +458,52 @@ func (repository *RepositoryBuildingImpl) CountAll(ctx context.Context, tx *sql.
 		argIndex++
 	}
 
-	// Add cbd_area filter
+	// Add cbd_area filter (supports comma-separated multi-values with ILIKE)
 	if cbdArea != "" {
-		whereConditions = append(whereConditions, `cbd_area ILIKE $`+strconv.Itoa(argIndex))
-		args = append(args, "%"+cbdArea+"%")
-		argIndex++
+		cond, newArgs, newIndex := buildILikeOrCondition("cbd_area", cbdArea, argIndex)
+		whereConditions = append(whereConditions, cond)
+		args = append(args, newArgs...)
+		argIndex = newIndex
 	}
 
-	// Add subdistrict filter
+	// Add subdistrict filter (supports comma-separated multi-values with ILIKE)
 	if subdistrict != "" {
-		whereConditions = append(whereConditions, `subdistrict ILIKE $`+strconv.Itoa(argIndex))
-		args = append(args, "%"+subdistrict+"%")
-		argIndex++
+		cond, newArgs, newIndex := buildILikeOrCondition("subdistrict", subdistrict, argIndex)
+		whereConditions = append(whereConditions, cond)
+		args = append(args, newArgs...)
+		argIndex = newIndex
 	}
 
-	// Add citytown filter
+	// Add citytown filter (supports comma-separated multi-values with ILIKE)
 	if citytown != "" {
-		whereConditions = append(whereConditions, `citytown ILIKE $`+strconv.Itoa(argIndex))
-		args = append(args, "%"+citytown+"%")
-		argIndex++
+		cond, newArgs, newIndex := buildILikeOrCondition("citytown", citytown, argIndex)
+		whereConditions = append(whereConditions, cond)
+		args = append(args, newArgs...)
+		argIndex = newIndex
 	}
 
-	// Add province filter
+	// Add province filter (supports comma-separated multi-values with ILIKE)
 	if province != "" {
-		whereConditions = append(whereConditions, `province ILIKE $`+strconv.Itoa(argIndex))
-		args = append(args, "%"+province+"%")
-		argIndex++
+		cond, newArgs, newIndex := buildILikeOrCondition("province", province, argIndex)
+		whereConditions = append(whereConditions, cond)
+		args = append(args, newArgs...)
+		argIndex = newIndex
 	}
 
-	// Add grade_resource filter
+	// Add grade_resource filter (supports comma-separated multi-values)
 	if gradeResource != "" {
-		whereConditions = append(whereConditions, `grade_resource = $`+strconv.Itoa(argIndex))
-		args = append(args, gradeResource)
-		argIndex++
+		cond, newArgs, newIndex := buildInCondition("grade_resource", gradeResource, argIndex)
+		whereConditions = append(whereConditions, cond)
+		args = append(args, newArgs...)
+		argIndex = newIndex
 	}
 
-	// Add building_type filter
+	// Add building_type filter (supports comma-separated multi-values)
 	if buildingType != "" {
-		whereConditions = append(whereConditions, `building_type = $`+strconv.Itoa(argIndex))
-		args = append(args, buildingType)
-		argIndex++
+		cond, newArgs, newIndex := buildInCondition("building_type", buildingType, argIndex)
+		whereConditions = append(whereConditions, cond)
+		args = append(args, newArgs...)
+		argIndex = newIndex
 	}
 
 	// Build WHERE clause
@@ -982,6 +1002,54 @@ func (repository *RepositoryBuildingImpl) FindAllDropdown(ctx context.Context, t
 		buildings = append(buildings, b)
 	}
 	return buildings, rows.Err()
+}
+
+// buildInCondition builds a SQL IN condition for a column with comma-separated values.
+// For a single value it uses = instead of IN.
+// Returns the condition string, the argument values, and the next arg index.
+func buildInCondition(column string, value string, argIndex int) (string, []interface{}, int) {
+	if strings.Contains(value, ",") {
+		parts := strings.Split(value, ",")
+		placeholders := make([]string, 0, len(parts))
+		var args []interface{}
+		for _, p := range parts {
+			trimmed := strings.TrimSpace(p)
+			if trimmed != "" {
+				placeholders = append(placeholders, "$"+strconv.Itoa(argIndex))
+				args = append(args, trimmed)
+				argIndex++
+			}
+		}
+		if len(placeholders) == 1 {
+			return column + ` = ` + placeholders[0], args, argIndex
+		}
+		return column + ` IN (` + strings.Join(placeholders, ",") + `)`, args, argIndex
+	}
+	return column + ` = $` + strconv.Itoa(argIndex), []interface{}{strings.TrimSpace(value)}, argIndex + 1
+}
+
+// buildILikeOrCondition builds a SQL OR condition using ILIKE for a column with comma-separated values.
+// For a single value it uses a single ILIKE.
+// Returns the condition string, the argument values, and the next arg index.
+func buildILikeOrCondition(column string, value string, argIndex int) (string, []interface{}, int) {
+	if strings.Contains(value, ",") {
+		parts := strings.Split(value, ",")
+		orConditions := make([]string, 0, len(parts))
+		var args []interface{}
+		for _, p := range parts {
+			trimmed := strings.TrimSpace(p)
+			if trimmed != "" {
+				orConditions = append(orConditions, column+` ILIKE $`+strconv.Itoa(argIndex))
+				args = append(args, "%"+trimmed+"%")
+				argIndex++
+			}
+		}
+		if len(orConditions) == 1 {
+			return orConditions[0], args, argIndex
+		}
+		return `(` + strings.Join(orConditions, " OR ") + `)`, args, argIndex
+	}
+	return column + ` ILIKE $` + strconv.Itoa(argIndex), []interface{}{"%" + strings.TrimSpace(value) + "%"}, argIndex + 1
 }
 
 // Helper functions
