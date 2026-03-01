@@ -38,7 +38,7 @@ pipeline {
                 stage('Unit Test') {
                     steps {
                         dir('backend') {
-                            sh "docker run --rm -v \$(pwd):/app -w /app golang:1.23-alpine go test ./services/... -v"
+                            sh "docker run --rm -v \$(pwd):/app -w /app golang:1.23-alpine sh -c 'go mod download && go test ./services/... -v'"
                         }
                     }
                 }
