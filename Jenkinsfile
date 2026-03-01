@@ -58,7 +58,7 @@ pipeline {
                 // Username     : Docker Hub username (backent)
                 // Password     : Docker Hub password / access token
                 withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-credentials',
+                    credentialsId: 'docker-backent-cred',
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
