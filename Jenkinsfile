@@ -75,9 +75,12 @@ pipeline {
                 // Type         : SSH Username with private key
                 // Username     : ubuntu
                 // Private key  : contents of tmn-app-key.pem
-                sshagent(credentials: ['tmn-app-ssh-key']) {
+                withCredentials([sshUserPrivateKey(
+                    credentialsId: 'tmn-app-ssh-key',
+                    keyFileVariable: 'SSH_KEY_FILE'
+                )]) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no ${SERVER_USER}@${SERVER_HOST} '
+                        ssh -i \$SSH_KEY_FILE -o StrictHostKeyChecking=no ${SERVER_USER}@${SERVER_HOST} '
                             sudo docker pull ${IMAGE_NAME}:${params.IMAGE_TAG} &&
                             sudo docker rm -f backend || true &&
                             sudo docker run -dp 127.0.0.1:8080:8088 \\
