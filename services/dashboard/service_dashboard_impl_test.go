@@ -76,7 +76,7 @@ func TestGetAcquisitionReport_HappyPath(t *testing.T) {
 
 	setupDashboardMocks(repoDash, table, statusCounts, personTypeRows, personStatusRows, pics)
 
-	report := svc.GetAcquisitionReport(context.Background(), "", "", "")
+	report := svc.GetAcquisitionReport(context.Background(), "", "", "") // pic, dateFrom, dateTo all empty → no filter
 
 	// Stats aggregation
 	assert.Equal(t, 15, report.Stats.Total)
@@ -124,7 +124,7 @@ func TestGetAcquisitionReport_NilPICs(t *testing.T) {
 		nil, // repo returns nil
 	)
 
-	report := svc.GetAcquisitionReport(context.Background(), "", "", "")
+	report := svc.GetAcquisitionReport(context.Background(), "", "", "") // pic, dateFrom, dateTo all empty → no filter
 
 	// Service normalizes nil PICs to empty slice
 	assert.NotNil(t, report.PICs)
@@ -156,7 +156,7 @@ func TestGetBuildingProposalReport_HappyPath(t *testing.T) {
 		[]string{"Carol"},
 	)
 
-	report := svc.GetBuildingProposalReport(context.Background(), "", "", "")
+	report := svc.GetBuildingProposalReport(context.Background(), "", "", "") // pic, dateFrom, dateTo all empty → no filter
 
 	assert.Equal(t, 8, report.Stats.Total)
 	assert.Equal(t, 8, report.Stats.ByStatus["Approved"])
@@ -188,7 +188,7 @@ func TestGetLOIReport_HappyPath(t *testing.T) {
 		[]string{"Dave"},
 	)
 
-	report := svc.GetLOIReport(context.Background(), "", "", "")
+	report := svc.GetLOIReport(context.Background(), "", "", "") // pic, dateFrom, dateTo all empty → no filter
 
 	assert.Equal(t, 10, report.Stats.Total)
 	assert.Equal(t, 4, report.Stats.ByStatus["Signed"])
@@ -224,7 +224,7 @@ func TestGetAcquisitionReport_PersonOrderPreserved(t *testing.T) {
 		[]string{},
 	)
 
-	report := svc.GetAcquisitionReport(context.Background(), "", "", "")
+	report := svc.GetAcquisitionReport(context.Background(), "", "", "") // pic, dateFrom, dateTo all empty → no filter
 
 	assert.Len(t, report.ByPersonType, 3)
 	assert.Equal(t, "Charlie", report.ByPersonType[0].Person)

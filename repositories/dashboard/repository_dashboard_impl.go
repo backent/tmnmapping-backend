@@ -29,16 +29,16 @@ func validateDedupField(dedupField string) string {
 }
 
 // GetStatusCounts returns per-workflow_state counts using DISTINCT ON to pick latest record per dedupField.
-func (r *RepositoryDashboardImpl) GetStatusCounts(ctx context.Context, tx *sql.Tx, table, dedupField, pic, year, month string) ([]StatusCount, error) {
+func (r *RepositoryDashboardImpl) GetStatusCounts(ctx context.Context, tx *sql.Tx, table, dedupField, pic, dateFrom, dateTo string) ([]StatusCount, error) {
 	dedup := validateDedupField(dedupField)
 
 	SQL := fmt.Sprintf(`
 		WITH latest AS (
 			SELECT DISTINCT ON (%s) *
 			FROM %s
-			WHERE ($1 = '' OR acquisition_person = $1)
-			  AND ($2 = '' OR EXTRACT(YEAR FROM created_at_erp)::TEXT = $2)
-			  AND ($3 = '' OR EXTRACT(MONTH FROM created_at_erp)::TEXT = $3)
+			WHERE ($1 = '' OR acquisition_person = ANY(string_to_array($1, ',')))
+			  AND ($2 = '' OR DATE(modified) >= $2::date)
+			  AND ($3 = '' OR DATE(modified) <= $3::date)
 			ORDER BY %s, modified DESC NULLS LAST
 		)
 		SELECT COALESCE(workflow_state, '') AS workflow_state, COUNT(*) AS count
@@ -47,7 +47,7 @@ func (r *RepositoryDashboardImpl) GetStatusCounts(ctx context.Context, tx *sql.T
 		ORDER BY count DESC
 	`, dedup, table, dedup)
 
-	rows, err := tx.QueryContext(ctx, SQL, pic, year, month)
+	rows, err := tx.QueryContext(ctx, SQL, pic, dateFrom, dateTo)
 	if err != nil {
 		return nil, err
 	}
@@ -66,16 +66,16 @@ func (r *RepositoryDashboardImpl) GetStatusCounts(ctx context.Context, tx *sql.T
 
 // GetByPersonAndType returns counts grouped by acquisition_person and building_type,
 // joined with buildings table to resolve building_type. Uses DISTINCT ON for dedup.
-func (r *RepositoryDashboardImpl) GetByPersonAndType(ctx context.Context, tx *sql.Tx, table, dedupField, pic, year, month string) ([]PersonTypeCount, error) {
+func (r *RepositoryDashboardImpl) GetByPersonAndType(ctx context.Context, tx *sql.Tx, table, dedupField, pic, dateFrom, dateTo string) ([]PersonTypeCount, error) {
 	dedup := validateDedupField(dedupField)
 
 	SQL := fmt.Sprintf(`
 		WITH latest AS (
 			SELECT DISTINCT ON (t.%s) t.*
 			FROM %s t
-			WHERE ($1 = '' OR t.acquisition_person = $1)
-			  AND ($2 = '' OR EXTRACT(YEAR FROM t.created_at_erp)::TEXT = $2)
-			  AND ($3 = '' OR EXTRACT(MONTH FROM t.created_at_erp)::TEXT = $3)
+			WHERE ($1 = '' OR t.acquisition_person = ANY(string_to_array($1, ',')))
+			  AND ($2 = '' OR DATE(t.modified) >= $2::date)
+			  AND ($3 = '' OR DATE(t.modified) <= $3::date)
 			ORDER BY t.%s, t.modified DESC NULLS LAST
 		)
 		SELECT
@@ -88,7 +88,7 @@ func (r *RepositoryDashboardImpl) GetByPersonAndType(ctx context.Context, tx *sq
 		ORDER BY l.acquisition_person, count DESC
 	`, dedup, table, dedup)
 
-	rows, err := tx.QueryContext(ctx, SQL, pic, year, month)
+	rows, err := tx.QueryContext(ctx, SQL, pic, dateFrom, dateTo)
 	if err != nil {
 		return nil, err
 	}
@@ -107,16 +107,16 @@ func (r *RepositoryDashboardImpl) GetByPersonAndType(ctx context.Context, tx *sq
 
 // GetByPersonAndStatus returns counts grouped by acquisition_person and workflow_state.
 // Uses DISTINCT ON for dedup.
-func (r *RepositoryDashboardImpl) GetByPersonAndStatus(ctx context.Context, tx *sql.Tx, table, dedupField, pic, year, month string) ([]PersonStatusCount, error) {
+func (r *RepositoryDashboardImpl) GetByPersonAndStatus(ctx context.Context, tx *sql.Tx, table, dedupField, pic, dateFrom, dateTo string) ([]PersonStatusCount, error) {
 	dedup := validateDedupField(dedupField)
 
 	SQL := fmt.Sprintf(`
 		WITH latest AS (
 			SELECT DISTINCT ON (%s) *
 			FROM %s
-			WHERE ($1 = '' OR acquisition_person = $1)
-			  AND ($2 = '' OR EXTRACT(YEAR FROM created_at_erp)::TEXT = $2)
-			  AND ($3 = '' OR EXTRACT(MONTH FROM created_at_erp)::TEXT = $3)
+			WHERE ($1 = '' OR acquisition_person = ANY(string_to_array($1, ',')))
+			  AND ($2 = '' OR DATE(modified) >= $2::date)
+			  AND ($3 = '' OR DATE(modified) <= $3::date)
 			ORDER BY %s, modified DESC NULLS LAST
 		)
 		SELECT
@@ -128,7 +128,7 @@ func (r *RepositoryDashboardImpl) GetByPersonAndStatus(ctx context.Context, tx *
 		ORDER BY acquisition_person, count DESC
 	`, dedup, table, dedup)
 
-	rows, err := tx.QueryContext(ctx, SQL, pic, year, month)
+	rows, err := tx.QueryContext(ctx, SQL, pic, dateFrom, dateTo)
 	if err != nil {
 		return nil, err
 	}

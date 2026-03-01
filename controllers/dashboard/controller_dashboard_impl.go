@@ -2,6 +2,7 @@ package dashboard
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/malikabdulaziz/tmn-backend/helpers"
@@ -17,13 +18,13 @@ func NewControllerDashboardImpl(service servicesDashboard.ServiceDashboardInterf
 	return &ControllerDashboardImpl{service: service}
 }
 
-// GetAcquisitionReport handles GET /dashboard/acquisition?pic=&year=&month=
+// GetAcquisitionReport handles GET /dashboard/acquisition?pic=&date_from=&date_to=
 func (c *ControllerDashboardImpl) GetAcquisitionReport(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-	pic := r.URL.Query().Get("pic")
-	year := r.URL.Query().Get("year")
-	month := r.URL.Query().Get("month")
+	pic := strings.Join(r.URL.Query()["pic"], ",")
+	dateFrom := r.URL.Query().Get("date_from")
+	dateTo := r.URL.Query().Get("date_to")
 
-	report := c.service.GetAcquisitionReport(r.Context(), pic, year, month)
+	report := c.service.GetAcquisitionReport(r.Context(), pic, dateFrom, dateTo)
 
 	helpers.ReturnReponseJSON(w, web.WebResponse{
 		Status: "OK",
@@ -32,13 +33,13 @@ func (c *ControllerDashboardImpl) GetAcquisitionReport(w http.ResponseWriter, r 
 	})
 }
 
-// GetBuildingProposalReport handles GET /dashboard/building-proposal?pic=&year=&month=
+// GetBuildingProposalReport handles GET /dashboard/building-proposal?pic=&date_from=&date_to=
 func (c *ControllerDashboardImpl) GetBuildingProposalReport(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-	pic := r.URL.Query().Get("pic")
-	year := r.URL.Query().Get("year")
-	month := r.URL.Query().Get("month")
+	pic := strings.Join(r.URL.Query()["pic"], ",")
+	dateFrom := r.URL.Query().Get("date_from")
+	dateTo := r.URL.Query().Get("date_to")
 
-	report := c.service.GetBuildingProposalReport(r.Context(), pic, year, month)
+	report := c.service.GetBuildingProposalReport(r.Context(), pic, dateFrom, dateTo)
 
 	helpers.ReturnReponseJSON(w, web.WebResponse{
 		Status: "OK",
@@ -47,13 +48,13 @@ func (c *ControllerDashboardImpl) GetBuildingProposalReport(w http.ResponseWrite
 	})
 }
 
-// GetLOIReport handles GET /dashboard/loi?pic=&year=&month=
+// GetLOIReport handles GET /dashboard/loi?pic=&date_from=&date_to=
 func (c *ControllerDashboardImpl) GetLOIReport(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-	pic := r.URL.Query().Get("pic")
-	year := r.URL.Query().Get("year")
-	month := r.URL.Query().Get("month")
+	pic := strings.Join(r.URL.Query()["pic"], ",")
+	dateFrom := r.URL.Query().Get("date_from")
+	dateTo := r.URL.Query().Get("date_to")
 
-	report := c.service.GetLOIReport(r.Context(), pic, year, month)
+	report := c.service.GetLOIReport(r.Context(), pic, dateFrom, dateTo)
 
 	helpers.ReturnReponseJSON(w, web.WebResponse{
 		Status: "OK",
