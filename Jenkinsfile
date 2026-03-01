@@ -37,11 +37,8 @@ pipeline {
 
                 stage('Unit Test') {
                     steps {
-                        // Requires Go to be installed on the Jenkins agent.
-                        // Alternative: replace the two lines below with:
-                        //   sh "docker run --rm -v \$(pwd)/backend:/app -w /app golang:1.21-alpine go test ./services/... -v"
                         dir('backend') {
-                            sh 'go test ./services/... -v'
+                            sh "docker run --rm -v \$(pwd):/app -w /app golang:1.23-alpine go test ./services/... -v"
                         }
                     }
                 }
