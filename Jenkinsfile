@@ -31,7 +31,7 @@ pipeline {
                 stage('Build Image') {
                     steps {
                         // Dockerfile is at repo root; build context is .
-                        sh "docker build -t ${IMAGE_NAME}:${params.IMAGE_TAG} ."
+                        sh "docker build -t ${IMAGE_NAME}:${params.IMAGE_TAG} . --platform=linux/amd64"
                     }
                 }
 
