@@ -12,4 +12,6 @@ type ServicePOIInterface interface {
 	FindById(ctx context.Context, id int) webPOI.POIResponse
 	Update(ctx context.Context, request webPOI.UpdatePOIRequest, id int) webPOI.POIResponse
 	Delete(ctx context.Context, id int)
+	Import(ctx context.Context, fileBytes []byte, fileType string) []webPOI.POIResponse
+	Export(ctx context.Context, search string) ([]byte, error)
 }

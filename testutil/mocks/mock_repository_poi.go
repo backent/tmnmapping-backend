@@ -23,14 +23,19 @@ func (m *MockRepositoryPOI) CreatePoint(ctx context.Context, tx *sql.Tx, point m
 	return args.Get(0).(models.POIPoint), args.Error(1)
 }
 
-func (m *MockRepositoryPOI) FindAll(ctx context.Context, tx *sql.Tx, take int, skip int, orderBy string, orderDirection string) ([]models.POI, error) {
-	args := m.Called(ctx, tx, take, skip, orderBy, orderDirection)
+func (m *MockRepositoryPOI) FindAll(ctx context.Context, tx *sql.Tx, take int, skip int, orderBy string, orderDirection string, search string) ([]models.POI, error) {
+	args := m.Called(ctx, tx, take, skip, orderBy, orderDirection, search)
 	return args.Get(0).([]models.POI), args.Error(1)
 }
 
-func (m *MockRepositoryPOI) CountAll(ctx context.Context, tx *sql.Tx) (int, error) {
-	args := m.Called(ctx, tx)
+func (m *MockRepositoryPOI) CountAll(ctx context.Context, tx *sql.Tx, search string) (int, error) {
+	args := m.Called(ctx, tx, search)
 	return args.Int(0), args.Error(1)
+}
+
+func (m *MockRepositoryPOI) FindAllFlat(ctx context.Context, tx *sql.Tx, search string) ([]models.POI, error) {
+	args := m.Called(ctx, tx, search)
+	return args.Get(0).([]models.POI), args.Error(1)
 }
 
 func (m *MockRepositoryPOI) FindById(ctx context.Context, tx *sql.Tx, id int) (models.POI, error) {

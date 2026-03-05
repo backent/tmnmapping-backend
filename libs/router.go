@@ -98,6 +98,14 @@ func NewRouter(
 			authMiddleware.RequireAuth(controllersImage.ProxyImage)))
 
 	// POI routes (protected)
+	router.POST("/pois-import",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(controllersPOI.Import)))
+
+	router.GET("/pois-export",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(controllersPOI.Export)))
+
 	router.POST("/pois",
 		loggingMiddleware.Log(
 			authMiddleware.RequireAuth(

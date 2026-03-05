@@ -12,4 +12,6 @@ type ControllerPOIInterface interface {
 	FindById(w http.ResponseWriter, r *http.Request, p httprouter.Params)
 	Update(w http.ResponseWriter, r *http.Request, p httprouter.Params)
 	Delete(w http.ResponseWriter, r *http.Request, p httprouter.Params)
+	Import(w http.ResponseWriter, r *http.Request, p httprouter.Params)
+	Export(w http.ResponseWriter, r *http.Request, p httprouter.Params)
 }

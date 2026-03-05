@@ -33,12 +33,12 @@ func nullIfZeroFloat(f float64) interface{} {
 
 // Create inserts a new POI
 func (repository *RepositoryPOIImpl) Create(ctx context.Context, tx *sql.Tx, poi models.POI) (models.POI, error) {
-	SQL := `INSERT INTO ` + models.POITable + ` (name, color) 
-		VALUES ($1, $2) 
+	SQL := `INSERT INTO ` + models.POITable + ` (brand, color)
+		VALUES ($1, $2)
 		RETURNING id, created_at, updated_at`
 
 	err := tx.QueryRowContext(ctx, SQL,
-		poi.Name,
+		poi.Brand,
 		nullIfEmpty(poi.Color),
 	).Scan(&poi.Id, &poi.CreatedAt, &poi.UpdatedAt)
 
@@ -61,18 +61,23 @@ func (repository *RepositoryPOIImpl) Create(ctx context.Context, tx *sql.Tx, poi
 
 // CreatePoint inserts a new POI point
 func (repository *RepositoryPOIImpl) CreatePoint(ctx context.Context, tx *sql.Tx, point models.POIPoint) (models.POIPoint, error) {
-	SQL := `INSERT INTO ` + models.POIPointTable + ` 
-		(poi_id, place_name, address, latitude, longitude, location) 
-		VALUES ($1, $2, $3, $4, $5, 
-		CASE WHEN $4::DOUBLE PRECISION IS NOT NULL AND $5::DOUBLE PRECISION IS NOT NULL AND ($4::DOUBLE PRECISION) != 0 AND ($5::DOUBLE PRECISION) != 0 THEN ST_SetSRID(ST_MakePoint($5::DOUBLE PRECISION, $4::DOUBLE PRECISION), 4326)::geography ELSE NULL END) 
+	SQL := `INSERT INTO ` + models.POIPointTable + `
+		(poi_id, poi_name, address, latitude, longitude, location, category, sub_category, mother_brand, branch)
+		VALUES ($1, $2, $3, $4, $5,
+		CASE WHEN $4::DOUBLE PRECISION IS NOT NULL AND $5::DOUBLE PRECISION IS NOT NULL AND ($4::DOUBLE PRECISION) != 0 AND ($5::DOUBLE PRECISION) != 0 THEN ST_SetSRID(ST_MakePoint($5::DOUBLE PRECISION, $4::DOUBLE PRECISION), 4326)::geography ELSE NULL END,
+		$6, $7, $8, $9)
 		RETURNING id, created_at`
 
 	err := tx.QueryRowContext(ctx, SQL,
 		point.POIId,
-		nullIfEmpty(point.PlaceName),
+		nullIfEmpty(point.POIName),
 		nullIfEmpty(point.Address),
 		nullIfZeroFloat(point.Latitude),
 		nullIfZeroFloat(point.Longitude),
+		nullIfEmpty(point.Category),
+		nullIfEmpty(point.SubCategory),
+		nullIfEmpty(point.MotherBrand),
+		nullIfEmpty(point.Branch),
 	).Scan(&point.Id, &point.CreatedAt)
 
 	if err != nil {
@@ -82,14 +87,25 @@ func (repository *RepositoryPOIImpl) CreatePoint(ctx context.Context, tx *sql.Tx
 	return point, nil
 }
 
-// FindAll retrieves all POIs with their points, with pagination and ordering
-func (repository *RepositoryPOIImpl) FindAll(ctx context.Context, tx *sql.Tx, take int, skip int, orderBy string, orderDirection string) ([]models.POI, error) {
-	SQL := `SELECT id, name, color, created_at, updated_at 
-		FROM ` + models.POITable + ` 
-		ORDER BY ` + orderBy + ` ` + orderDirection + ` 
-		LIMIT $1 OFFSET $2`
+// FindAll retrieves all POIs with their points, with pagination, ordering, and optional search
+func (repository *RepositoryPOIImpl) FindAll(ctx context.Context, tx *sql.Tx, take int, skip int, orderBy string, orderDirection string, search string) ([]models.POI, error) {
+	var args []interface{}
+	paramIdx := 1
 
-	rows, err := tx.QueryContext(ctx, SQL, take, skip)
+	SQL := `SELECT id, brand, color, created_at, updated_at
+		FROM ` + models.POITable
+
+	if search != "" {
+		SQL += ` WHERE brand ILIKE '%' || $` + strconv.Itoa(paramIdx) + ` || '%'`
+		args = append(args, search)
+		paramIdx++
+	}
+
+	SQL += ` ORDER BY ` + orderBy + ` ` + orderDirection
+	SQL += ` LIMIT $` + strconv.Itoa(paramIdx) + ` OFFSET $` + strconv.Itoa(paramIdx+1)
+	args = append(args, take, skip)
+
+	rows, err := tx.QueryContext(ctx, SQL, args...)
 	if err != nil {
 		return []models.POI{}, err
 	}
@@ -101,7 +117,7 @@ func (repository *RepositoryPOIImpl) FindAll(ctx context.Context, tx *sql.Tx, ta
 		nullable := models.NullAblePOI{}
 		err := rows.Scan(
 			&nullable.Id,
-			&nullable.Name,
+			&nullable.Brand,
 			&nullable.Color,
 			&nullable.CreatedAt,
 			&nullable.UpdatedAt,
@@ -115,7 +131,6 @@ func (repository *RepositoryPOIImpl) FindAll(ctx context.Context, tx *sql.Tx, ta
 		pois = append(pois, poi)
 	}
 
-	// Check for errors from iterating over rows
 	if err := rows.Err(); err != nil {
 		return []models.POI{}, err
 	}
@@ -127,7 +142,6 @@ func (repository *RepositoryPOIImpl) FindAll(ctx context.Context, tx *sql.Tx, ta
 			return []models.POI{}, err
 		}
 
-		// Assign points to their respective POIs
 		for i := range pois {
 			if points, exists := pointsMap[pois[i].Id]; exists {
 				pois[i].Points = points
@@ -140,12 +154,18 @@ func (repository *RepositoryPOIImpl) FindAll(ctx context.Context, tx *sql.Tx, ta
 	return pois, nil
 }
 
-// CountAll returns the total count of POIs
-func (repository *RepositoryPOIImpl) CountAll(ctx context.Context, tx *sql.Tx) (int, error) {
+// CountAll returns the total count of POIs, with optional search filter
+func (repository *RepositoryPOIImpl) CountAll(ctx context.Context, tx *sql.Tx, search string) (int, error) {
 	SQL := `SELECT COUNT(*) FROM ` + models.POITable
 
+	var args []interface{}
+	if search != "" {
+		SQL += ` WHERE brand ILIKE '%' || $1 || '%'`
+		args = append(args, search)
+	}
+
 	var total int
-	err := tx.QueryRowContext(ctx, SQL).Scan(&total)
+	err := tx.QueryRowContext(ctx, SQL, args...).Scan(&total)
 	if err != nil {
 		return 0, err
 	}
@@ -153,10 +173,71 @@ func (repository *RepositoryPOIImpl) CountAll(ctx context.Context, tx *sql.Tx) (
 	return total, nil
 }
 
+// FindAllFlat retrieves all POIs with their points, no pagination, with optional search
+func (repository *RepositoryPOIImpl) FindAllFlat(ctx context.Context, tx *sql.Tx, search string) ([]models.POI, error) {
+	SQL := `SELECT id, brand, color, created_at, updated_at
+		FROM ` + models.POITable
+
+	var args []interface{}
+	if search != "" {
+		SQL += ` WHERE brand ILIKE '%' || $1 || '%'`
+		args = append(args, search)
+	}
+
+	SQL += ` ORDER BY brand ASC`
+
+	rows, err := tx.QueryContext(ctx, SQL, args...)
+	if err != nil {
+		return []models.POI{}, err
+	}
+	defer rows.Close()
+
+	var pois []models.POI
+	var poiIds []int
+	for rows.Next() {
+		nullable := models.NullAblePOI{}
+		err := rows.Scan(
+			&nullable.Id,
+			&nullable.Brand,
+			&nullable.Color,
+			&nullable.CreatedAt,
+			&nullable.UpdatedAt,
+		)
+		if err != nil {
+			return []models.POI{}, err
+		}
+
+		poi := models.NullAblePOIToPOI(nullable)
+		poiIds = append(poiIds, poi.Id)
+		pois = append(pois, poi)
+	}
+
+	if err := rows.Err(); err != nil {
+		return []models.POI{}, err
+	}
+
+	if len(poiIds) > 0 {
+		pointsMap, err := repository.findPointsByPOIIds(ctx, tx, poiIds)
+		if err != nil {
+			return []models.POI{}, err
+		}
+
+		for i := range pois {
+			if points, exists := pointsMap[pois[i].Id]; exists {
+				pois[i].Points = points
+			} else {
+				pois[i].Points = []models.POIPoint{}
+			}
+		}
+	}
+
+	return pois, nil
+}
+
 // FindById retrieves a POI by ID with its points
 func (repository *RepositoryPOIImpl) FindById(ctx context.Context, tx *sql.Tx, id int) (models.POI, error) {
-	SQL := `SELECT id, name, color, created_at, updated_at 
-		FROM ` + models.POITable + ` 
+	SQL := `SELECT id, brand, color, created_at, updated_at
+		FROM ` + models.POITable + `
 		WHERE id = $1`
 
 	row := tx.QueryRowContext(ctx, SQL, id)
@@ -164,7 +245,7 @@ func (repository *RepositoryPOIImpl) FindById(ctx context.Context, tx *sql.Tx, i
 	nullable := models.NullAblePOI{}
 	err := row.Scan(
 		&nullable.Id,
-		&nullable.Name,
+		&nullable.Brand,
 		&nullable.Color,
 		&nullable.CreatedAt,
 		&nullable.UpdatedAt,
@@ -188,9 +269,9 @@ func (repository *RepositoryPOIImpl) FindById(ctx context.Context, tx *sql.Tx, i
 
 // findPointsByPOIId is a helper to load points for a POI
 func (repository *RepositoryPOIImpl) findPointsByPOIId(ctx context.Context, tx *sql.Tx, poiId int) ([]models.POIPoint, error) {
-	SQL := `SELECT id, poi_id, place_name, address, latitude, longitude, created_at 
-		FROM ` + models.POIPointTable + ` 
-		WHERE poi_id = $1 
+	SQL := `SELECT id, poi_id, poi_name, address, latitude, longitude, category, sub_category, mother_brand, branch, created_at
+		FROM ` + models.POIPointTable + `
+		WHERE poi_id = $1
 		ORDER BY created_at ASC`
 
 	rows, err := tx.QueryContext(ctx, SQL, poiId)
@@ -205,10 +286,14 @@ func (repository *RepositoryPOIImpl) findPointsByPOIId(ctx context.Context, tx *
 		err := rows.Scan(
 			&nullable.Id,
 			&nullable.POIId,
-			&nullable.PlaceName,
+			&nullable.POIName,
 			&nullable.Address,
 			&nullable.Latitude,
 			&nullable.Longitude,
+			&nullable.Category,
+			&nullable.SubCategory,
+			&nullable.MotherBrand,
+			&nullable.Branch,
 			&nullable.CreatedAt,
 		)
 		if err != nil {
@@ -218,7 +303,6 @@ func (repository *RepositoryPOIImpl) findPointsByPOIId(ctx context.Context, tx *
 		points = append(points, models.NullAblePOIPointToPOIPoint(nullable))
 	}
 
-	// Check for errors from iterating over rows
 	if err := rows.Err(); err != nil {
 		return []models.POIPoint{}, err
 	}
@@ -240,9 +324,9 @@ func (repository *RepositoryPOIImpl) findPointsByPOIIds(ctx context.Context, tx 
 		args[i] = id
 	}
 
-	SQL := `SELECT id, poi_id, place_name, address, latitude, longitude, created_at 
-		FROM ` + models.POIPointTable + ` 
-		WHERE poi_id IN (` + strings.Join(placeholders, ",") + `) 
+	SQL := `SELECT id, poi_id, poi_name, address, latitude, longitude, category, sub_category, mother_brand, branch, created_at
+		FROM ` + models.POIPointTable + `
+		WHERE poi_id IN (` + strings.Join(placeholders, ",") + `)
 		ORDER BY poi_id, created_at ASC`
 
 	rows, err := tx.QueryContext(ctx, SQL, args...)
@@ -257,10 +341,14 @@ func (repository *RepositoryPOIImpl) findPointsByPOIIds(ctx context.Context, tx 
 		err := rows.Scan(
 			&nullable.Id,
 			&nullable.POIId,
-			&nullable.PlaceName,
+			&nullable.POIName,
 			&nullable.Address,
 			&nullable.Latitude,
 			&nullable.Longitude,
+			&nullable.Category,
+			&nullable.SubCategory,
+			&nullable.MotherBrand,
+			&nullable.Branch,
 			&nullable.CreatedAt,
 		)
 		if err != nil {
@@ -271,7 +359,6 @@ func (repository *RepositoryPOIImpl) findPointsByPOIIds(ctx context.Context, tx 
 		pointsMap[int(nullable.POIId.Int64)] = append(pointsMap[int(nullable.POIId.Int64)], point)
 	}
 
-	// Check for errors from iterating over rows
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -281,14 +368,13 @@ func (repository *RepositoryPOIImpl) findPointsByPOIIds(ctx context.Context, tx 
 
 // Update updates a POI and replaces all its points
 func (repository *RepositoryPOIImpl) Update(ctx context.Context, tx *sql.Tx, poi models.POI) (models.POI, error) {
-	// Update POI
-	SQL := `UPDATE ` + models.POITable + ` 
-		SET name = $1, color = $2, updated_at = $3 
-		WHERE id = $4 
+	SQL := `UPDATE ` + models.POITable + `
+		SET brand = $1, color = $2, updated_at = $3
+		WHERE id = $4
 		RETURNING updated_at`
 
 	err := tx.QueryRowContext(ctx, SQL,
-		poi.Name,
+		poi.Brand,
 		nullIfEmpty(poi.Color),
 		time.Now(),
 		poi.Id,

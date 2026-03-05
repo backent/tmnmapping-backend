@@ -5,20 +5,24 @@ import (
 )
 
 type POIPointRequest struct {
-	PlaceName string  `json:"place_name" validate:"required"`
-	Address   string  `json:"address" validate:"required"`
-	Latitude  float64 `json:"latitude" validate:"required"`
-	Longitude float64 `json:"longitude" validate:"required"`
+	POIName     string  `json:"poi_name" validate:"required"`
+	Address     string  `json:"address" validate:"required"`
+	Latitude    float64 `json:"latitude" validate:"required"`
+	Longitude   float64 `json:"longitude" validate:"required"`
+	Category    string  `json:"category"`
+	SubCategory string  `json:"sub_category"`
+	MotherBrand string  `json:"mother_brand"`
+	Branch      string  `json:"branch"`
 }
 
 type CreatePOIRequest struct {
-	Name   string           `json:"name" validate:"required"`
+	Brand  string           `json:"brand" validate:"required"`
 	Color  string           `json:"color" validate:"required"`
 	Points []POIPointRequest `json:"points" validate:"required,min=1,dive"`
 }
 
 type UpdatePOIRequest struct {
-	Name   string           `json:"name" validate:"required"`
+	Brand  string           `json:"brand" validate:"required"`
 	Color  string           `json:"color" validate:"required"`
 	Points []POIPointRequest `json:"points" validate:"required,min=1,dive"`
 }
@@ -28,6 +32,7 @@ type POIRequestFindAll struct {
 	skip           int
 	orderBy        string
 	orderDirection string
+	search         string
 }
 
 func (r *POIRequestFindAll) SetSkip(skip int) {
@@ -68,4 +73,12 @@ func (r *POIRequestFindAll) GetOrderDirection() string {
 		return "DESC"
 	}
 	return r.orderDirection
+}
+
+func (r *POIRequestFindAll) SetSearch(search string) {
+	r.search = search
+}
+
+func (r *POIRequestFindAll) GetSearch() string {
+	return r.search
 }
