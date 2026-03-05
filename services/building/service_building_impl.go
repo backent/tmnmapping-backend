@@ -639,17 +639,21 @@ func (service *ServiceBuildingImpl) FindAllForMapping(ctx context.Context, reque
 	// When polygon is not set, use POI / lat-lng / radius
 	if len(polygonPoints) == 0 {
 		if poiIdStr := request.GetPOIId(); poiIdStr != "" {
-			poiId, err := strconv.Atoi(poiIdStr)
-			if err == nil && poiId > 0 {
+			for _, idStr := range strings.Split(poiIdStr, ",") {
+				idStr = strings.TrimSpace(idStr)
+				poiId, err := strconv.Atoi(idStr)
+				if err != nil || poiId <= 0 {
+					continue
+				}
 				poi, err := service.RepositoryPOIInterface.FindById(ctx, tx, poiId)
-				if err == nil && len(poi.Points) > 0 {
-					poiPoints = make([]struct{ Lat float64; Lng float64 }, len(poi.Points))
-					for i, point := range poi.Points {
-						poiPoints[i] = struct{ Lat float64; Lng float64 }{
-							Lat: point.Latitude,
-							Lng: point.Longitude,
-						}
-					}
+				if err != nil || len(poi.Points) == 0 {
+					continue
+				}
+				for _, point := range poi.Points {
+					poiPoints = append(poiPoints, struct{ Lat float64; Lng float64 }{
+						Lat: point.Latitude,
+						Lng: point.Longitude,
+					})
 				}
 			}
 		}
