@@ -1,14 +1,18 @@
 package mocks
 
-import "github.com/stretchr/testify/mock"
+import (
+	"time"
+
+	"github.com/stretchr/testify/mock"
+)
 
 // MockRepositoryAuth implements repositories/auth.RepositoryAuthInterface
 type MockRepositoryAuth struct {
 	mock.Mock
 }
 
-func (m *MockRepositoryAuth) Issue(payload string) (string, error) {
-	args := m.Called(payload)
+func (m *MockRepositoryAuth) Issue(payload string, duration time.Duration) (string, error) {
+	args := m.Called(payload, duration)
 	return args.String(0), args.Error(1)
 }
 

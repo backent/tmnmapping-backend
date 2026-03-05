@@ -3,7 +3,9 @@ package auth
 import (
 	"context"
 	"database/sql"
+	"os"
 	"strconv"
+	"time"
 
 	"github.com/malikabdulaziz/tmn-backend/exceptions"
 	"github.com/malikabdulaziz/tmn-backend/helpers"
@@ -12,26 +14,34 @@ import (
 	webAuth "github.com/malikabdulaziz/tmn-backend/web/auth"
 )
 
+const rememberMeDuration = 48 * time.Hour
+
 type ServiceAuthImpl struct {
 	*sql.DB
 	repositoriesAuth.RepositoryAuthInterface
 	repositoriesUser.RepositoryUserInterface
+	defaultDuration time.Duration
 }
 
 func NewServiceAuthImpl(db *sql.DB, repositoriesAuth repositoriesAuth.RepositoryAuthInterface, repositoriesUser repositoriesUser.RepositoryUserInterface) ServiceAuthInterface {
+	tokenLifeTime, err := strconv.Atoi(os.Getenv("APP_TOKEN_EXPIRE_IN_SEC"))
+	if err != nil {
+		tokenLifeTime = 3600 // default 1 hour
+	}
+
 	return &ServiceAuthImpl{
 		DB:                      db,
 		RepositoryAuthInterface: repositoriesAuth,
 		RepositoryUserInterface: repositoriesUser,
+		defaultDuration:         time.Second * time.Duration(tokenLifeTime),
 	}
 }
 
-func (implementation *ServiceAuthImpl) Login(ctx context.Context, username, password string) (webAuth.LoginResponse, string) {
+func (implementation *ServiceAuthImpl) Login(ctx context.Context, username, password string, remember bool) (webAuth.LoginResponse, string, int) {
 	tx, err := implementation.DB.Begin()
 	helpers.PanicIfError(err)
 	defer helpers.CommitOrRollback(tx)
 
-	// Pure business logic - find user and verify password
 	user, err := implementation.RepositoryUserInterface.FindByUsername(ctx, tx, username)
 	if err != nil {
 		panic(exceptions.NewBadRequestError("invalid credentials"))
@@ -41,12 +51,16 @@ func (implementation *ServiceAuthImpl) Login(ctx context.Context, username, pass
 		panic(exceptions.NewBadRequestError("invalid credentials"))
 	}
 
-	// Generate JWT token
+	// Choose token duration: 2 days when remember=true, default from config otherwise
+	duration := implementation.defaultDuration
+	if remember {
+		duration = rememberMeDuration
+	}
+
 	stringUserId := strconv.Itoa(user.Id)
-	token, err := implementation.RepositoryAuthInterface.Issue(stringUserId)
+	token, err := implementation.RepositoryAuthInterface.Issue(stringUserId, duration)
 	helpers.PanicIfError(err)
 
-	// Return user data and token separately
 	return webAuth.LoginResponse{
 		User: webAuth.UserResponse{
 			Id:       user.Id,
@@ -54,6 +68,6 @@ func (implementation *ServiceAuthImpl) Login(ctx context.Context, username, pass
 			Name:     user.Name,
 			Role:     user.Role,
 		},
-	}, token
+	}, token, int(duration.Seconds())
 }
 

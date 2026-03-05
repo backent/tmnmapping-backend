@@ -32,10 +32,10 @@ func (implementation *ControllerAuthImpl) Login(w http.ResponseWriter, r *http.R
 	// Get validated request from context (set by middleware)
 	loginReq := r.Context().Value(helpers.ContextKey("loginRequest")).(webAuth.LoginRequest)
 
-	// Call service with validated data - now returns response and token
-	response, token := implementation.ServiceAuthInterface.Login(r.Context(), loginReq.Username, loginReq.Password)
+	// Call service with validated data
+	response, token, maxAge := implementation.ServiceAuthInterface.Login(r.Context(), loginReq.Username, loginReq.Password, loginReq.Remember)
 
-	// Set HTTP-only cookie with JWT token
+	// Set HTTP-only cookie; MaxAge matches token expiry (2 days if remember, default otherwise)
 	http.SetCookie(w, &http.Cookie{
 		Name:     "auth_token",
 		Value:    token,
@@ -43,7 +43,7 @@ func (implementation *ControllerAuthImpl) Login(w http.ResponseWriter, r *http.R
 		HttpOnly: true,
 		Secure:   false, // Set to true in production with HTTPS
 		SameSite: http.SameSiteLaxMode,
-		MaxAge:   3600, // 1 hour - should match token expiry
+		MaxAge:   maxAge,
 	})
 
 	webResponse := web.WebResponse{

@@ -11,25 +11,23 @@ import (
 )
 
 type RepositoryAuthJWTImpl struct {
-	secretKeys    []byte
-	tokenLifeTime int
+	secretKeys      []byte
+	defaultDuration time.Duration
 }
 
 func NewRepositoryAuthJWTImpl() RepositoryAuthInterface {
-
 	tokenLifeTime, err := strconv.Atoi(os.Getenv("APP_TOKEN_EXPIRE_IN_SEC"))
 	helpers.PanicIfError(err)
 
 	return &RepositoryAuthJWTImpl{
-		secretKeys:    []byte(os.Getenv("APP_SECRET_KEY")),
-		tokenLifeTime: tokenLifeTime,
+		secretKeys:      []byte(os.Getenv("APP_SECRET_KEY")),
+		defaultDuration: time.Second * time.Duration(tokenLifeTime),
 	}
 }
 
-func (implementation *RepositoryAuthJWTImpl) Issue(payload string) (string, error) {
-	// Create the Claims
+func (implementation *RepositoryAuthJWTImpl) Issue(payload string, duration time.Duration) (string, error) {
 	claims := &jwt.RegisteredClaims{
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Second * time.Duration(implementation.tokenLifeTime))),
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(duration)),
 		Issuer:    payload,
 	}
 

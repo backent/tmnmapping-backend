@@ -40,17 +40,18 @@ func TestLogin_HappyPath(t *testing.T) {
 	repoUser.On("FindByUsername", mock.Anything, mock.AnythingOfType("*sql.Tx"), "admin").
 		Return(user, nil)
 
-	// Issue is called with the string representation of the user ID.
-	repoAuth.On("Issue", "42").
+	// Issue is called with the string representation of the user ID and the token duration.
+	repoAuth.On("Issue", "42", mock.AnythingOfType("time.Duration")).
 		Return("jwt-token-value", nil)
 
-	response, token := svc.Login(context.Background(), "admin", "secret123")
+	response, token, maxAge := svc.Login(context.Background(), "admin", "secret123", false)
 
 	assert.Equal(t, 42, response.User.Id)
 	assert.Equal(t, "admin", response.User.Username)
 	assert.Equal(t, "Test User", response.User.Name)
 	assert.Equal(t, "admin", response.User.Role)
 	assert.Equal(t, "jwt-token-value", token)
+	assert.Greater(t, maxAge, 0)
 
 	repoUser.AssertExpectations(t)
 	repoAuth.AssertExpectations(t)
@@ -73,7 +74,7 @@ func TestLogin_UserNotFound(t *testing.T) {
 
 	assert.PanicsWithValue(t,
 		exceptions.BadRequestError{Error: "invalid credentials"},
-		func() { svc.Login(context.Background(), "nobody", "anypassword") },
+		func() { svc.Login(context.Background(), "nobody", "anypassword", false) },
 	)
 
 	repoUser.AssertExpectations(t)
@@ -98,7 +99,7 @@ func TestLogin_WrongPassword(t *testing.T) {
 
 	assert.PanicsWithValue(t,
 		exceptions.BadRequestError{Error: "invalid credentials"},
-		func() { svc.Login(context.Background(), "admin", "wrongpassword") },
+		func() { svc.Login(context.Background(), "admin", "wrongpassword", false) },
 	)
 
 	repoUser.AssertExpectations(t)
@@ -120,11 +121,11 @@ func TestLogin_TokenIssueFails(t *testing.T) {
 	repoUser.On("FindByUsername", mock.Anything, mock.AnythingOfType("*sql.Tx"), "admin").
 		Return(user, nil)
 
-	repoAuth.On("Issue", "42").
+	repoAuth.On("Issue", "42", mock.AnythingOfType("time.Duration")).
 		Return("", errors.New("signing key unavailable"))
 
 	assert.Panics(t, func() {
-		svc.Login(context.Background(), "admin", "secret")
+		svc.Login(context.Background(), "admin", "secret", false)
 	})
 
 	repoUser.AssertExpectations(t)
