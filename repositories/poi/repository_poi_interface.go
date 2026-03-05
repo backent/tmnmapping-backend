@@ -14,6 +14,7 @@ type RepositoryPOIInterface interface {
 	CountAll(ctx context.Context, tx *sql.Tx, search string) (int, error)
 	FindAllFlat(ctx context.Context, tx *sql.Tx, search string) ([]models.POI, error)
 	FindById(ctx context.Context, tx *sql.Tx, id int) (models.POI, error)
+	FindByBrands(ctx context.Context, tx *sql.Tx, brands []string) ([]models.POI, error)
 	Update(ctx context.Context, tx *sql.Tx, poi models.POI) (models.POI, error)
 	DeletePointsByPOIId(ctx context.Context, tx *sql.Tx, poiId int) error
 	Delete(ctx context.Context, tx *sql.Tx, id int) error

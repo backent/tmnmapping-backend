@@ -418,3 +418,37 @@ func (repository *RepositoryPOIImpl) Delete(ctx context.Context, tx *sql.Tx, id 
 	_, err := tx.ExecContext(ctx, SQL, id)
 	return err
 }
+
+// FindByBrands returns existing POIs whose brand matches any of the given brand names
+func (repository *RepositoryPOIImpl) FindByBrands(ctx context.Context, tx *sql.Tx, brands []string) ([]models.POI, error) {
+	if len(brands) == 0 {
+		return nil, nil
+	}
+
+	placeholders := make([]string, len(brands))
+	args := make([]interface{}, len(brands))
+	for i, b := range brands {
+		placeholders[i] = "$" + strconv.Itoa(i+1)
+		args[i] = b
+	}
+
+	SQL := `SELECT id, brand, color, created_at, updated_at FROM ` + models.POITable +
+		` WHERE brand IN (` + strings.Join(placeholders, ",") + `)`
+
+	rows, err := tx.QueryContext(ctx, SQL, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var pois []models.POI
+	for rows.Next() {
+		var poi models.POI
+		var createdAt, updatedAt time.Time
+		if err := rows.Scan(&poi.Id, &poi.Brand, &poi.Color, &createdAt, &updatedAt); err != nil {
+			return nil, err
+		}
+		pois = append(pois, poi)
+	}
+	return pois, rows.Err()
+}

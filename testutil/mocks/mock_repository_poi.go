@@ -57,3 +57,8 @@ func (m *MockRepositoryPOI) Delete(ctx context.Context, tx *sql.Tx, id int) erro
 	args := m.Called(ctx, tx, id)
 	return args.Error(0)
 }
+
+func (m *MockRepositoryPOI) FindByBrands(ctx context.Context, tx *sql.Tx, brands []string) ([]models.POI, error) {
+	args := m.Called(ctx, tx, brands)
+	return args.Get(0).([]models.POI), args.Error(1)
+}

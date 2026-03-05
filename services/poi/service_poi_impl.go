@@ -229,7 +229,17 @@ func (service *ServicePOIImpl) Import(ctx context.Context, fileBytes []byte, fil
 		groups[brandVal].points = append(groups[brandVal].points, point)
 	}
 
-	// Create POIs
+	// Replace: delete any existing POIs whose brand matches the imported brands
+	existing, err := service.RepositoryPOIInterface.FindByBrands(ctx, tx, brandOrder)
+	helpers.PanicIfError(err)
+	for _, existingPOI := range existing {
+		err = service.RepositoryPOIInterface.DeletePointsByPOIId(ctx, tx, existingPOI.Id)
+		helpers.PanicIfError(err)
+		err = service.RepositoryPOIInterface.Delete(ctx, tx, existingPOI.Id)
+		helpers.PanicIfError(err)
+	}
+
+	// Create fresh POIs from the imported data
 	var responses []webPOI.POIResponse
 	for i, brandKey := range brandOrder {
 		group := groups[brandKey]
