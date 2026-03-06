@@ -50,7 +50,48 @@ pipeline {
             }
         }
 
-        // ── 3. Push Image ─────────────────────────────────────────────────────
+        // ── 3. Integration Test ───────────────────────────────────────────────
+        stage('Integration Test') {
+            steps {
+                // Start the PostGIS container, create the tmn_test database,
+                // run all integration tests, then always tear down the container.
+                sh '''
+                    docker compose -f docker-compose.postgres.yml up -d
+
+                    echo "Waiting for PostgreSQL to be ready..."
+                    for i in $(seq 1 30); do
+                        docker compose -f docker-compose.postgres.yml exec -T postgres \
+                            pg_isready -U postgres && break
+                        sleep 2
+                    done
+
+                    docker compose -f docker-compose.postgres.yml exec -T postgres \
+                        psql -U postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'tmn_test'" | grep -q 1 || \
+                        docker compose -f docker-compose.postgres.yml exec -T postgres \
+                            psql -U postgres -c "CREATE DATABASE tmn_test;"
+
+                    docker run --rm \
+                        --network host \
+                        -v "$(pwd):/app" \
+                        -w /app \
+                        -e POSTGRES_HOST=localhost \
+                        -e POSTGRES_PORT=5432 \
+                        -e POSTGRES_USER=postgres \
+                        -e POSTGRES_PASSWORD=adminlocal \
+                        -e POSTGRES_DATABASE=tmn_test \
+                        -e POSTGRES_SSLMODE=disable \
+                        golang:1.23-alpine \
+                        sh -c "go mod download && go test -tags integration -timeout 180s ./integration/..."
+                '''
+            }
+            post {
+                always {
+                    sh 'docker compose -f docker-compose.postgres.yml down || true'
+                }
+            }
+        }
+
+        // ── 4. Push Image ─────────────────────────────────────────────────────
         stage('Push Image') {
             steps {
                 // Credential ID: "dockerhub-credentials"
@@ -68,7 +109,7 @@ pipeline {
             }
         }
 
-        // ── 4. Deploy to Server ───────────────────────────────────────────────
+        // ── 5. Deploy to Server ───────────────────────────────────────────────
         stage('Deploy to Server') {
             steps {
                 // Credential ID: "tmn-app-ssh-key"
