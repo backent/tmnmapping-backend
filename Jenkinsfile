@@ -118,7 +118,7 @@ pipeline {
                 // Username     : GitHub username
                 // Password     : GitHub personal access token (with repo + write:packages scope)
                 withCredentials([usernamePassword(
-                    credentialsId: 'github-cred',
+                    credentialsId: 'tmn-mapping-github-cred',
                     usernameVariable: 'GIT_USER',
                     passwordVariable: 'GIT_TOKEN'
                 )]) {
