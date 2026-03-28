@@ -158,6 +158,79 @@ func (r *RepositorySalesPackageImpl) Delete(ctx context.Context, tx *sql.Tx, id 
 	return err
 }
 
+// FindAllFlat returns all sales packages with their buildings, optionally filtered by name search (no pagination)
+func (r *RepositorySalesPackageImpl) FindAllFlat(ctx context.Context, tx *sql.Tx, search string) ([]models.SalesPackage, error) {
+	var rows *sql.Rows
+	var err error
+
+	if search != "" {
+		SQL := `SELECT id, name, created_at, updated_at FROM ` + models.SalesPackageTable + ` WHERE name ILIKE $1 ORDER BY name`
+		rows, err = tx.QueryContext(ctx, SQL, "%"+search+"%")
+	} else {
+		SQL := `SELECT id, name, created_at, updated_at FROM ` + models.SalesPackageTable + ` ORDER BY name`
+		rows, err = tx.QueryContext(ctx, SQL)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var packages []models.SalesPackage
+	var ids []int
+	for rows.Next() {
+		var n models.NullAbleSalesPackage
+		if err := rows.Scan(&n.Id, &n.Name, &n.CreatedAt, &n.UpdatedAt); err != nil {
+			return nil, err
+		}
+		pkg := models.NullAbleSalesPackageToSalesPackage(n)
+		ids = append(ids, pkg.Id)
+		packages = append(packages, pkg)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return packages, nil
+	}
+	refsMap, err := r.findBuildingRefsBySalesPackageIds(ctx, tx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for i := range packages {
+		packages[i].Buildings = refsMap[packages[i].Id]
+	}
+	return packages, nil
+}
+
+// FindByNames returns sales packages whose name matches any in the given list
+func (r *RepositorySalesPackageImpl) FindByNames(ctx context.Context, tx *sql.Tx, names []string) ([]models.SalesPackage, error) {
+	if len(names) == 0 {
+		return nil, nil
+	}
+	placeholders := make([]string, len(names))
+	args := make([]interface{}, len(names))
+	for i, name := range names {
+		placeholders[i] = "$" + strconv.Itoa(i+1)
+		args[i] = name
+	}
+	SQL := `SELECT id, name, created_at, updated_at FROM ` + models.SalesPackageTable + ` WHERE name IN (` + strings.Join(placeholders, ",") + `)`
+	rows, err := tx.QueryContext(ctx, SQL, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var packages []models.SalesPackage
+	for rows.Next() {
+		var n models.NullAbleSalesPackage
+		if err := rows.Scan(&n.Id, &n.Name, &n.CreatedAt, &n.UpdatedAt); err != nil {
+			return nil, err
+		}
+		packages = append(packages, models.NullAbleSalesPackageToSalesPackage(n))
+	}
+	return packages, rows.Err()
+}
+
 // findBuildingRefsBySalesPackageId returns building id+name for a package
 func (r *RepositorySalesPackageImpl) findBuildingRefsBySalesPackageId(ctx context.Context, tx *sql.Tx, salesPackageId int) ([]models.BuildingRef, error) {
 	SQL := `SELECT b.id, b.name FROM ` + models.BuildingTable + ` b

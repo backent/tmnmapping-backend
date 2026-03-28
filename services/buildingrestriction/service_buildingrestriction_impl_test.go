@@ -274,3 +274,90 @@ func TestRestrictionDelete_NotFound(t *testing.T) {
 	repoRestriction.AssertExpectations(t)
 	assert.NoError(t, sqlMock.ExpectationsWereMet())
 }
+
+// --- Export ---
+
+func TestRestrictionExport_HappyPath(t *testing.T) {
+	db, sqlMock := testutil.NewMockDB(t)
+	repoRestriction := &mocks.MockRepositoryBuildingRestriction{}
+	repoBuilding := &mocks.MockRepositoryBuilding{}
+	svc := newRestrictionService(db, repoRestriction, repoBuilding)
+
+	restrictions := []models.BuildingRestriction{
+		{Id: 1, Name: "Zone A", Buildings: []models.BuildingRef{{Id: 10, Name: "Tower A"}}},
+		{Id: 2, Name: "Zone B", Buildings: []models.BuildingRef{{Id: 20, Name: "Tower B"}, {Id: 30, Name: "Tower C"}}},
+	}
+
+	sqlMock.ExpectBegin()
+	sqlMock.ExpectCommit()
+
+	repoRestriction.On("FindAllFlat", mock.Anything, mock.AnythingOfType("*sql.Tx"), "").
+		Return(restrictions, nil)
+
+	excelBytes, err := svc.Export(context.Background(), "")
+
+	assert.NoError(t, err)
+	assert.NotEmpty(t, excelBytes)
+	assert.Equal(t, byte(0x50), excelBytes[0])
+	assert.Equal(t, byte(0x4B), excelBytes[1])
+
+	repoRestriction.AssertExpectations(t)
+	assert.NoError(t, sqlMock.ExpectationsWereMet())
+}
+
+// --- Import ---
+
+func TestRestrictionImport_UnsupportedFileType(t *testing.T) {
+	db, sqlMock := testutil.NewMockDB(t)
+	repoRestriction := &mocks.MockRepositoryBuildingRestriction{}
+	repoBuilding := &mocks.MockRepositoryBuilding{}
+	svc := newRestrictionService(db, repoRestriction, repoBuilding)
+
+	sqlMock.ExpectBegin()
+	sqlMock.ExpectRollback()
+
+	assert.PanicsWithValue(t,
+		exceptions.BadRequestError{Error: "Unsupported file type. Use xlsx or csv."},
+		func() { svc.Import(context.Background(), []byte("data"), "txt") },
+	)
+
+	assert.NoError(t, sqlMock.ExpectationsWereMet())
+}
+
+func TestRestrictionImport_CSV_HappyPath(t *testing.T) {
+	db, sqlMock := testutil.NewMockDB(t)
+	repoRestriction := &mocks.MockRepositoryBuildingRestriction{}
+	repoBuilding := &mocks.MockRepositoryBuilding{}
+	svc := newRestrictionService(db, repoRestriction, repoBuilding)
+
+	csvData := "Name,Building Name\nZone X,Tower A\n"
+
+	sqlMock.ExpectBegin()
+	sqlMock.ExpectCommit()
+
+	repoBuilding.On("FindAllDropdown", mock.Anything, mock.AnythingOfType("*sql.Tx")).
+		Return([]models.Building{testutil.NewBuilding(10, "Tower A")}, nil)
+
+	repoRestriction.On("FindByNames", mock.Anything, mock.AnythingOfType("*sql.Tx"), []string{"Zone X"}).
+		Return([]models.BuildingRestriction{}, nil)
+
+	created := models.BuildingRestriction{
+		Id:        1,
+		Name:      "Zone X",
+		Buildings: []models.BuildingRef{{Id: 10, Name: "Tower A"}},
+	}
+	repoRestriction.On("Create", mock.Anything, mock.AnythingOfType("*sql.Tx"),
+		mock.MatchedBy(func(r models.BuildingRestriction) bool { return r.Name == "Zone X" }),
+		[]int{10},
+	).Return(created, nil)
+
+	responses := svc.Import(context.Background(), []byte(csvData), "csv")
+
+	assert.Len(t, responses, 1)
+	assert.Equal(t, "Zone X", responses[0].Name)
+	assert.Len(t, responses[0].Buildings, 1)
+
+	repoRestriction.AssertExpectations(t)
+	repoBuilding.AssertExpectations(t)
+	assert.NoError(t, sqlMock.ExpectationsWereMet())
+}

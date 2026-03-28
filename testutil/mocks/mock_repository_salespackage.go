@@ -52,3 +52,13 @@ func (m *MockRepositorySalesPackage) Delete(ctx context.Context, tx *sql.Tx, id 
 	args := m.Called(ctx, tx, id)
 	return args.Error(0)
 }
+
+func (m *MockRepositorySalesPackage) FindAllFlat(ctx context.Context, tx *sql.Tx, search string) ([]models.SalesPackage, error) {
+	args := m.Called(ctx, tx, search)
+	return args.Get(0).([]models.SalesPackage), args.Error(1)
+}
+
+func (m *MockRepositorySalesPackage) FindByNames(ctx context.Context, tx *sql.Tx, names []string) ([]models.SalesPackage, error) {
+	args := m.Called(ctx, tx, names)
+	return args.Get(0).([]models.SalesPackage), args.Error(1)
+}

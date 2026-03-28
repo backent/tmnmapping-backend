@@ -16,4 +16,6 @@ type RepositoryBuildingRestrictionInterface interface {
 	DeleteBuildingLinksByBuildingRestrictionId(ctx context.Context, tx *sql.Tx, buildingRestrictionId int) error
 	CreateBuildingLink(ctx context.Context, tx *sql.Tx, buildingRestrictionId int, buildingId int) error
 	Delete(ctx context.Context, tx *sql.Tx, id int) error
+	FindAllFlat(ctx context.Context, tx *sql.Tx, search string) ([]models.BuildingRestriction, error)
+	FindByNames(ctx context.Context, tx *sql.Tx, names []string) ([]models.BuildingRestriction, error)
 }

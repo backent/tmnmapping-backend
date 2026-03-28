@@ -158,6 +158,79 @@ func (r *RepositoryBuildingRestrictionImpl) Delete(ctx context.Context, tx *sql.
 	return err
 }
 
+// FindAllFlat returns all building restrictions with their buildings, optionally filtered by name search (no pagination)
+func (r *RepositoryBuildingRestrictionImpl) FindAllFlat(ctx context.Context, tx *sql.Tx, search string) ([]models.BuildingRestriction, error) {
+	var rows *sql.Rows
+	var err error
+
+	if search != "" {
+		SQL := `SELECT id, name, created_at, updated_at FROM ` + models.BuildingRestrictionTable + ` WHERE name ILIKE $1 ORDER BY name`
+		rows, err = tx.QueryContext(ctx, SQL, "%"+search+"%")
+	} else {
+		SQL := `SELECT id, name, created_at, updated_at FROM ` + models.BuildingRestrictionTable + ` ORDER BY name`
+		rows, err = tx.QueryContext(ctx, SQL)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var restrictions []models.BuildingRestriction
+	var ids []int
+	for rows.Next() {
+		var n models.NullAbleBuildingRestriction
+		if err := rows.Scan(&n.Id, &n.Name, &n.CreatedAt, &n.UpdatedAt); err != nil {
+			return nil, err
+		}
+		restriction := models.NullAbleBuildingRestrictionToBuildingRestriction(n)
+		ids = append(ids, restriction.Id)
+		restrictions = append(restrictions, restriction)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return restrictions, nil
+	}
+	refsMap, err := r.findBuildingRefsByBuildingRestrictionIds(ctx, tx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for i := range restrictions {
+		restrictions[i].Buildings = refsMap[restrictions[i].Id]
+	}
+	return restrictions, nil
+}
+
+// FindByNames returns building restrictions whose name matches any in the given list
+func (r *RepositoryBuildingRestrictionImpl) FindByNames(ctx context.Context, tx *sql.Tx, names []string) ([]models.BuildingRestriction, error) {
+	if len(names) == 0 {
+		return nil, nil
+	}
+	placeholders := make([]string, len(names))
+	args := make([]interface{}, len(names))
+	for i, name := range names {
+		placeholders[i] = "$" + strconv.Itoa(i+1)
+		args[i] = name
+	}
+	SQL := `SELECT id, name, created_at, updated_at FROM ` + models.BuildingRestrictionTable + ` WHERE name IN (` + strings.Join(placeholders, ",") + `)`
+	rows, err := tx.QueryContext(ctx, SQL, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var restrictions []models.BuildingRestriction
+	for rows.Next() {
+		var n models.NullAbleBuildingRestriction
+		if err := rows.Scan(&n.Id, &n.Name, &n.CreatedAt, &n.UpdatedAt); err != nil {
+			return nil, err
+		}
+		restrictions = append(restrictions, models.NullAbleBuildingRestrictionToBuildingRestriction(n))
+	}
+	return restrictions, rows.Err()
+}
+
 // findBuildingRefsByBuildingRestrictionId returns building id+name for a restriction
 func (r *RepositoryBuildingRestrictionImpl) findBuildingRefsByBuildingRestrictionId(ctx context.Context, tx *sql.Tx, buildingRestrictionId int) ([]models.BuildingRef, error) {
 	SQL := `SELECT b.id, b.name FROM ` + models.BuildingTable + ` b

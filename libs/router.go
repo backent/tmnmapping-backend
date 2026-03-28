@@ -151,6 +151,14 @@ func NewRouter(
 		loggingMiddleware.Log(
 			authMiddleware.RequireAuth(controllersSalesPackage.Delete)))
 
+	router.POST("/sales-packages-import",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(controllersSalesPackage.Import)))
+
+	router.GET("/sales-packages-export",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(controllersSalesPackage.Export)))
+
 	// Building restriction routes (protected)
 	router.POST("/building-restrictions",
 		loggingMiddleware.Log(
@@ -173,6 +181,14 @@ func NewRouter(
 	router.DELETE("/building-restrictions/:id",
 		loggingMiddleware.Log(
 			authMiddleware.RequireAuth(controllersBuildingRestriction.Delete)))
+
+	router.POST("/building-restrictions-import",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(controllersBuildingRestriction.Import)))
+
+	router.GET("/building-restrictions-export",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(controllersBuildingRestriction.Export)))
 
 	// Saved polygon routes (protected)
 	router.POST("/saved-polygons",

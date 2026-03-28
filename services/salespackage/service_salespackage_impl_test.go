@@ -248,3 +248,91 @@ func TestSalesPackageDelete_NotFound(t *testing.T) {
 	repoPkg.AssertExpectations(t)
 	assert.NoError(t, sqlMock.ExpectationsWereMet())
 }
+
+// --- Export ---
+
+func TestSalesPackageExport_HappyPath(t *testing.T) {
+	db, sqlMock := testutil.NewMockDB(t)
+	repoPkg := &mocks.MockRepositorySalesPackage{}
+	repoBuilding := &mocks.MockRepositoryBuilding{}
+	svc := newSalesPackageService(db, repoPkg, repoBuilding)
+
+	packages := []models.SalesPackage{
+		{Id: 1, Name: "Package A", Buildings: []models.BuildingRef{{Id: 10, Name: "Tower A"}}},
+		{Id: 2, Name: "Package B", Buildings: []models.BuildingRef{{Id: 20, Name: "Tower B"}, {Id: 30, Name: "Tower C"}}},
+	}
+
+	sqlMock.ExpectBegin()
+	sqlMock.ExpectCommit()
+
+	repoPkg.On("FindAllFlat", mock.Anything, mock.AnythingOfType("*sql.Tx"), "").
+		Return(packages, nil)
+
+	excelBytes, err := svc.Export(context.Background(), "")
+
+	assert.NoError(t, err)
+	assert.NotEmpty(t, excelBytes)
+	// Verify it starts with XLSX magic bytes (PK zip header)
+	assert.Equal(t, byte(0x50), excelBytes[0])
+	assert.Equal(t, byte(0x4B), excelBytes[1])
+
+	repoPkg.AssertExpectations(t)
+	assert.NoError(t, sqlMock.ExpectationsWereMet())
+}
+
+// --- Import ---
+
+func TestSalesPackageImport_UnsupportedFileType(t *testing.T) {
+	db, sqlMock := testutil.NewMockDB(t)
+	repoPkg := &mocks.MockRepositorySalesPackage{}
+	repoBuilding := &mocks.MockRepositoryBuilding{}
+	svc := newSalesPackageService(db, repoPkg, repoBuilding)
+
+	sqlMock.ExpectBegin()
+	sqlMock.ExpectRollback()
+
+	assert.PanicsWithValue(t,
+		exceptions.BadRequestError{Error: "Unsupported file type. Use xlsx or csv."},
+		func() { svc.Import(context.Background(), []byte("data"), "txt") },
+	)
+
+	assert.NoError(t, sqlMock.ExpectationsWereMet())
+}
+
+func TestSalesPackageImport_CSV_HappyPath(t *testing.T) {
+	db, sqlMock := testutil.NewMockDB(t)
+	repoPkg := &mocks.MockRepositorySalesPackage{}
+	repoBuilding := &mocks.MockRepositoryBuilding{}
+	svc := newSalesPackageService(db, repoPkg, repoBuilding)
+
+	csvData := "Name,Building Name\nPackage X,Tower A\n"
+
+	sqlMock.ExpectBegin()
+	sqlMock.ExpectCommit()
+
+	repoBuilding.On("FindAllDropdown", mock.Anything, mock.AnythingOfType("*sql.Tx")).
+		Return([]models.Building{testutil.NewBuilding(10, "Tower A")}, nil)
+
+	repoPkg.On("FindByNames", mock.Anything, mock.AnythingOfType("*sql.Tx"), []string{"Package X"}).
+		Return([]models.SalesPackage{}, nil)
+
+	created := models.SalesPackage{
+		Id:        1,
+		Name:      "Package X",
+		Buildings: []models.BuildingRef{{Id: 10, Name: "Tower A"}},
+	}
+	repoPkg.On("Create", mock.Anything, mock.AnythingOfType("*sql.Tx"),
+		mock.MatchedBy(func(p models.SalesPackage) bool { return p.Name == "Package X" }),
+		[]int{10},
+	).Return(created, nil)
+
+	responses := svc.Import(context.Background(), []byte(csvData), "csv")
+
+	assert.Len(t, responses, 1)
+	assert.Equal(t, "Package X", responses[0].Name)
+	assert.Len(t, responses[0].Buildings, 1)
+
+	repoPkg.AssertExpectations(t)
+	repoBuilding.AssertExpectations(t)
+	assert.NoError(t, sqlMock.ExpectationsWereMet())
+}

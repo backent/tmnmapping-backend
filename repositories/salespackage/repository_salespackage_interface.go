@@ -16,4 +16,6 @@ type RepositorySalesPackageInterface interface {
 	DeleteBuildingLinksBySalesPackageId(ctx context.Context, tx *sql.Tx, salesPackageId int) error
 	CreateBuildingLink(ctx context.Context, tx *sql.Tx, salesPackageId int, buildingId int) error
 	Delete(ctx context.Context, tx *sql.Tx, id int) error
+	FindAllFlat(ctx context.Context, tx *sql.Tx, search string) ([]models.SalesPackage, error)
+	FindByNames(ctx context.Context, tx *sql.Tx, names []string) ([]models.SalesPackage, error)
 }

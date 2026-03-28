@@ -52,3 +52,13 @@ func (m *MockRepositoryBuildingRestriction) Delete(ctx context.Context, tx *sql.
 	args := m.Called(ctx, tx, id)
 	return args.Error(0)
 }
+
+func (m *MockRepositoryBuildingRestriction) FindAllFlat(ctx context.Context, tx *sql.Tx, search string) ([]models.BuildingRestriction, error) {
+	args := m.Called(ctx, tx, search)
+	return args.Get(0).([]models.BuildingRestriction), args.Error(1)
+}
+
+func (m *MockRepositoryBuildingRestriction) FindByNames(ctx context.Context, tx *sql.Tx, names []string) ([]models.BuildingRestriction, error) {
+	args := m.Called(ctx, tx, names)
+	return args.Get(0).([]models.BuildingRestriction), args.Error(1)
+}

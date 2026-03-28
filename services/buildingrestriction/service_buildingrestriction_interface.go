@@ -12,4 +12,6 @@ type ServiceBuildingRestrictionInterface interface {
 	FindById(ctx context.Context, id int) webBuildingRestriction.BuildingRestrictionResponse
 	Update(ctx context.Context, request webBuildingRestriction.UpdateBuildingRestrictionRequest, id int) webBuildingRestriction.BuildingRestrictionResponse
 	Delete(ctx context.Context, id int)
+	Import(ctx context.Context, fileBytes []byte, fileType string) []webBuildingRestriction.BuildingRestrictionResponse
+	Export(ctx context.Context, search string) ([]byte, error)
 }

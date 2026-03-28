@@ -12,4 +12,6 @@ type ServiceSalesPackageInterface interface {
 	FindById(ctx context.Context, id int) webSalesPackage.SalesPackageResponse
 	Update(ctx context.Context, request webSalesPackage.UpdateSalesPackageRequest, id int) webSalesPackage.SalesPackageResponse
 	Delete(ctx context.Context, id int)
+	Import(ctx context.Context, fileBytes []byte, fileType string) []webSalesPackage.SalesPackageResponse
+	Export(ctx context.Context, search string) ([]byte, error)
 }
