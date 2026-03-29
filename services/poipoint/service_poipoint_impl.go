@@ -13,7 +13,11 @@ import (
 	"github.com/malikabdulaziz/tmn-backend/exceptions"
 	"github.com/malikabdulaziz/tmn-backend/helpers"
 	"github.com/malikabdulaziz/tmn-backend/models"
+	repositoriesBranch "github.com/malikabdulaziz/tmn-backend/repositories/branch"
+	repositoriesCategory "github.com/malikabdulaziz/tmn-backend/repositories/category"
+	repositoriesMotherBrand "github.com/malikabdulaziz/tmn-backend/repositories/motherbrand"
 	repositoriesPOIPoint "github.com/malikabdulaziz/tmn-backend/repositories/poipoint"
+	repositoriesSubCategory "github.com/malikabdulaziz/tmn-backend/repositories/subcategory"
 	webPOIPoint "github.com/malikabdulaziz/tmn-backend/web/poipoint"
 	"github.com/xuri/excelize/v2"
 )
@@ -21,15 +25,27 @@ import (
 type ServicePOIPointImpl struct {
 	DB                          *sql.DB
 	RepositoryPOIPointInterface repositoriesPOIPoint.RepositoryPOIPointInterface
+	RepositoryCategoryInterface repositoriesCategory.RepositoryCategoryInterface
+	RepositorySubCategoryInterface repositoriesSubCategory.RepositorySubCategoryInterface
+	RepositoryMotherBrandInterface repositoriesMotherBrand.RepositoryMotherBrandInterface
+	RepositoryBranchInterface   repositoriesBranch.RepositoryBranchInterface
 }
 
 func NewServicePOIPointImpl(
 	db *sql.DB,
 	repoPOIPoint repositoriesPOIPoint.RepositoryPOIPointInterface,
+	repoCategory repositoriesCategory.RepositoryCategoryInterface,
+	repoSubCategory repositoriesSubCategory.RepositorySubCategoryInterface,
+	repoMotherBrand repositoriesMotherBrand.RepositoryMotherBrandInterface,
+	repoBranch repositoriesBranch.RepositoryBranchInterface,
 ) ServicePOIPointInterface {
 	return &ServicePOIPointImpl{
-		DB:                          db,
-		RepositoryPOIPointInterface: repoPOIPoint,
+		DB:                             db,
+		RepositoryPOIPointInterface:    repoPOIPoint,
+		RepositoryCategoryInterface:    repoCategory,
+		RepositorySubCategoryInterface: repoSubCategory,
+		RepositoryMotherBrandInterface: repoMotherBrand,
+		RepositoryBranchInterface:      repoBranch,
 	}
 }
 
@@ -40,14 +56,14 @@ func (s *ServicePOIPointImpl) Create(ctx context.Context, request webPOIPoint.Cr
 	defer helpers.CommitOrRollback(tx)
 
 	point := models.POIPoint{
-		POIName:     request.POIName,
-		Address:     request.Address,
-		Latitude:    request.Latitude,
-		Longitude:   request.Longitude,
-		Category:    request.Category,
-		SubCategory: request.SubCategory,
-		MotherBrand: request.MotherBrand,
-		Branch:      request.Branch,
+		POIName:       request.POIName,
+		Address:       request.Address,
+		Latitude:      request.Latitude,
+		Longitude:     request.Longitude,
+		CategoryId:    request.CategoryId,
+		SubCategoryId: request.SubCategoryId,
+		MotherBrandId: request.MotherBrandId,
+		BranchId:      request.BranchId,
 	}
 	created, err := s.RepositoryPOIPointInterface.Create(ctx, tx, point)
 	helpers.PanicIfError(err)
@@ -103,10 +119,10 @@ func (s *ServicePOIPointImpl) Update(ctx context.Context, request webPOIPoint.Up
 	existing.Address = request.Address
 	existing.Latitude = request.Latitude
 	existing.Longitude = request.Longitude
-	existing.Category = request.Category
-	existing.SubCategory = request.SubCategory
-	existing.MotherBrand = request.MotherBrand
-	existing.Branch = request.Branch
+	existing.CategoryId = request.CategoryId
+	existing.SubCategoryId = request.SubCategoryId
+	existing.MotherBrandId = request.MotherBrandId
+	existing.BranchId = request.BranchId
 
 	updated, err := s.RepositoryPOIPointInterface.Update(ctx, tx, existing)
 	helpers.PanicIfError(err)
@@ -203,18 +219,24 @@ func (s *ServicePOIPointImpl) Import(ctx context.Context, fileBytes []byte, file
 			helpers.PanicIfError(err)
 		}
 
+		// Resolve metadata IDs via find-or-create
+		categoryId := s.findOrCreateCategory(ctx, tx, ppGetColValue(row, colMap, "category"))
+		subCategoryId := s.findOrCreateSubCategory(ctx, tx, ppGetColValue(row, colMap, "sub_category"))
+		motherBrandId := s.findOrCreateMotherBrand(ctx, tx, ppGetColValue(row, colMap, "mother_brand"))
+		branchId := s.findOrCreateBranch(ctx, tx, ppGetColValue(row, colMap, "branch"))
+
 		// Point does not exist, create a new one
 		lat, lng := ppParseCoordinate(ppGetColValue(row, colMap, "coordinate"))
 
 		point := models.POIPoint{
-			POIName:     poiName,
-			Address:     address,
-			Latitude:    lat,
-			Longitude:   lng,
-			Category:    ppGetColValue(row, colMap, "category"),
-			SubCategory: ppGetColValue(row, colMap, "sub_category"),
-			MotherBrand: ppGetColValue(row, colMap, "mother_brand"),
-			Branch:      ppGetColValue(row, colMap, "branch"),
+			POIName:       poiName,
+			Address:       address,
+			Latitude:      lat,
+			Longitude:     lng,
+			CategoryId:    categoryId,
+			SubCategoryId: subCategoryId,
+			MotherBrandId: motherBrandId,
+			BranchId:      branchId,
 		}
 
 		created, err := s.RepositoryPOIPointInterface.Create(ctx, tx, point)
@@ -241,24 +263,92 @@ func (s *ServicePOIPointImpl) Export(ctx context.Context, search string) ([]byte
 	return buildPOIPointExcel(points)
 }
 
+// findOrCreateCategory resolves a category name to an ID (find or create)
+func (s *ServicePOIPointImpl) findOrCreateCategory(ctx context.Context, tx *sql.Tx, name string) *int {
+	if name == "" {
+		return nil
+	}
+	cat, err := s.RepositoryCategoryInterface.FindByName(ctx, tx, name)
+	if err == sql.ErrNoRows {
+		cat, err = s.RepositoryCategoryInterface.Create(ctx, tx, models.Category{Name: name})
+		helpers.PanicIfError(err)
+	} else {
+		helpers.PanicIfError(err)
+	}
+	id := cat.Id
+	return &id
+}
+
+// findOrCreateSubCategory resolves a sub_category name to an ID (find or create)
+func (s *ServicePOIPointImpl) findOrCreateSubCategory(ctx context.Context, tx *sql.Tx, name string) *int {
+	if name == "" {
+		return nil
+	}
+	sc, err := s.RepositorySubCategoryInterface.FindByName(ctx, tx, name)
+	if err == sql.ErrNoRows {
+		sc, err = s.RepositorySubCategoryInterface.Create(ctx, tx, models.SubCategory{Name: name})
+		helpers.PanicIfError(err)
+	} else {
+		helpers.PanicIfError(err)
+	}
+	id := sc.Id
+	return &id
+}
+
+// findOrCreateMotherBrand resolves a mother_brand name to an ID (find or create)
+func (s *ServicePOIPointImpl) findOrCreateMotherBrand(ctx context.Context, tx *sql.Tx, name string) *int {
+	if name == "" {
+		return nil
+	}
+	mb, err := s.RepositoryMotherBrandInterface.FindByName(ctx, tx, name)
+	if err == sql.ErrNoRows {
+		mb, err = s.RepositoryMotherBrandInterface.Create(ctx, tx, models.MotherBrand{Name: name})
+		helpers.PanicIfError(err)
+	} else {
+		helpers.PanicIfError(err)
+	}
+	id := mb.Id
+	return &id
+}
+
+// findOrCreateBranch resolves a branch name to an ID (find or create)
+func (s *ServicePOIPointImpl) findOrCreateBranch(ctx context.Context, tx *sql.Tx, name string) *int {
+	if name == "" {
+		return nil
+	}
+	br, err := s.RepositoryBranchInterface.FindByName(ctx, tx, name)
+	if err == sql.ErrNoRows {
+		br, err = s.RepositoryBranchInterface.Create(ctx, tx, models.Branch{Name: name})
+		helpers.PanicIfError(err)
+	} else {
+		helpers.PanicIfError(err)
+	}
+	id := br.Id
+	return &id
+}
+
 func (s *ServicePOIPointImpl) modelToResponse(p models.POIPoint) webPOIPoint.POIPointResponse {
 	pois := make([]webPOIPoint.POIRefResponse, len(p.POIs))
 	for i, ref := range p.POIs {
 		pois[i] = webPOIPoint.POIRefResponse{Id: ref.Id, Brand: ref.Brand}
 	}
 	return webPOIPoint.POIPointResponse{
-		Id:          p.Id,
-		POIName:     p.POIName,
-		Address:     p.Address,
-		Latitude:    p.Latitude,
-		Longitude:   p.Longitude,
-		Category:    p.Category,
-		SubCategory: p.SubCategory,
-		MotherBrand: p.MotherBrand,
-		Branch:      p.Branch,
-		POIs:        pois,
-		CreatedAt:   p.CreatedAt,
-		UpdatedAt:   p.UpdatedAt,
+		Id:            p.Id,
+		POIName:       p.POIName,
+		Address:       p.Address,
+		Latitude:      p.Latitude,
+		Longitude:     p.Longitude,
+		CategoryId:    p.CategoryId,
+		SubCategoryId: p.SubCategoryId,
+		MotherBrandId: p.MotherBrandId,
+		BranchId:      p.BranchId,
+		Category:      p.CategoryName,
+		SubCategory:   p.SubCategoryName,
+		MotherBrand:   p.MotherBrandName,
+		Branch:        p.BranchName,
+		POIs:          pois,
+		CreatedAt:     p.CreatedAt,
+		UpdatedAt:     p.UpdatedAt,
 	}
 }
 
@@ -375,10 +465,10 @@ func buildPOIPointExcel(points []models.POIPoint) ([]byte, error) {
 		_ = f.SetCellValue(sheet, ppMustCell(1, rowIdx), point.POIName)
 		_ = f.SetCellValue(sheet, ppMustCell(2, rowIdx), point.Address)
 		_ = f.SetCellValue(sheet, ppMustCell(3, rowIdx), coordinate)
-		_ = f.SetCellValue(sheet, ppMustCell(4, rowIdx), point.Category)
-		_ = f.SetCellValue(sheet, ppMustCell(5, rowIdx), point.SubCategory)
-		_ = f.SetCellValue(sheet, ppMustCell(6, rowIdx), point.MotherBrand)
-		_ = f.SetCellValue(sheet, ppMustCell(7, rowIdx), point.Branch)
+		_ = f.SetCellValue(sheet, ppMustCell(4, rowIdx), point.CategoryName)
+		_ = f.SetCellValue(sheet, ppMustCell(5, rowIdx), point.SubCategoryName)
+		_ = f.SetCellValue(sheet, ppMustCell(6, rowIdx), point.MotherBrandName)
+		_ = f.SetCellValue(sheet, ppMustCell(7, rowIdx), point.BranchName)
 		_ = f.SetCellValue(sheet, ppMustCell(8, rowIdx), strings.Join(brandNames, ", "))
 		rowIdx++
 	}

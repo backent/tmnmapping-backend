@@ -44,10 +44,40 @@ func nullIfZeroFloat(f float64) interface{} {
 	return f
 }
 
+func nullIntPtr(p *int) interface{} {
+	if p == nil {
+		return nil
+	}
+	return *p
+}
+
+const poiPointSelectCols = `pp.id, pp.poi_name, pp.address, pp.latitude, pp.longitude,
+	pp.category_id, pp.sub_category_id, pp.mother_brand_id, pp.branch_id,
+	c.name, sc.name, mb.name, b.name,
+	pp.created_at, pp.updated_at`
+
+const poiPointJoins = ` LEFT JOIN categories c ON c.id = pp.category_id
+	LEFT JOIN sub_categories sc ON sc.id = pp.sub_category_id
+	LEFT JOIN mother_brands mb ON mb.id = pp.mother_brand_id
+	LEFT JOIN branches b ON b.id = pp.branch_id`
+
+func scanPOIPoint(scanner interface {
+	Scan(dest ...any) error
+}) (models.NullAblePOIPoint, error) {
+	var n models.NullAblePOIPoint
+	err := scanner.Scan(
+		&n.Id, &n.POIName, &n.Address, &n.Latitude, &n.Longitude,
+		&n.CategoryId, &n.SubCategoryId, &n.MotherBrandId, &n.BranchId,
+		&n.CategoryName, &n.SubCategoryName, &n.MotherBrandName, &n.BranchName,
+		&n.CreatedAt, &n.UpdatedAt,
+	)
+	return n, err
+}
+
 // Create inserts a new standalone POI point
 func (r *RepositoryPOIPointImpl) Create(ctx context.Context, tx *sql.Tx, point models.POIPoint) (models.POIPoint, error) {
 	SQL := `INSERT INTO ` + models.POIPointTable + `
-		(poi_name, address, latitude, longitude, location, category, sub_category, mother_brand, branch)
+		(poi_name, address, latitude, longitude, location, category_id, sub_category_id, mother_brand_id, branch_id)
 		VALUES ($1, $2, $3, $4,
 		CASE WHEN $3::DOUBLE PRECISION IS NOT NULL AND $4::DOUBLE PRECISION IS NOT NULL AND ($3::DOUBLE PRECISION) != 0 AND ($4::DOUBLE PRECISION) != 0 THEN ST_SetSRID(ST_MakePoint($4::DOUBLE PRECISION, $3::DOUBLE PRECISION), 4326)::geography ELSE NULL END,
 		$5, $6, $7, $8)
@@ -58,10 +88,10 @@ func (r *RepositoryPOIPointImpl) Create(ctx context.Context, tx *sql.Tx, point m
 		nullIfEmpty(point.Address),
 		nullIfZeroFloat(point.Latitude),
 		nullIfZeroFloat(point.Longitude),
-		nullIfEmpty(point.Category),
-		nullIfEmpty(point.SubCategory),
-		nullIfEmpty(point.MotherBrand),
-		nullIfEmpty(point.Branch),
+		nullIntPtr(point.CategoryId),
+		nullIntPtr(point.SubCategoryId),
+		nullIntPtr(point.MotherBrandId),
+		nullIntPtr(point.BranchId),
 	).Scan(&point.Id, &point.CreatedAt, &point.UpdatedAt)
 
 	if err != nil {
@@ -79,16 +109,15 @@ func (r *RepositoryPOIPointImpl) FindAll(ctx context.Context, tx *sql.Tx, take i
 	var args []interface{}
 	paramIdx := 1
 
-	SQL := `SELECT id, poi_name, address, latitude, longitude, category, sub_category, mother_brand, branch, created_at, updated_at
-		FROM ` + models.POIPointTable
+	SQL := `SELECT ` + poiPointSelectCols + ` FROM ` + models.POIPointTable + ` pp` + poiPointJoins
 
 	if search != "" {
-		SQL += ` WHERE poi_name ILIKE '%' || $` + strconv.Itoa(paramIdx) + ` || '%'`
+		SQL += ` WHERE pp.poi_name ILIKE '%' || $` + strconv.Itoa(paramIdx) + ` || '%'`
 		args = append(args, search)
 		paramIdx++
 	}
 
-	SQL += ` ORDER BY ` + orderBy + ` ` + orderDirection
+	SQL += ` ORDER BY pp.` + orderBy + ` ` + orderDirection
 	SQL += ` LIMIT $` + strconv.Itoa(paramIdx) + ` OFFSET $` + strconv.Itoa(paramIdx+1)
 	args = append(args, take, skip)
 
@@ -101,8 +130,8 @@ func (r *RepositoryPOIPointImpl) FindAll(ctx context.Context, tx *sql.Tx, take i
 	var points []models.POIPoint
 	var ids []int
 	for rows.Next() {
-		var n models.NullAblePOIPoint
-		if err := rows.Scan(&n.Id, &n.POIName, &n.Address, &n.Latitude, &n.Longitude, &n.Category, &n.SubCategory, &n.MotherBrand, &n.Branch, &n.CreatedAt, &n.UpdatedAt); err != nil {
+		n, err := scanPOIPoint(rows)
+		if err != nil {
 			return nil, err
 		}
 		point := models.NullAblePOIPointToPOIPoint(n)
@@ -143,10 +172,9 @@ func (r *RepositoryPOIPointImpl) CountAll(ctx context.Context, tx *sql.Tx, searc
 
 // FindById retrieves a POI point by ID with its POI refs
 func (r *RepositoryPOIPointImpl) FindById(ctx context.Context, tx *sql.Tx, id int) (models.POIPoint, error) {
-	SQL := `SELECT id, poi_name, address, latitude, longitude, category, sub_category, mother_brand, branch, created_at, updated_at
-		FROM ` + models.POIPointTable + ` WHERE id = $1`
-	var n models.NullAblePOIPoint
-	if err := tx.QueryRowContext(ctx, SQL, id).Scan(&n.Id, &n.POIName, &n.Address, &n.Latitude, &n.Longitude, &n.Category, &n.SubCategory, &n.MotherBrand, &n.Branch, &n.CreatedAt, &n.UpdatedAt); err != nil {
+	SQL := `SELECT ` + poiPointSelectCols + ` FROM ` + models.POIPointTable + ` pp` + poiPointJoins + ` WHERE pp.id = $1`
+	n, err := scanPOIPoint(tx.QueryRowContext(ctx, SQL, id))
+	if err != nil {
 		return models.POIPoint{}, err
 	}
 	point := models.NullAblePOIPointToPOIPoint(n)
@@ -163,7 +191,7 @@ func (r *RepositoryPOIPointImpl) Update(ctx context.Context, tx *sql.Tx, point m
 	SQL := `UPDATE ` + models.POIPointTable + `
 		SET poi_name = $1, address = $2, latitude = $3, longitude = $4,
 		location = CASE WHEN $3::DOUBLE PRECISION IS NOT NULL AND $4::DOUBLE PRECISION IS NOT NULL AND ($3::DOUBLE PRECISION) != 0 AND ($4::DOUBLE PRECISION) != 0 THEN ST_SetSRID(ST_MakePoint($4::DOUBLE PRECISION, $3::DOUBLE PRECISION), 4326)::geography ELSE NULL END,
-		category = $5, sub_category = $6, mother_brand = $7, branch = $8, updated_at = $9
+		category_id = $5, sub_category_id = $6, mother_brand_id = $7, branch_id = $8, updated_at = $9
 		WHERE id = $10
 		RETURNING updated_at`
 
@@ -172,10 +200,10 @@ func (r *RepositoryPOIPointImpl) Update(ctx context.Context, tx *sql.Tx, point m
 		nullIfEmpty(point.Address),
 		nullIfZeroFloat(point.Latitude),
 		nullIfZeroFloat(point.Longitude),
-		nullIfEmpty(point.Category),
-		nullIfEmpty(point.SubCategory),
-		nullIfEmpty(point.MotherBrand),
-		nullIfEmpty(point.Branch),
+		nullIntPtr(point.CategoryId),
+		nullIntPtr(point.SubCategoryId),
+		nullIntPtr(point.MotherBrandId),
+		nullIntPtr(point.BranchId),
 		time.Now(),
 		point.Id,
 	).Scan(&point.UpdatedAt)
@@ -199,10 +227,9 @@ func (r *RepositoryPOIPointImpl) Delete(ctx context.Context, tx *sql.Tx, id int)
 	return err
 }
 
-// FindAllDropdown returns a lightweight list of all POI points (id + poi_name) for autocomplete
+// FindAllDropdown returns a lightweight list of all POI points for autocomplete
 func (r *RepositoryPOIPointImpl) FindAllDropdown(ctx context.Context, tx *sql.Tx) ([]models.POIPoint, error) {
-	SQL := `SELECT id, poi_name, address, latitude, longitude, category, sub_category, mother_brand, branch, created_at, updated_at
-		FROM ` + models.POIPointTable + ` ORDER BY poi_name ASC`
+	SQL := `SELECT ` + poiPointSelectCols + ` FROM ` + models.POIPointTable + ` pp` + poiPointJoins + ` ORDER BY pp.poi_name ASC`
 	rows, err := tx.QueryContext(ctx, SQL)
 	if err != nil {
 		return nil, err
@@ -211,8 +238,8 @@ func (r *RepositoryPOIPointImpl) FindAllDropdown(ctx context.Context, tx *sql.Tx
 
 	var points []models.POIPoint
 	for rows.Next() {
-		var n models.NullAblePOIPoint
-		if err := rows.Scan(&n.Id, &n.POIName, &n.Address, &n.Latitude, &n.Longitude, &n.Category, &n.SubCategory, &n.MotherBrand, &n.Branch, &n.CreatedAt, &n.UpdatedAt); err != nil {
+		n, err := scanPOIPoint(rows)
+		if err != nil {
 			return nil, err
 		}
 		point := models.NullAblePOIPointToPOIPoint(n)
@@ -223,15 +250,14 @@ func (r *RepositoryPOIPointImpl) FindAllDropdown(ctx context.Context, tx *sql.Tx
 
 // FindAllFlat returns all POI points with POI refs, optionally filtered by search (no pagination)
 func (r *RepositoryPOIPointImpl) FindAllFlat(ctx context.Context, tx *sql.Tx, search string) ([]models.POIPoint, error) {
-	SQL := `SELECT id, poi_name, address, latitude, longitude, category, sub_category, mother_brand, branch, created_at, updated_at
-		FROM ` + models.POIPointTable
-
 	var args []interface{}
+	SQL := `SELECT ` + poiPointSelectCols + ` FROM ` + models.POIPointTable + ` pp` + poiPointJoins
+
 	if search != "" {
-		SQL += ` WHERE poi_name ILIKE '%' || $1 || '%'`
+		SQL += ` WHERE pp.poi_name ILIKE '%' || $1 || '%'`
 		args = append(args, search)
 	}
-	SQL += ` ORDER BY poi_name ASC`
+	SQL += ` ORDER BY pp.poi_name ASC`
 
 	rows, err := tx.QueryContext(ctx, SQL, args...)
 	if err != nil {
@@ -242,8 +268,8 @@ func (r *RepositoryPOIPointImpl) FindAllFlat(ctx context.Context, tx *sql.Tx, se
 	var points []models.POIPoint
 	var ids []int
 	for rows.Next() {
-		var n models.NullAblePOIPoint
-		if err := rows.Scan(&n.Id, &n.POIName, &n.Address, &n.Latitude, &n.Longitude, &n.Category, &n.SubCategory, &n.MotherBrand, &n.Branch, &n.CreatedAt, &n.UpdatedAt); err != nil {
+		n, err := scanPOIPoint(rows)
+		if err != nil {
 			return nil, err
 		}
 		point := models.NullAblePOIPointToPOIPoint(n)
@@ -326,10 +352,9 @@ func (r *RepositoryPOIPointImpl) FindPOIRefsByPointIds(ctx context.Context, tx *
 
 // FindByNameAndAddress returns a POI point matching the given name and address
 func (r *RepositoryPOIPointImpl) FindByNameAndAddress(ctx context.Context, tx *sql.Tx, poiName string, address string) (models.POIPoint, error) {
-	SQL := `SELECT id, poi_name, address, latitude, longitude, category, sub_category, mother_brand, branch, created_at, updated_at
-		FROM ` + models.POIPointTable + ` WHERE poi_name = $1 AND address = $2 LIMIT 1`
-	var n models.NullAblePOIPoint
-	if err := tx.QueryRowContext(ctx, SQL, poiName, address).Scan(&n.Id, &n.POIName, &n.Address, &n.Latitude, &n.Longitude, &n.Category, &n.SubCategory, &n.MotherBrand, &n.Branch, &n.CreatedAt, &n.UpdatedAt); err != nil {
+	SQL := `SELECT ` + poiPointSelectCols + ` FROM ` + models.POIPointTable + ` pp` + poiPointJoins + ` WHERE pp.poi_name = $1 AND pp.address = $2 LIMIT 1`
+	n, err := scanPOIPoint(tx.QueryRowContext(ctx, SQL, poiName, address))
+	if err != nil {
 		return models.POIPoint{}, err
 	}
 	point := models.NullAblePOIPointToPOIPoint(n)
@@ -348,8 +373,8 @@ func (r *RepositoryPOIPointImpl) FindByPOINames(ctx context.Context, tx *sql.Tx,
 		placeholders[i] = "$" + strconv.Itoa(i+1)
 		args[i] = name
 	}
-	SQL := `SELECT id, poi_name, address, latitude, longitude, category, sub_category, mother_brand, branch, created_at, updated_at
-		FROM ` + models.POIPointTable + ` WHERE poi_name IN (` + strings.Join(placeholders, ",") + `)`
+	SQL := `SELECT ` + poiPointSelectCols + ` FROM ` + models.POIPointTable + ` pp` + poiPointJoins +
+		` WHERE pp.poi_name IN (` + strings.Join(placeholders, ",") + `)`
 	rows, err := tx.QueryContext(ctx, SQL, args...)
 	if err != nil {
 		return nil, err
@@ -358,8 +383,8 @@ func (r *RepositoryPOIPointImpl) FindByPOINames(ctx context.Context, tx *sql.Tx,
 
 	var points []models.POIPoint
 	for rows.Next() {
-		var n models.NullAblePOIPoint
-		if err := rows.Scan(&n.Id, &n.POIName, &n.Address, &n.Latitude, &n.Longitude, &n.Category, &n.SubCategory, &n.MotherBrand, &n.Branch, &n.CreatedAt, &n.UpdatedAt); err != nil {
+		n, err := scanPOIPoint(rows)
+		if err != nil {
 			return nil, err
 		}
 		points = append(points, models.NullAblePOIPointToPOIPoint(n))

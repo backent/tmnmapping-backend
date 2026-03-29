@@ -5,25 +5,25 @@ import (
 )
 
 type CreatePOIPointRequest struct {
-	POIName     string  `json:"poi_name" validate:"required"`
-	Address     string  `json:"address" validate:"required"`
-	Latitude    float64 `json:"latitude" validate:"required"`
-	Longitude   float64 `json:"longitude" validate:"required"`
-	Category    string  `json:"category"`
-	SubCategory string  `json:"sub_category"`
-	MotherBrand string  `json:"mother_brand"`
-	Branch      string  `json:"branch"`
+	POIName       string  `json:"poi_name" validate:"required"`
+	Address       string  `json:"address" validate:"required"`
+	Latitude      float64 `json:"latitude" validate:"required"`
+	Longitude     float64 `json:"longitude" validate:"required"`
+	CategoryId    *int    `json:"category_id"`
+	SubCategoryId *int    `json:"sub_category_id"`
+	MotherBrandId *int    `json:"mother_brand_id"`
+	BranchId      *int    `json:"branch_id"`
 }
 
 type UpdatePOIPointRequest struct {
-	POIName     string  `json:"poi_name" validate:"required"`
-	Address     string  `json:"address" validate:"required"`
-	Latitude    float64 `json:"latitude" validate:"required"`
-	Longitude   float64 `json:"longitude" validate:"required"`
-	Category    string  `json:"category"`
-	SubCategory string  `json:"sub_category"`
-	MotherBrand string  `json:"mother_brand"`
-	Branch      string  `json:"branch"`
+	POIName       string  `json:"poi_name" validate:"required"`
+	Address       string  `json:"address" validate:"required"`
+	Latitude      float64 `json:"latitude" validate:"required"`
+	Longitude     float64 `json:"longitude" validate:"required"`
+	CategoryId    *int    `json:"category_id"`
+	SubCategoryId *int    `json:"sub_category_id"`
+	MotherBrandId *int    `json:"mother_brand_id"`
+	BranchId      *int    `json:"branch_id"`
 }
 
 type POIPointRequestFindAll struct {

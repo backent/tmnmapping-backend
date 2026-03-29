@@ -251,9 +251,16 @@ func (repository *RepositoryPOIImpl) FindById(ctx context.Context, tx *sql.Tx, i
 
 // findPointsByPOIId loads points for a POI via the junction table
 func (repository *RepositoryPOIImpl) findPointsByPOIId(ctx context.Context, tx *sql.Tx, poiId int) ([]models.POIPoint, error) {
-	SQL := `SELECT pp.id, pp.poi_name, pp.address, pp.latitude, pp.longitude, pp.category, pp.sub_category, pp.mother_brand, pp.branch, pp.created_at, pp.updated_at
+	SQL := `SELECT pp.id, pp.poi_name, pp.address, pp.latitude, pp.longitude,
+		pp.category_id, pp.sub_category_id, pp.mother_brand_id, pp.branch_id,
+		c.name, sc.name, mb.name, b.name,
+		pp.created_at, pp.updated_at
 		FROM ` + models.POIPointTable + ` pp
 		INNER JOIN ` + models.POIPointPOITable + ` j ON j.poi_point_id = pp.id
+		LEFT JOIN categories c ON c.id = pp.category_id
+		LEFT JOIN sub_categories sc ON sc.id = pp.sub_category_id
+		LEFT JOIN mother_brands mb ON mb.id = pp.mother_brand_id
+		LEFT JOIN branches b ON b.id = pp.branch_id
 		WHERE j.poi_id = $1
 		ORDER BY pp.created_at ASC`
 
@@ -272,10 +279,14 @@ func (repository *RepositoryPOIImpl) findPointsByPOIId(ctx context.Context, tx *
 			&nullable.Address,
 			&nullable.Latitude,
 			&nullable.Longitude,
-			&nullable.Category,
-			&nullable.SubCategory,
-			&nullable.MotherBrand,
-			&nullable.Branch,
+			&nullable.CategoryId,
+			&nullable.SubCategoryId,
+			&nullable.MotherBrandId,
+			&nullable.BranchId,
+			&nullable.CategoryName,
+			&nullable.SubCategoryName,
+			&nullable.MotherBrandName,
+			&nullable.BranchName,
 			&nullable.CreatedAt,
 			&nullable.UpdatedAt,
 		)
@@ -310,9 +321,16 @@ func (repository *RepositoryPOIImpl) findPointsByPOIIds(ctx context.Context, tx 
 		args[i] = id
 	}
 
-	SQL := `SELECT j.poi_id, pp.id, pp.poi_name, pp.address, pp.latitude, pp.longitude, pp.category, pp.sub_category, pp.mother_brand, pp.branch, pp.created_at, pp.updated_at
+	SQL := `SELECT j.poi_id, pp.id, pp.poi_name, pp.address, pp.latitude, pp.longitude,
+		pp.category_id, pp.sub_category_id, pp.mother_brand_id, pp.branch_id,
+		c.name, sc.name, mb.name, b.name,
+		pp.created_at, pp.updated_at
 		FROM ` + models.POIPointTable + ` pp
 		INNER JOIN ` + models.POIPointPOITable + ` j ON j.poi_point_id = pp.id
+		LEFT JOIN categories c ON c.id = pp.category_id
+		LEFT JOIN sub_categories sc ON sc.id = pp.sub_category_id
+		LEFT JOIN mother_brands mb ON mb.id = pp.mother_brand_id
+		LEFT JOIN branches b ON b.id = pp.branch_id
 		WHERE j.poi_id IN (` + strings.Join(placeholders, ",") + `)
 		ORDER BY j.poi_id, pp.created_at ASC`
 
@@ -333,10 +351,14 @@ func (repository *RepositoryPOIImpl) findPointsByPOIIds(ctx context.Context, tx 
 			&nullable.Address,
 			&nullable.Latitude,
 			&nullable.Longitude,
-			&nullable.Category,
-			&nullable.SubCategory,
-			&nullable.MotherBrand,
-			&nullable.Branch,
+			&nullable.CategoryId,
+			&nullable.SubCategoryId,
+			&nullable.MotherBrandId,
+			&nullable.BranchId,
+			&nullable.CategoryName,
+			&nullable.SubCategoryName,
+			&nullable.MotherBrandName,
+			&nullable.BranchName,
 			&nullable.CreatedAt,
 			&nullable.UpdatedAt,
 		)

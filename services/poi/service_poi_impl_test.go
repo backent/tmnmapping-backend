@@ -16,7 +16,11 @@ import (
 )
 
 func newPOIService(db *sql.DB, repoPOI *mocks.MockRepositoryPOI, repoPOIPoint *mocks.MockRepositoryPOIPoint) servicePOI.ServicePOIInterface {
-	return servicePOI.NewServicePOIImpl(db, repoPOI, repoPOIPoint)
+	repoCategory := &mocks.MockRepositoryCategory{}
+	repoSubCategory := &mocks.MockRepositorySubCategory{}
+	repoMotherBrand := &mocks.MockRepositoryMotherBrand{}
+	repoBranch := &mocks.MockRepositoryBranch{}
+	return servicePOI.NewServicePOIImpl(db, repoPOI, repoPOIPoint, repoCategory, repoSubCategory, repoMotherBrand, repoBranch)
 }
 
 func newPOIModel(id int, brand, color string) models.POI {

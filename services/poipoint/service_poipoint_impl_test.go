@@ -18,8 +18,12 @@ import (
 func newPOIPointService(
 	db *sql.DB,
 	repoPOIPoint *mocks.MockRepositoryPOIPoint,
+	repoCategory *mocks.MockRepositoryCategory,
+	repoSubCategory *mocks.MockRepositorySubCategory,
+	repoMotherBrand *mocks.MockRepositoryMotherBrand,
+	repoBranch *mocks.MockRepositoryBranch,
 ) servicePOIPoint.ServicePOIPointInterface {
-	return servicePOIPoint.NewServicePOIPointImpl(db, repoPOIPoint)
+	return servicePOIPoint.NewServicePOIPointImpl(db, repoPOIPoint, repoCategory, repoSubCategory, repoMotherBrand, repoBranch)
 }
 
 func newPOIPointModel(id int, poiName string, poiRefs ...models.POIRef) models.POIPoint {
@@ -29,12 +33,17 @@ func newPOIPointModel(id int, poiName string, poiRefs ...models.POIRef) models.P
 	return models.POIPoint{Id: id, POIName: poiName, POIs: poiRefs}
 }
 
+func newMetaMocks() (*mocks.MockRepositoryCategory, *mocks.MockRepositorySubCategory, *mocks.MockRepositoryMotherBrand, *mocks.MockRepositoryBranch) {
+	return &mocks.MockRepositoryCategory{}, &mocks.MockRepositorySubCategory{}, &mocks.MockRepositoryMotherBrand{}, &mocks.MockRepositoryBranch{}
+}
+
 // --- Create ---
 
 func TestPOIPointCreate_HappyPath(t *testing.T) {
 	db, sqlMock := testutil.NewMockDB(t)
 	repoPOIPoint := &mocks.MockRepositoryPOIPoint{}
-	svc := newPOIPointService(db, repoPOIPoint)
+	repoCategory, repoSubCategory, repoMotherBrand, repoBranch := newMetaMocks()
+	svc := newPOIPointService(db, repoPOIPoint, repoCategory, repoSubCategory, repoMotherBrand, repoBranch)
 
 	created := newPOIPointModel(1, "Store A")
 
@@ -66,7 +75,8 @@ func TestPOIPointCreate_HappyPath(t *testing.T) {
 func TestPOIPointFindById_HappyPath(t *testing.T) {
 	db, sqlMock := testutil.NewMockDB(t)
 	repoPOIPoint := &mocks.MockRepositoryPOIPoint{}
-	svc := newPOIPointService(db, repoPOIPoint)
+	repoCategory, repoSubCategory, repoMotherBrand, repoBranch := newMetaMocks()
+	svc := newPOIPointService(db, repoPOIPoint, repoCategory, repoSubCategory, repoMotherBrand, repoBranch)
 
 	point := newPOIPointModel(4, "Office B", models.POIRef{Id: 1, Brand: "BrandX"})
 
@@ -90,7 +100,8 @@ func TestPOIPointFindById_HappyPath(t *testing.T) {
 func TestPOIPointFindById_NotFound(t *testing.T) {
 	db, sqlMock := testutil.NewMockDB(t)
 	repoPOIPoint := &mocks.MockRepositoryPOIPoint{}
-	svc := newPOIPointService(db, repoPOIPoint)
+	repoCategory, repoSubCategory, repoMotherBrand, repoBranch := newMetaMocks()
+	svc := newPOIPointService(db, repoPOIPoint, repoCategory, repoSubCategory, repoMotherBrand, repoBranch)
 
 	sqlMock.ExpectBegin()
 	sqlMock.ExpectRollback()
@@ -112,7 +123,8 @@ func TestPOIPointFindById_NotFound(t *testing.T) {
 func TestPOIPointUpdate_HappyPath(t *testing.T) {
 	db, sqlMock := testutil.NewMockDB(t)
 	repoPOIPoint := &mocks.MockRepositoryPOIPoint{}
-	svc := newPOIPointService(db, repoPOIPoint)
+	repoCategory, repoSubCategory, repoMotherBrand, repoBranch := newMetaMocks()
+	svc := newPOIPointService(db, repoPOIPoint, repoCategory, repoSubCategory, repoMotherBrand, repoBranch)
 
 	existing := newPOIPointModel(6, "OldName")
 	updated := newPOIPointModel(6, "NewName")
@@ -147,7 +159,8 @@ func TestPOIPointUpdate_HappyPath(t *testing.T) {
 func TestPOIPointDelete_HappyPath(t *testing.T) {
 	db, sqlMock := testutil.NewMockDB(t)
 	repoPOIPoint := &mocks.MockRepositoryPOIPoint{}
-	svc := newPOIPointService(db, repoPOIPoint)
+	repoCategory, repoSubCategory, repoMotherBrand, repoBranch := newMetaMocks()
+	svc := newPOIPointService(db, repoPOIPoint, repoCategory, repoSubCategory, repoMotherBrand, repoBranch)
 
 	sqlMock.ExpectBegin()
 	sqlMock.ExpectCommit()
@@ -166,7 +179,8 @@ func TestPOIPointDelete_HappyPath(t *testing.T) {
 func TestPOIPointDelete_NotFound(t *testing.T) {
 	db, sqlMock := testutil.NewMockDB(t)
 	repoPOIPoint := &mocks.MockRepositoryPOIPoint{}
-	svc := newPOIPointService(db, repoPOIPoint)
+	repoCategory, repoSubCategory, repoMotherBrand, repoBranch := newMetaMocks()
+	svc := newPOIPointService(db, repoPOIPoint, repoCategory, repoSubCategory, repoMotherBrand, repoBranch)
 
 	sqlMock.ExpectBegin()
 	sqlMock.ExpectRollback()
@@ -188,7 +202,8 @@ func TestPOIPointDelete_NotFound(t *testing.T) {
 func TestPOIPointGetPointUsage_HappyPath(t *testing.T) {
 	db, sqlMock := testutil.NewMockDB(t)
 	repoPOIPoint := &mocks.MockRepositoryPOIPoint{}
-	svc := newPOIPointService(db, repoPOIPoint)
+	repoCategory, repoSubCategory, repoMotherBrand, repoBranch := newMetaMocks()
+	svc := newPOIPointService(db, repoPOIPoint, repoCategory, repoSubCategory, repoMotherBrand, repoBranch)
 
 	sqlMock.ExpectBegin()
 	sqlMock.ExpectCommit()
@@ -213,7 +228,8 @@ func TestPOIPointGetPointUsage_HappyPath(t *testing.T) {
 func TestPOIPointExport_HappyPath(t *testing.T) {
 	db, sqlMock := testutil.NewMockDB(t)
 	repoPOIPoint := &mocks.MockRepositoryPOIPoint{}
-	svc := newPOIPointService(db, repoPOIPoint)
+	repoCategory, repoSubCategory, repoMotherBrand, repoBranch := newMetaMocks()
+	svc := newPOIPointService(db, repoPOIPoint, repoCategory, repoSubCategory, repoMotherBrand, repoBranch)
 
 	points := []models.POIPoint{
 		{Id: 1, POIName: "Store A", Address: "123 Main", Latitude: -6.2, Longitude: 106.8, POIs: []models.POIRef{{Id: 1, Brand: "BrandX"}}},
@@ -241,7 +257,8 @@ func TestPOIPointExport_HappyPath(t *testing.T) {
 func TestPOIPointImport_UnsupportedFileType(t *testing.T) {
 	db, sqlMock := testutil.NewMockDB(t)
 	repoPOIPoint := &mocks.MockRepositoryPOIPoint{}
-	svc := newPOIPointService(db, repoPOIPoint)
+	repoCategory, repoSubCategory, repoMotherBrand, repoBranch := newMetaMocks()
+	svc := newPOIPointService(db, repoPOIPoint, repoCategory, repoSubCategory, repoMotherBrand, repoBranch)
 
 	sqlMock.ExpectBegin()
 	sqlMock.ExpectRollback()
@@ -257,9 +274,10 @@ func TestPOIPointImport_UnsupportedFileType(t *testing.T) {
 func TestPOIPointImport_CSV_HappyPath_NewPoint(t *testing.T) {
 	db, sqlMock := testutil.NewMockDB(t)
 	repoPOIPoint := &mocks.MockRepositoryPOIPoint{}
-	svc := newPOIPointService(db, repoPOIPoint)
+	repoCategory, repoSubCategory, repoMotherBrand, repoBranch := newMetaMocks()
+	svc := newPOIPointService(db, repoPOIPoint, repoCategory, repoSubCategory, repoMotherBrand, repoBranch)
 
-	csvData := "POI Name,Address,Coordinate\nStore A,123 Main,-6.2 106.8\n"
+	csvData := "POI Name,Address,Coordinate\nStore A,123 Main,\"-6.2, 106.8\"\n"
 
 	sqlMock.ExpectBegin()
 	sqlMock.ExpectCommit()
@@ -285,9 +303,10 @@ func TestPOIPointImport_CSV_HappyPath_NewPoint(t *testing.T) {
 func TestPOIPointImport_CSV_ExistingPoint(t *testing.T) {
 	db, sqlMock := testutil.NewMockDB(t)
 	repoPOIPoint := &mocks.MockRepositoryPOIPoint{}
-	svc := newPOIPointService(db, repoPOIPoint)
+	repoCategory, repoSubCategory, repoMotherBrand, repoBranch := newMetaMocks()
+	svc := newPOIPointService(db, repoPOIPoint, repoCategory, repoSubCategory, repoMotherBrand, repoBranch)
 
-	csvData := "POI Name,Address,Coordinate\nStore A,123 Main,-6.2 106.8\n"
+	csvData := "POI Name,Address,Coordinate\nStore A,123 Main,\"-6.2, 106.8\"\n"
 
 	sqlMock.ExpectBegin()
 	sqlMock.ExpectCommit()
