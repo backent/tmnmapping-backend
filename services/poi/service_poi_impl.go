@@ -14,6 +14,7 @@ import (
 	"github.com/malikabdulaziz/tmn-backend/helpers"
 	"github.com/malikabdulaziz/tmn-backend/models"
 	repositoriesPOI "github.com/malikabdulaziz/tmn-backend/repositories/poi"
+	repositoriesPOIPoint "github.com/malikabdulaziz/tmn-backend/repositories/poipoint"
 	webPOI "github.com/malikabdulaziz/tmn-backend/web/poi"
 	"github.com/xuri/excelize/v2"
 )
@@ -27,46 +28,38 @@ var colorPalette = []string{
 }
 
 type ServicePOIImpl struct {
-	DB                     *sql.DB
-	RepositoryPOIInterface repositoriesPOI.RepositoryPOIInterface
+	DB                          *sql.DB
+	RepositoryPOIInterface      repositoriesPOI.RepositoryPOIInterface
+	RepositoryPOIPointInterface repositoriesPOIPoint.RepositoryPOIPointInterface
 }
 
 func NewServicePOIImpl(
 	db *sql.DB,
 	repositoryPOI repositoriesPOI.RepositoryPOIInterface,
+	repositoryPOIPoint repositoriesPOIPoint.RepositoryPOIPointInterface,
 ) ServicePOIInterface {
 	return &ServicePOIImpl{
-		DB:                     db,
-		RepositoryPOIInterface: repositoryPOI,
+		DB:                          db,
+		RepositoryPOIInterface:      repositoryPOI,
+		RepositoryPOIPointInterface: repositoryPOIPoint,
 	}
 }
 
-// Create creates a new POI with its points
+// Create creates a new POI with links to existing points
 func (service *ServicePOIImpl) Create(ctx context.Context, request webPOI.CreatePOIRequest) webPOI.POIResponse {
 	tx, err := service.DB.Begin()
 	helpers.PanicIfError(err)
 	defer helpers.CommitOrRollback(tx)
 
+	// Validate that all point IDs exist
+	service.validatePointIds(ctx, tx, request.PointIds)
+
 	poi := models.POI{
-		Brand:  request.Brand,
-		Color:  request.Color,
-		Points: make([]models.POIPoint, len(request.Points)),
+		Brand: request.Brand,
+		Color: request.Color,
 	}
 
-	for i, pointReq := range request.Points {
-		poi.Points[i] = models.POIPoint{
-			POIName:     pointReq.POIName,
-			Address:     pointReq.Address,
-			Latitude:    pointReq.Latitude,
-			Longitude:   pointReq.Longitude,
-			Category:    pointReq.Category,
-			SubCategory: pointReq.SubCategory,
-			MotherBrand: pointReq.MotherBrand,
-			Branch:      pointReq.Branch,
-		}
-	}
-
-	createdPOI, err := service.RepositoryPOIInterface.Create(ctx, tx, poi)
+	createdPOI, err := service.RepositoryPOIInterface.Create(ctx, tx, poi, request.PointIds)
 	helpers.PanicIfError(err)
 
 	return service.poiModelToResponse(createdPOI)
@@ -109,7 +102,7 @@ func (service *ServicePOIImpl) FindById(ctx context.Context, id int) webPOI.POIR
 	return service.poiModelToResponse(poi)
 }
 
-// Update updates a POI and replaces all its points
+// Update updates a POI and replaces its point links
 func (service *ServicePOIImpl) Update(ctx context.Context, request webPOI.UpdatePOIRequest, id int) webPOI.POIResponse {
 	tx, err := service.DB.Begin()
 	helpers.PanicIfError(err)
@@ -121,30 +114,19 @@ func (service *ServicePOIImpl) Update(ctx context.Context, request webPOI.Update
 	}
 	helpers.PanicIfError(err)
 
+	// Validate that all point IDs exist
+	service.validatePointIds(ctx, tx, request.PointIds)
+
 	existingPOI.Brand = request.Brand
 	existingPOI.Color = request.Color
 
-	existingPOI.Points = make([]models.POIPoint, len(request.Points))
-	for i, pointReq := range request.Points {
-		existingPOI.Points[i] = models.POIPoint{
-			POIName:     pointReq.POIName,
-			Address:     pointReq.Address,
-			Latitude:    pointReq.Latitude,
-			Longitude:   pointReq.Longitude,
-			Category:    pointReq.Category,
-			SubCategory: pointReq.SubCategory,
-			MotherBrand: pointReq.MotherBrand,
-			Branch:      pointReq.Branch,
-		}
-	}
-
-	updatedPOI, err := service.RepositoryPOIInterface.Update(ctx, tx, existingPOI)
+	updatedPOI, err := service.RepositoryPOIInterface.Update(ctx, tx, existingPOI, request.PointIds)
 	helpers.PanicIfError(err)
 
 	return service.poiModelToResponse(updatedPOI)
 }
 
-// Delete deletes a POI (cascade will delete points)
+// Delete deletes a POI (cascade removes junction links, NOT the points themselves)
 func (service *ServicePOIImpl) Delete(ctx context.Context, id int) {
 	tx, err := service.DB.Begin()
 	helpers.PanicIfError(err)
@@ -160,7 +142,7 @@ func (service *ServicePOIImpl) Delete(ctx context.Context, id int) {
 	helpers.PanicIfError(err)
 }
 
-// Import parses an xlsx or csv file and creates POIs grouped by brand
+// Import parses an xlsx or csv file and creates POIs grouped by brand, creating points as needed
 func (service *ServicePOIImpl) Import(ctx context.Context, fileBytes []byte, fileType string) []webPOI.POIResponse {
 	tx, err := service.DB.Begin()
 	helpers.PanicIfError(err)
@@ -195,10 +177,10 @@ func (service *ServicePOIImpl) Import(ctx context.Context, fileBytes []byte, fil
 		}
 	}
 
-	// Group rows by Brand
+	// Group rows by Brand, creating standalone points for each row
 	type brandGroup struct {
-		brand  string
-		points []models.POIPoint
+		brand    string
+		pointIds []int
 	}
 	brandOrder := []string{}
 	groups := map[string]*brandGroup{}
@@ -209,31 +191,46 @@ func (service *ServicePOIImpl) Import(ctx context.Context, fileBytes []byte, fil
 			continue
 		}
 
-		lat, lng := parseCoordinate(getColValue(row, colMap, "coordinate"))
+		poiName := getColValue(row, colMap, "poi_name")
+		address := getColValue(row, colMap, "address")
 
-		point := models.POIPoint{
-			POIName:     getColValue(row, colMap, "poi_name"),
-			Address:     getColValue(row, colMap, "address"),
-			Latitude:    lat,
-			Longitude:   lng,
-			Category:    getColValue(row, colMap, "category"),
-			SubCategory: getColValue(row, colMap, "sub_category"),
-			MotherBrand: getColValue(row, colMap, "mother_brand"),
-			Branch:      getColValue(row, colMap, "branch"),
+		// Check if a point with the same name and address already exists
+		var pointId int
+		existing, err := service.RepositoryPOIPointInterface.FindByNameAndAddress(ctx, tx, poiName, address)
+		if err == nil {
+			pointId = existing.Id
+		} else if err == sql.ErrNoRows {
+			// Create a new standalone point
+			lat, lng := parseCoordinate(getColValue(row, colMap, "coordinate"))
+			point := models.POIPoint{
+				POIName:     poiName,
+				Address:     address,
+				Latitude:    lat,
+				Longitude:   lng,
+				Category:    getColValue(row, colMap, "category"),
+				SubCategory: getColValue(row, colMap, "sub_category"),
+				MotherBrand: getColValue(row, colMap, "mother_brand"),
+				Branch:      getColValue(row, colMap, "branch"),
+			}
+			createdPoint, createErr := service.RepositoryPOIPointInterface.Create(ctx, tx, point)
+			helpers.PanicIfError(createErr)
+			pointId = createdPoint.Id
+		} else {
+			helpers.PanicIfError(err)
 		}
 
 		if _, exists := groups[brandVal]; !exists {
 			groups[brandVal] = &brandGroup{brand: brandVal}
 			brandOrder = append(brandOrder, brandVal)
 		}
-		groups[brandVal].points = append(groups[brandVal].points, point)
+		groups[brandVal].pointIds = append(groups[brandVal].pointIds, pointId)
 	}
 
 	// Replace: delete any existing POIs whose brand matches the imported brands
 	existing, err := service.RepositoryPOIInterface.FindByBrands(ctx, tx, brandOrder)
 	helpers.PanicIfError(err)
 	for _, existingPOI := range existing {
-		err = service.RepositoryPOIInterface.DeletePointsByPOIId(ctx, tx, existingPOI.Id)
+		err = service.RepositoryPOIInterface.DeletePointLinksByPOIId(ctx, tx, existingPOI.Id)
 		helpers.PanicIfError(err)
 		err = service.RepositoryPOIInterface.Delete(ctx, tx, existingPOI.Id)
 		helpers.PanicIfError(err)
@@ -246,12 +243,11 @@ func (service *ServicePOIImpl) Import(ctx context.Context, fileBytes []byte, fil
 		color := colorPalette[i%len(colorPalette)]
 
 		poi := models.POI{
-			Brand:  group.brand,
-			Color:  color,
-			Points: group.points,
+			Brand: group.brand,
+			Color: color,
 		}
 
-		createdPOI, err := service.RepositoryPOIInterface.Create(ctx, tx, poi)
+		createdPOI, err := service.RepositoryPOIInterface.Create(ctx, tx, poi, group.pointIds)
 		helpers.PanicIfError(err)
 
 		responses = append(responses, service.poiModelToResponse(createdPOI))
@@ -276,6 +272,17 @@ func (service *ServicePOIImpl) Export(ctx context.Context, search string) ([]byt
 	return buildPOIExcel(pois)
 }
 
+// validatePointIds ensures all point IDs exist
+func (service *ServicePOIImpl) validatePointIds(ctx context.Context, tx *sql.Tx, pointIds []int) {
+	for _, pid := range pointIds {
+		_, err := service.RepositoryPOIPointInterface.FindById(ctx, tx, pid)
+		if err == sql.ErrNoRows {
+			panic(exceptions.NewBadRequest("POI point not found"))
+		}
+		helpers.PanicIfError(err)
+	}
+}
+
 // Helper function to convert model to response
 func (service *ServicePOIImpl) poiModelToResponse(poi models.POI) webPOI.POIResponse {
 	points := make([]webPOI.POIPointResponse, len(poi.Points))
@@ -291,6 +298,7 @@ func (service *ServicePOIImpl) poiModelToResponse(poi models.POI) webPOI.POIResp
 			MotherBrand: point.MotherBrand,
 			Branch:      point.Branch,
 			CreatedAt:   point.CreatedAt,
+			UpdatedAt:   point.UpdatedAt,
 		}
 	}
 

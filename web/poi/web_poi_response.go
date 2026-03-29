@@ -11,6 +11,7 @@ type POIPointResponse struct {
 	MotherBrand string  `json:"mother_brand"`
 	Branch      string  `json:"branch"`
 	CreatedAt   string  `json:"created_at"`
+	UpdatedAt   string  `json:"updated_at"`
 }
 
 type POIResponse struct {

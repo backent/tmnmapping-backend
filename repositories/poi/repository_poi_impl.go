@@ -24,15 +24,8 @@ func nullIfEmpty(s string) interface{} {
 	return s
 }
 
-func nullIfZeroFloat(f float64) interface{} {
-	if f == 0 {
-		return nil
-	}
-	return f
-}
-
-// Create inserts a new POI
-func (repository *RepositoryPOIImpl) Create(ctx context.Context, tx *sql.Tx, poi models.POI) (models.POI, error) {
+// Create inserts a new POI and links it to existing points via junction table
+func (repository *RepositoryPOIImpl) Create(ctx context.Context, tx *sql.Tx, poi models.POI, pointIds []int) (models.POI, error) {
 	SQL := `INSERT INTO ` + models.POITable + ` (brand, color)
 		VALUES ($1, $2)
 		RETURNING id, created_at, updated_at`
@@ -46,45 +39,34 @@ func (repository *RepositoryPOIImpl) Create(ctx context.Context, tx *sql.Tx, poi
 		return models.POI{}, err
 	}
 
-	// Create all points
-	for i := range poi.Points {
-		poi.Points[i].POIId = poi.Id
-		point, err := repository.CreatePoint(ctx, tx, poi.Points[i])
-		if err != nil {
+	for _, pointId := range pointIds {
+		if err := repository.CreatePointLink(ctx, tx, poi.Id, pointId); err != nil {
 			return models.POI{}, err
 		}
-		poi.Points[i] = point
 	}
+
+	// Load points for response
+	points, err := repository.findPointsByPOIId(ctx, tx, poi.Id)
+	if err != nil {
+		return models.POI{}, err
+	}
+	poi.Points = points
 
 	return poi, nil
 }
 
-// CreatePoint inserts a new POI point
-func (repository *RepositoryPOIImpl) CreatePoint(ctx context.Context, tx *sql.Tx, point models.POIPoint) (models.POIPoint, error) {
-	SQL := `INSERT INTO ` + models.POIPointTable + `
-		(poi_id, poi_name, address, latitude, longitude, location, category, sub_category, mother_brand, branch)
-		VALUES ($1, $2, $3, $4, $5,
-		CASE WHEN $4::DOUBLE PRECISION IS NOT NULL AND $5::DOUBLE PRECISION IS NOT NULL AND ($4::DOUBLE PRECISION) != 0 AND ($5::DOUBLE PRECISION) != 0 THEN ST_SetSRID(ST_MakePoint($5::DOUBLE PRECISION, $4::DOUBLE PRECISION), 4326)::geography ELSE NULL END,
-		$6, $7, $8, $9)
-		RETURNING id, created_at`
+// CreatePointLink inserts a junction row linking a POI to a point
+func (repository *RepositoryPOIImpl) CreatePointLink(ctx context.Context, tx *sql.Tx, poiId int, pointId int) error {
+	SQL := `INSERT INTO ` + models.POIPointPOITable + ` (poi_id, poi_point_id) VALUES ($1, $2)`
+	_, err := tx.ExecContext(ctx, SQL, poiId, pointId)
+	return err
+}
 
-	err := tx.QueryRowContext(ctx, SQL,
-		point.POIId,
-		nullIfEmpty(point.POIName),
-		nullIfEmpty(point.Address),
-		nullIfZeroFloat(point.Latitude),
-		nullIfZeroFloat(point.Longitude),
-		nullIfEmpty(point.Category),
-		nullIfEmpty(point.SubCategory),
-		nullIfEmpty(point.MotherBrand),
-		nullIfEmpty(point.Branch),
-	).Scan(&point.Id, &point.CreatedAt)
-
-	if err != nil {
-		return models.POIPoint{}, err
-	}
-
-	return point, nil
+// DeletePointLinksByPOIId removes all point links for a POI
+func (repository *RepositoryPOIImpl) DeletePointLinksByPOIId(ctx context.Context, tx *sql.Tx, poiId int) error {
+	SQL := `DELETE FROM ` + models.POIPointPOITable + ` WHERE poi_id = $1`
+	_, err := tx.ExecContext(ctx, SQL, poiId)
+	return err
 }
 
 // FindAll retrieves all POIs with their points, with pagination, ordering, and optional search
@@ -257,7 +239,7 @@ func (repository *RepositoryPOIImpl) FindById(ctx context.Context, tx *sql.Tx, i
 
 	poi := models.NullAblePOIToPOI(nullable)
 
-	// Load points
+	// Load points via junction table
 	points, err := repository.findPointsByPOIId(ctx, tx, poi.Id)
 	if err != nil {
 		return models.POI{}, err
@@ -267,12 +249,13 @@ func (repository *RepositoryPOIImpl) FindById(ctx context.Context, tx *sql.Tx, i
 	return poi, nil
 }
 
-// findPointsByPOIId is a helper to load points for a POI
+// findPointsByPOIId loads points for a POI via the junction table
 func (repository *RepositoryPOIImpl) findPointsByPOIId(ctx context.Context, tx *sql.Tx, poiId int) ([]models.POIPoint, error) {
-	SQL := `SELECT id, poi_id, poi_name, address, latitude, longitude, category, sub_category, mother_brand, branch, created_at
-		FROM ` + models.POIPointTable + `
-		WHERE poi_id = $1
-		ORDER BY created_at ASC`
+	SQL := `SELECT pp.id, pp.poi_name, pp.address, pp.latitude, pp.longitude, pp.category, pp.sub_category, pp.mother_brand, pp.branch, pp.created_at, pp.updated_at
+		FROM ` + models.POIPointTable + ` pp
+		INNER JOIN ` + models.POIPointPOITable + ` j ON j.poi_point_id = pp.id
+		WHERE j.poi_id = $1
+		ORDER BY pp.created_at ASC`
 
 	rows, err := tx.QueryContext(ctx, SQL, poiId)
 	if err != nil {
@@ -285,7 +268,6 @@ func (repository *RepositoryPOIImpl) findPointsByPOIId(ctx context.Context, tx *
 		nullable := models.NullAblePOIPoint{}
 		err := rows.Scan(
 			&nullable.Id,
-			&nullable.POIId,
 			&nullable.POIName,
 			&nullable.Address,
 			&nullable.Latitude,
@@ -295,6 +277,7 @@ func (repository *RepositoryPOIImpl) findPointsByPOIId(ctx context.Context, tx *
 			&nullable.MotherBrand,
 			&nullable.Branch,
 			&nullable.CreatedAt,
+			&nullable.UpdatedAt,
 		)
 		if err != nil {
 			return []models.POIPoint{}, err
@@ -307,16 +290,19 @@ func (repository *RepositoryPOIImpl) findPointsByPOIId(ctx context.Context, tx *
 		return []models.POIPoint{}, err
 	}
 
+	if points == nil {
+		points = []models.POIPoint{}
+	}
+
 	return points, nil
 }
 
-// findPointsByPOIIds loads points for multiple POIs in one query
+// findPointsByPOIIds loads points for multiple POIs via the junction table
 func (repository *RepositoryPOIImpl) findPointsByPOIIds(ctx context.Context, tx *sql.Tx, poiIds []int) (map[int][]models.POIPoint, error) {
 	if len(poiIds) == 0 {
 		return make(map[int][]models.POIPoint), nil
 	}
 
-	// Build IN clause with placeholders
 	placeholders := make([]string, len(poiIds))
 	args := make([]interface{}, len(poiIds))
 	for i, id := range poiIds {
@@ -324,10 +310,11 @@ func (repository *RepositoryPOIImpl) findPointsByPOIIds(ctx context.Context, tx 
 		args[i] = id
 	}
 
-	SQL := `SELECT id, poi_id, poi_name, address, latitude, longitude, category, sub_category, mother_brand, branch, created_at
-		FROM ` + models.POIPointTable + `
-		WHERE poi_id IN (` + strings.Join(placeholders, ",") + `)
-		ORDER BY poi_id, created_at ASC`
+	SQL := `SELECT j.poi_id, pp.id, pp.poi_name, pp.address, pp.latitude, pp.longitude, pp.category, pp.sub_category, pp.mother_brand, pp.branch, pp.created_at, pp.updated_at
+		FROM ` + models.POIPointTable + ` pp
+		INNER JOIN ` + models.POIPointPOITable + ` j ON j.poi_point_id = pp.id
+		WHERE j.poi_id IN (` + strings.Join(placeholders, ",") + `)
+		ORDER BY j.poi_id, pp.created_at ASC`
 
 	rows, err := tx.QueryContext(ctx, SQL, args...)
 	if err != nil {
@@ -337,10 +324,11 @@ func (repository *RepositoryPOIImpl) findPointsByPOIIds(ctx context.Context, tx 
 
 	pointsMap := make(map[int][]models.POIPoint)
 	for rows.Next() {
+		var poiId int
 		nullable := models.NullAblePOIPoint{}
 		err := rows.Scan(
+			&poiId,
 			&nullable.Id,
-			&nullable.POIId,
 			&nullable.POIName,
 			&nullable.Address,
 			&nullable.Latitude,
@@ -350,13 +338,14 @@ func (repository *RepositoryPOIImpl) findPointsByPOIIds(ctx context.Context, tx 
 			&nullable.MotherBrand,
 			&nullable.Branch,
 			&nullable.CreatedAt,
+			&nullable.UpdatedAt,
 		)
 		if err != nil {
 			return nil, err
 		}
 
 		point := models.NullAblePOIPointToPOIPoint(nullable)
-		pointsMap[int(nullable.POIId.Int64)] = append(pointsMap[int(nullable.POIId.Int64)], point)
+		pointsMap[poiId] = append(pointsMap[poiId], point)
 	}
 
 	if err := rows.Err(); err != nil {
@@ -366,8 +355,8 @@ func (repository *RepositoryPOIImpl) findPointsByPOIIds(ctx context.Context, tx 
 	return pointsMap, nil
 }
 
-// Update updates a POI and replaces all its points
-func (repository *RepositoryPOIImpl) Update(ctx context.Context, tx *sql.Tx, poi models.POI) (models.POI, error) {
+// Update updates a POI and replaces its point links
+func (repository *RepositoryPOIImpl) Update(ctx context.Context, tx *sql.Tx, poi models.POI, pointIds []int) (models.POI, error) {
 	SQL := `UPDATE ` + models.POITable + `
 		SET brand = $1, color = $2, updated_at = $3
 		WHERE id = $4
@@ -384,35 +373,29 @@ func (repository *RepositoryPOIImpl) Update(ctx context.Context, tx *sql.Tx, poi
 		return models.POI{}, err
 	}
 
-	// Delete all existing points
-	err = repository.DeletePointsByPOIId(ctx, tx, poi.Id)
-	if err != nil {
+	// Delete all existing point links
+	if err := repository.DeletePointLinksByPOIId(ctx, tx, poi.Id); err != nil {
 		return models.POI{}, err
 	}
 
-	// Create new points
-	newPoints := make([]models.POIPoint, len(poi.Points))
-	for i := range poi.Points {
-		poi.Points[i].POIId = poi.Id
-		point, err := repository.CreatePoint(ctx, tx, poi.Points[i])
-		if err != nil {
+	// Create new point links
+	for _, pointId := range pointIds {
+		if err := repository.CreatePointLink(ctx, tx, poi.Id, pointId); err != nil {
 			return models.POI{}, err
 		}
-		newPoints[i] = point
 	}
-	poi.Points = newPoints
+
+	// Load points for response
+	points, err := repository.findPointsByPOIId(ctx, tx, poi.Id)
+	if err != nil {
+		return models.POI{}, err
+	}
+	poi.Points = points
 
 	return poi, nil
 }
 
-// DeletePointsByPOIId deletes all points for a POI
-func (repository *RepositoryPOIImpl) DeletePointsByPOIId(ctx context.Context, tx *sql.Tx, poiId int) error {
-	SQL := `DELETE FROM ` + models.POIPointTable + ` WHERE poi_id = $1`
-	_, err := tx.ExecContext(ctx, SQL, poiId)
-	return err
-}
-
-// Delete deletes a POI (cascade will delete points)
+// Delete deletes a POI (CASCADE on junction table removes links, but NOT the points themselves)
 func (repository *RepositoryPOIImpl) Delete(ctx context.Context, tx *sql.Tx, id int) error {
 	SQL := `DELETE FROM ` + models.POITable + ` WHERE id = $1`
 	_, err := tx.ExecContext(ctx, SQL, id)

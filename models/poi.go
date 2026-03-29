@@ -14,17 +14,23 @@ type POI struct {
 }
 
 type POIPoint struct {
-	Id          int     `json:"id"`
-	POIId       int     `json:"poi_id"`
-	POIName     string  `json:"poi_name"`
-	Address     string  `json:"address"`
-	Latitude    float64 `json:"latitude"`
-	Longitude   float64 `json:"longitude"`
-	Category    string  `json:"category"`
-	SubCategory string  `json:"sub_category"`
-	MotherBrand string  `json:"mother_brand"`
-	Branch      string  `json:"branch"`
-	CreatedAt   string  `json:"created_at"`
+	Id          int      `json:"id"`
+	POIName     string   `json:"poi_name"`
+	Address     string   `json:"address"`
+	Latitude    float64  `json:"latitude"`
+	Longitude   float64  `json:"longitude"`
+	Category    string   `json:"category"`
+	SubCategory string   `json:"sub_category"`
+	MotherBrand string   `json:"mother_brand"`
+	Branch      string   `json:"branch"`
+	POIs        []POIRef `json:"pois"`
+	CreatedAt   string   `json:"created_at"`
+	UpdatedAt   string   `json:"updated_at"`
+}
+
+type POIRef struct {
+	Id    int    `json:"id"`
+	Brand string `json:"brand"`
 }
 
 type NullAblePOI struct {
@@ -37,7 +43,6 @@ type NullAblePOI struct {
 
 type NullAblePOIPoint struct {
 	Id          sql.NullInt64
-	POIId       sql.NullInt64
 	POIName     sql.NullString
 	Address     sql.NullString
 	Latitude    sql.NullFloat64
@@ -47,10 +52,12 @@ type NullAblePOIPoint struct {
 	MotherBrand sql.NullString
 	Branch      sql.NullString
 	CreatedAt   sql.NullString
+	UpdatedAt   sql.NullString
 }
 
 var POITable string = "pois"
 var POIPointTable string = "poi_points"
+var POIPointPOITable string = "poi_point_pois"
 
 func NullAblePOIToPOI(nullable NullAblePOI) POI {
 	return POI{
@@ -66,7 +73,6 @@ func NullAblePOIToPOI(nullable NullAblePOI) POI {
 func NullAblePOIPointToPOIPoint(nullable NullAblePOIPoint) POIPoint {
 	return POIPoint{
 		Id:          int(nullable.Id.Int64),
-		POIId:       int(nullable.POIId.Int64),
 		POIName:     nullable.POIName.String,
 		Address:     nullable.Address.String,
 		Latitude:    nullable.Latitude.Float64,
@@ -75,6 +81,8 @@ func NullAblePOIPointToPOIPoint(nullable NullAblePOIPoint) POIPoint {
 		SubCategory: nullable.SubCategory.String,
 		MotherBrand: nullable.MotherBrand.String,
 		Branch:      nullable.Branch.String,
+		POIs:        []POIRef{},
 		CreatedAt:   nullable.CreatedAt.String,
+		UpdatedAt:   nullable.UpdatedAt.String,
 	}
 }

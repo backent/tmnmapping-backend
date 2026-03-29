@@ -15,8 +15,8 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func newPOIService(db *sql.DB, repoPOI *mocks.MockRepositoryPOI) servicePOI.ServicePOIInterface {
-	return servicePOI.NewServicePOIImpl(db, repoPOI)
+func newPOIService(db *sql.DB, repoPOI *mocks.MockRepositoryPOI, repoPOIPoint *mocks.MockRepositoryPOIPoint) servicePOI.ServicePOIInterface {
+	return servicePOI.NewServicePOIImpl(db, repoPOI, repoPOIPoint)
 }
 
 func newPOIModel(id int, brand, color string) models.POI {
@@ -25,7 +25,7 @@ func newPOIModel(id int, brand, color string) models.POI {
 		Brand: brand,
 		Color: color,
 		Points: []models.POIPoint{
-			{Id: 1, POIName: "Place A", Address: "Addr A", Latitude: -6.2, Longitude: 106.8},
+			{Id: 1, POIName: "Place A", Address: "Addr A", Latitude: -6.2, Longitude: 106.8, POIs: []models.POIRef{}},
 		},
 	}
 }
@@ -35,23 +35,27 @@ func newPOIModel(id int, brand, color string) models.POI {
 func TestPOICreate_HappyPath(t *testing.T) {
 	db, sqlMock := testutil.NewMockDB(t)
 	repoPOI := &mocks.MockRepositoryPOI{}
-	svc := newPOIService(db, repoPOI)
+	repoPOIPoint := &mocks.MockRepositoryPOIPoint{}
+	svc := newPOIService(db, repoPOI, repoPOIPoint)
 
 	created := newPOIModel(1, "Landmark", "#FF0000")
 
 	sqlMock.ExpectBegin()
 	sqlMock.ExpectCommit()
 
-	repoPOI.On("Create", mock.Anything, mock.AnythingOfType("*sql.Tx"), mock.MatchedBy(func(p models.POI) bool {
-		return p.Brand == "Landmark" && p.Color == "#FF0000" && len(p.Points) == 1
-	})).Return(created, nil)
+	// Validate point ID exists
+	repoPOIPoint.On("FindById", mock.Anything, mock.AnythingOfType("*sql.Tx"), 1).
+		Return(models.POIPoint{Id: 1, POIName: "Place A", POIs: []models.POIRef{}}, nil)
+
+	repoPOI.On("Create", mock.Anything, mock.AnythingOfType("*sql.Tx"),
+		mock.MatchedBy(func(p models.POI) bool { return p.Brand == "Landmark" && p.Color == "#FF0000" }),
+		[]int{1},
+	).Return(created, nil)
 
 	request := webPOI.CreatePOIRequest{
-		Brand: "Landmark",
-		Color: "#FF0000",
-		Points: []webPOI.POIPointRequest{
-			{POIName: "Place A", Address: "Addr A", Latitude: -6.2, Longitude: 106.8},
-		},
+		Brand:    "Landmark",
+		Color:    "#FF0000",
+		PointIds: []int{1},
 	}
 
 	response := svc.Create(context.Background(), request)
@@ -63,6 +67,34 @@ func TestPOICreate_HappyPath(t *testing.T) {
 	assert.Equal(t, "Place A", response.Points[0].POIName)
 
 	repoPOI.AssertExpectations(t)
+	repoPOIPoint.AssertExpectations(t)
+	assert.NoError(t, sqlMock.ExpectationsWereMet())
+}
+
+func TestPOICreate_InvalidPointId(t *testing.T) {
+	db, sqlMock := testutil.NewMockDB(t)
+	repoPOI := &mocks.MockRepositoryPOI{}
+	repoPOIPoint := &mocks.MockRepositoryPOIPoint{}
+	svc := newPOIService(db, repoPOI, repoPOIPoint)
+
+	sqlMock.ExpectBegin()
+	sqlMock.ExpectRollback()
+
+	repoPOIPoint.On("FindById", mock.Anything, mock.AnythingOfType("*sql.Tx"), 999).
+		Return(models.POIPoint{}, sql.ErrNoRows)
+
+	request := webPOI.CreatePOIRequest{
+		Brand:    "Test",
+		Color:    "#000",
+		PointIds: []int{999},
+	}
+
+	assert.PanicsWithValue(t,
+		exceptions.BadRequestError{Error: "POI point not found"},
+		func() { svc.Create(context.Background(), request) },
+	)
+
+	repoPOIPoint.AssertExpectations(t)
 	assert.NoError(t, sqlMock.ExpectationsWereMet())
 }
 
@@ -71,7 +103,8 @@ func TestPOICreate_HappyPath(t *testing.T) {
 func TestPOIFindById_HappyPath(t *testing.T) {
 	db, sqlMock := testutil.NewMockDB(t)
 	repoPOI := &mocks.MockRepositoryPOI{}
-	svc := newPOIService(db, repoPOI)
+	repoPOIPoint := &mocks.MockRepositoryPOIPoint{}
+	svc := newPOIService(db, repoPOI, repoPOIPoint)
 
 	poi := newPOIModel(5, "Central Park POI", "#00FF00")
 
@@ -94,7 +127,8 @@ func TestPOIFindById_HappyPath(t *testing.T) {
 func TestPOIFindById_NotFound(t *testing.T) {
 	db, sqlMock := testutil.NewMockDB(t)
 	repoPOI := &mocks.MockRepositoryPOI{}
-	svc := newPOIService(db, repoPOI)
+	repoPOIPoint := &mocks.MockRepositoryPOIPoint{}
+	svc := newPOIService(db, repoPOI, repoPOIPoint)
 
 	sqlMock.ExpectBegin()
 	sqlMock.ExpectRollback()
@@ -116,29 +150,28 @@ func TestPOIFindById_NotFound(t *testing.T) {
 func TestPOIUpdate_HappyPath(t *testing.T) {
 	db, sqlMock := testutil.NewMockDB(t)
 	repoPOI := &mocks.MockRepositoryPOI{}
-	svc := newPOIService(db, repoPOI)
+	repoPOIPoint := &mocks.MockRepositoryPOIPoint{}
+	svc := newPOIService(db, repoPOI, repoPOIPoint)
 
 	existing := newPOIModel(3, "OldBrand", "#000000")
 	updated := newPOIModel(3, "NewBrand", "#FFFFFF")
-	updated.Points = []models.POIPoint{
-		{POIName: "New Place", Address: "New Addr", Latitude: -7.0, Longitude: 107.0},
-	}
 
 	sqlMock.ExpectBegin()
 	sqlMock.ExpectCommit()
 
 	repoPOI.On("FindById", mock.Anything, mock.AnythingOfType("*sql.Tx"), 3).
 		Return(existing, nil)
-	repoPOI.On("Update", mock.Anything, mock.AnythingOfType("*sql.Tx"), mock.MatchedBy(func(p models.POI) bool {
-		return p.Id == 3 && p.Brand == "NewBrand" && p.Color == "#FFFFFF"
-	})).Return(updated, nil)
+	repoPOIPoint.On("FindById", mock.Anything, mock.AnythingOfType("*sql.Tx"), 10).
+		Return(models.POIPoint{Id: 10, POIName: "New Place", POIs: []models.POIRef{}}, nil)
+	repoPOI.On("Update", mock.Anything, mock.AnythingOfType("*sql.Tx"),
+		mock.MatchedBy(func(p models.POI) bool { return p.Id == 3 && p.Brand == "NewBrand" && p.Color == "#FFFFFF" }),
+		[]int{10},
+	).Return(updated, nil)
 
 	request := webPOI.UpdatePOIRequest{
-		Brand: "NewBrand",
-		Color: "#FFFFFF",
-		Points: []webPOI.POIPointRequest{
-			{POIName: "New Place", Address: "New Addr", Latitude: -7.0, Longitude: 107.0},
-		},
+		Brand:    "NewBrand",
+		Color:    "#FFFFFF",
+		PointIds: []int{10},
 	}
 
 	response := svc.Update(context.Background(), request, 3)
@@ -146,16 +179,17 @@ func TestPOIUpdate_HappyPath(t *testing.T) {
 	assert.Equal(t, 3, response.Id)
 	assert.Equal(t, "NewBrand", response.Brand)
 	assert.Equal(t, "#FFFFFF", response.Color)
-	assert.Equal(t, "New Place", response.Points[0].POIName)
 
 	repoPOI.AssertExpectations(t)
+	repoPOIPoint.AssertExpectations(t)
 	assert.NoError(t, sqlMock.ExpectationsWereMet())
 }
 
 func TestPOIUpdate_NotFound(t *testing.T) {
 	db, sqlMock := testutil.NewMockDB(t)
 	repoPOI := &mocks.MockRepositoryPOI{}
-	svc := newPOIService(db, repoPOI)
+	repoPOIPoint := &mocks.MockRepositoryPOIPoint{}
+	svc := newPOIService(db, repoPOI, repoPOIPoint)
 
 	sqlMock.ExpectBegin()
 	sqlMock.ExpectRollback()
@@ -164,8 +198,7 @@ func TestPOIUpdate_NotFound(t *testing.T) {
 		Return(models.POI{}, sql.ErrNoRows)
 
 	request := webPOI.UpdatePOIRequest{
-		Brand: "X", Color: "#FFF",
-		Points: []webPOI.POIPointRequest{{POIName: "P", Address: "A", Latitude: 1, Longitude: 1}},
+		Brand: "X", Color: "#FFF", PointIds: []int{1},
 	}
 
 	assert.PanicsWithValue(t,
@@ -182,7 +215,8 @@ func TestPOIUpdate_NotFound(t *testing.T) {
 func TestPOIDelete_HappyPath(t *testing.T) {
 	db, sqlMock := testutil.NewMockDB(t)
 	repoPOI := &mocks.MockRepositoryPOI{}
-	svc := newPOIService(db, repoPOI)
+	repoPOIPoint := &mocks.MockRepositoryPOIPoint{}
+	svc := newPOIService(db, repoPOI, repoPOIPoint)
 
 	sqlMock.ExpectBegin()
 	sqlMock.ExpectCommit()
@@ -201,7 +235,8 @@ func TestPOIDelete_HappyPath(t *testing.T) {
 func TestPOIDelete_NotFound(t *testing.T) {
 	db, sqlMock := testutil.NewMockDB(t)
 	repoPOI := &mocks.MockRepositoryPOI{}
-	svc := newPOIService(db, repoPOI)
+	repoPOIPoint := &mocks.MockRepositoryPOIPoint{}
+	svc := newPOIService(db, repoPOI, repoPOIPoint)
 
 	sqlMock.ExpectBegin()
 	sqlMock.ExpectRollback()
@@ -223,7 +258,8 @@ func TestPOIDelete_NotFound(t *testing.T) {
 func TestPOIFindAll_HappyPath(t *testing.T) {
 	db, sqlMock := testutil.NewMockDB(t)
 	repoPOI := &mocks.MockRepositoryPOI{}
-	svc := newPOIService(db, repoPOI)
+	repoPOIPoint := &mocks.MockRepositoryPOIPoint{}
+	svc := newPOIService(db, repoPOI, repoPOIPoint)
 
 	poiList := []models.POI{
 		newPOIModel(1, "POI A", "#AAA"),

@@ -11,6 +11,7 @@ import (
 	controllersDashboard "github.com/malikabdulaziz/tmn-backend/controllers/dashboard"
 	controllersImage "github.com/malikabdulaziz/tmn-backend/controllers/image"
 	controllersPOI "github.com/malikabdulaziz/tmn-backend/controllers/poi"
+	controllersPOIPoint "github.com/malikabdulaziz/tmn-backend/controllers/poipoint"
 	controllersSalesPackage "github.com/malikabdulaziz/tmn-backend/controllers/salespackage"
 	controllersBuildingRestriction "github.com/malikabdulaziz/tmn-backend/controllers/buildingrestriction"
 	controllersSavedPolygon "github.com/malikabdulaziz/tmn-backend/controllers/savedpolygon"
@@ -20,6 +21,7 @@ import (
 	repositoriesBuilding "github.com/malikabdulaziz/tmn-backend/repositories/building"
 	repositoriesDashboard "github.com/malikabdulaziz/tmn-backend/repositories/dashboard"
 	repositoriesPOI "github.com/malikabdulaziz/tmn-backend/repositories/poi"
+	repositoriesPOIPoint "github.com/malikabdulaziz/tmn-backend/repositories/poipoint"
 	repositoriesSalesPackage "github.com/malikabdulaziz/tmn-backend/repositories/salespackage"
 	repositoriesBuildingRestriction "github.com/malikabdulaziz/tmn-backend/repositories/buildingrestriction"
 	repositoriesSavedPolygon "github.com/malikabdulaziz/tmn-backend/repositories/savedpolygon"
@@ -31,6 +33,7 @@ import (
 	servicesDashboard "github.com/malikabdulaziz/tmn-backend/services/dashboard"
 	servicesLOI "github.com/malikabdulaziz/tmn-backend/services/loi"
 	servicesPOI "github.com/malikabdulaziz/tmn-backend/services/poi"
+	servicesPOIPoint "github.com/malikabdulaziz/tmn-backend/services/poipoint"
 	servicesSalesPackage "github.com/malikabdulaziz/tmn-backend/services/salespackage"
 	servicesBuildingRestriction "github.com/malikabdulaziz/tmn-backend/services/buildingrestriction"
 	servicesSavedPolygon "github.com/malikabdulaziz/tmn-backend/services/savedpolygon"
@@ -57,6 +60,12 @@ var poiSet = wire.NewSet(
 	repositoriesPOI.NewRepositoryPOIImpl,
 	servicesPOI.NewServicePOIImpl,
 	controllersPOI.NewControllerPOIImpl,
+)
+
+var poipointSet = wire.NewSet(
+	repositoriesPOIPoint.NewRepositoryPOIPointImpl,
+	servicesPOIPoint.NewServicePOIPointImpl,
+	controllersPOIPoint.NewControllerPOIPointImpl,
 )
 
 var salespackageSet = wire.NewSet(
@@ -87,6 +96,7 @@ var middlewareSet = wire.NewSet(
 	middlewares.NewAuthMiddleware,
 	middlewares.NewBuildingMiddleware,
 	middlewares.NewPOIMiddleware,
+	middlewares.NewPOIPointMiddleware,
 	middlewares.NewSalesPackageMiddleware,
 	middlewares.NewBuildingRestrictionMiddleware,
 	middlewares.NewSavedPolygonMiddleware,
@@ -103,6 +113,7 @@ func InitializeRouter() *httprouter.Router {
 		buildingSet,
 		imageSet,
 		poiSet,
+		poipointSet,
 		salespackageSet,
 		buildingrestrictionSet,
 		savedpolygonSet,

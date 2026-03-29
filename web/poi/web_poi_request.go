@@ -4,27 +4,16 @@ import (
 	"strings"
 )
 
-type POIPointRequest struct {
-	POIName     string  `json:"poi_name" validate:"required"`
-	Address     string  `json:"address" validate:"required"`
-	Latitude    float64 `json:"latitude" validate:"required"`
-	Longitude   float64 `json:"longitude" validate:"required"`
-	Category    string  `json:"category"`
-	SubCategory string  `json:"sub_category"`
-	MotherBrand string  `json:"mother_brand"`
-	Branch      string  `json:"branch"`
-}
-
 type CreatePOIRequest struct {
-	Brand  string           `json:"brand" validate:"required"`
-	Color  string           `json:"color" validate:"required"`
-	Points []POIPointRequest `json:"points" validate:"required,min=1,dive"`
+	Brand    string `json:"brand" validate:"required"`
+	Color    string `json:"color" validate:"required"`
+	PointIds []int  `json:"point_ids" validate:"required,min=1"`
 }
 
 type UpdatePOIRequest struct {
-	Brand  string           `json:"brand" validate:"required"`
-	Color  string           `json:"color" validate:"required"`
-	Points []POIPointRequest `json:"points" validate:"required,min=1,dive"`
+	Brand    string `json:"brand" validate:"required"`
+	Color    string `json:"color" validate:"required"`
+	PointIds []int  `json:"point_ids" validate:"required,min=1"`
 }
 
 type POIRequestFindAll struct {
