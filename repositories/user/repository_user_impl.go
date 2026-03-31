@@ -54,3 +54,28 @@ func (repository *RepositoryUserImpl) FindByUsername(ctx context.Context, tx *sq
 	}
 }
 
+func (repository *RepositoryUserImpl) CreateLoginLog(ctx context.Context, tx *sql.Tx, userId int, ipAddress string) error {
+	SQL := "INSERT INTO " + models.UserLoginLogTable + " (user_id, ip_address) VALUES ($1, $2)"
+	_, err := tx.ExecContext(ctx, SQL, userId, ipAddress)
+	return err
+}
+
+func (repository *RepositoryUserImpl) FindLastLoginByUserId(ctx context.Context, tx *sql.Tx, userId int) (models.UserLoginLog, error) {
+	SQL := "SELECT id, user_id, logged_in_at, ip_address FROM " + models.UserLoginLogTable + " WHERE user_id = $1 ORDER BY logged_in_at DESC LIMIT 1 OFFSET 1"
+	rows, err := tx.QueryContext(ctx, SQL, userId)
+	if err != nil {
+		return models.UserLoginLog{}, err
+	}
+	defer rows.Close()
+
+	log := models.NullAbleUserLoginLog{}
+	if rows.Next() {
+		err := rows.Scan(&log.Id, &log.UserId, &log.LoggedInAt, &log.IPAddress)
+		if err != nil {
+			return models.UserLoginLog{}, err
+		}
+		return models.NullAbleUserLoginLogToUserLoginLog(log), nil
+	}
+	return models.UserLoginLog{}, sql.ErrNoRows
+}
+

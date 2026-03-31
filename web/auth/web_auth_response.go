@@ -5,9 +5,10 @@ type LoginResponse struct {
 }
 
 type UserResponse struct {
-	Id       int    `json:"id"`
-	Username string `json:"username"`
-	Name     string `json:"name"`
-	Role     string `json:"role"`
+	Id        int    `json:"id"`
+	Username  string `json:"username"`
+	Name      string `json:"name"`
+	Role      string `json:"role"`
+	LastLogin string `json:"last_login"`
 }
 

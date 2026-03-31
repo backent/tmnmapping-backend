@@ -32,8 +32,14 @@ func (implementation *ControllerAuthImpl) Login(w http.ResponseWriter, r *http.R
 	// Get validated request from context (set by middleware)
 	loginReq := r.Context().Value(helpers.ContextKey("loginRequest")).(webAuth.LoginRequest)
 
+	// Extract client IP address
+	ipAddress := r.Header.Get("X-Forwarded-For")
+	if ipAddress == "" {
+		ipAddress = r.RemoteAddr
+	}
+
 	// Call service with validated data
-	response, token, maxAge := implementation.ServiceAuthInterface.Login(r.Context(), loginReq.Username, loginReq.Password, loginReq.Remember)
+	response, token, maxAge := implementation.ServiceAuthInterface.Login(r.Context(), loginReq.Username, loginReq.Password, ipAddress, loginReq.Remember)
 
 	// Set HTTP-only cookie; MaxAge matches token expiry (2 days if remember, default otherwise)
 	http.SetCookie(w, &http.Cookie{
@@ -90,12 +96,20 @@ func (implementation *ControllerAuthImpl) CurrentUser(w http.ResponseWriter, r *
 	user, err := implementation.RepositoryUserInterface.FindById(context.Background(), tx, userId)
 	helpers.PanicIfError(err)
 
+	// Fetch last login (best-effort — empty string if no log exists yet)
+	var lastLogin string
+	loginLog, err := implementation.RepositoryUserInterface.FindLastLoginByUserId(context.Background(), tx, userId)
+	if err == nil {
+		lastLogin = loginLog.LoggedInAt
+	}
+
 	// Return user response
 	response := webAuth.UserResponse{
-		Id:       user.Id,
-		Username: user.Username,
-		Name:     user.Name,
-		Role:     user.Role,
+		Id:        user.Id,
+		Username:  user.Username,
+		Name:      user.Name,
+		Role:      user.Role,
+		LastLogin: lastLogin,
 	}
 
 	webResponse := web.WebResponse{

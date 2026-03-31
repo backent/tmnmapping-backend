@@ -39,12 +39,14 @@ func TestLogin_HappyPath(t *testing.T) {
 
 	repoUser.On("FindByUsername", mock.Anything, mock.AnythingOfType("*sql.Tx"), "admin").
 		Return(user, nil)
+	repoUser.On("CreateLoginLog", mock.Anything, mock.AnythingOfType("*sql.Tx"), 42, "127.0.0.1").
+		Return(nil)
 
 	// Issue is called with the string representation of the user ID and the token duration.
 	repoAuth.On("Issue", "42", mock.AnythingOfType("time.Duration")).
 		Return("jwt-token-value", nil)
 
-	response, token, maxAge := svc.Login(context.Background(), "admin", "secret123", false)
+	response, token, maxAge := svc.Login(context.Background(), "admin", "secret123", "127.0.0.1", false)
 
 	assert.Equal(t, 42, response.User.Id)
 	assert.Equal(t, "admin", response.User.Username)
@@ -74,7 +76,7 @@ func TestLogin_UserNotFound(t *testing.T) {
 
 	assert.PanicsWithValue(t,
 		exceptions.BadRequestError{Error: "invalid credentials"},
-		func() { svc.Login(context.Background(), "nobody", "anypassword", false) },
+		func() { svc.Login(context.Background(), "nobody", "anypassword", "127.0.0.1", false) },
 	)
 
 	repoUser.AssertExpectations(t)
@@ -99,7 +101,7 @@ func TestLogin_WrongPassword(t *testing.T) {
 
 	assert.PanicsWithValue(t,
 		exceptions.BadRequestError{Error: "invalid credentials"},
-		func() { svc.Login(context.Background(), "admin", "wrongpassword", false) },
+		func() { svc.Login(context.Background(), "admin", "wrongpassword", "127.0.0.1", false) },
 	)
 
 	repoUser.AssertExpectations(t)
@@ -120,12 +122,14 @@ func TestLogin_TokenIssueFails(t *testing.T) {
 
 	repoUser.On("FindByUsername", mock.Anything, mock.AnythingOfType("*sql.Tx"), "admin").
 		Return(user, nil)
+	repoUser.On("CreateLoginLog", mock.Anything, mock.AnythingOfType("*sql.Tx"), 42, "127.0.0.1").
+		Return(nil)
 
 	repoAuth.On("Issue", "42", mock.AnythingOfType("time.Duration")).
 		Return("", errors.New("signing key unavailable"))
 
 	assert.Panics(t, func() {
-		svc.Login(context.Background(), "admin", "secret", false)
+		svc.Login(context.Background(), "admin", "secret", "127.0.0.1", false)
 	})
 
 	repoUser.AssertExpectations(t)

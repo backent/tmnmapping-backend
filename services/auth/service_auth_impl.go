@@ -37,7 +37,7 @@ func NewServiceAuthImpl(db *sql.DB, repositoriesAuth repositoriesAuth.Repository
 	}
 }
 
-func (implementation *ServiceAuthImpl) Login(ctx context.Context, username, password string, remember bool) (webAuth.LoginResponse, string, int) {
+func (implementation *ServiceAuthImpl) Login(ctx context.Context, username, password, ipAddress string, remember bool) (webAuth.LoginResponse, string, int) {
 	tx, err := implementation.DB.Begin()
 	helpers.PanicIfError(err)
 	defer helpers.CommitOrRollback(tx)
@@ -50,6 +50,10 @@ func (implementation *ServiceAuthImpl) Login(ctx context.Context, username, pass
 	if !helpers.CheckPassword(password, user.Password) {
 		panic(exceptions.NewBadRequestError("invalid credentials"))
 	}
+
+	// Record login log
+	err = implementation.RepositoryUserInterface.CreateLoginLog(ctx, tx, user.Id, ipAddress)
+	helpers.PanicIfError(err)
 
 	// Choose token duration: 2 days when remember=true, default from config otherwise
 	duration := implementation.defaultDuration

@@ -7,6 +7,6 @@ import (
 )
 
 type ServiceAuthInterface interface {
-	Login(ctx context.Context, username, password string, remember bool) (webAuth.LoginResponse, string, int)
+	Login(ctx context.Context, username, password, ipAddress string, remember bool) (webAuth.LoginResponse, string, int)
 }
 

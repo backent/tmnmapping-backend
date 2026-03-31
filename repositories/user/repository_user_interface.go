@@ -10,5 +10,7 @@ import (
 type RepositoryUserInterface interface {
 	FindById(ctx context.Context, tx *sql.Tx, id int) (models.User, error)
 	FindByUsername(ctx context.Context, tx *sql.Tx, username string) (models.User, error)
+	CreateLoginLog(ctx context.Context, tx *sql.Tx, userId int, ipAddress string) error
+	FindLastLoginByUserId(ctx context.Context, tx *sql.Tx, userId int) (models.UserLoginLog, error)
 }
 

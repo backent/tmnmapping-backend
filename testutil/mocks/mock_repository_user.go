@@ -22,3 +22,13 @@ func (m *MockRepositoryUser) FindByUsername(ctx context.Context, tx *sql.Tx, use
 	args := m.Called(ctx, tx, username)
 	return args.Get(0).(models.User), args.Error(1)
 }
+
+func (m *MockRepositoryUser) CreateLoginLog(ctx context.Context, tx *sql.Tx, userId int, ipAddress string) error {
+	args := m.Called(ctx, tx, userId, ipAddress)
+	return args.Error(0)
+}
+
+func (m *MockRepositoryUser) FindLastLoginByUserId(ctx context.Context, tx *sql.Tx, userId int) (models.UserLoginLog, error) {
+	args := m.Called(ctx, tx, userId)
+	return args.Get(0).(models.UserLoginLog), args.Error(1)
+}
