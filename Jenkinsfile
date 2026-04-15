@@ -1,7 +1,7 @@
 pipeline {
     agent any
 
-g    stages {
+    stages {
 
         // ── 1. Checkout ───────────────────────────────────────────────────────
         stage('Checkout') {
