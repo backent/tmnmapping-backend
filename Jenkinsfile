@@ -85,7 +85,7 @@ g    stages {
         stage('Deploy to Server') {
             steps {
                 // Credential IDs (all "Secret text"):
-                //   tmn-app-server-host  – SSH server address (e.g. 108.136.218.247)
+                //   tmn-app-server-host  – SSH server address (e.g. 247.247.247.247)
                 //   tmn-app-server-user  – SSH username       (e.g. ubuntu)
                 //   tmn-app-server-port  – SSH port           (e.g. 22)
                 // Credential ID: "tmn-app-ssh-key"
