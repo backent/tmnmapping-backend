@@ -28,8 +28,8 @@ g    stages {
             steps {
                 script {
                     env.APP_VERSION = readFile('VERSION').trim()
-                    // Credential ID: "tmn-app-image-name" (Secret text) – Docker image repo (e.g. backent/tmn-mapping-backend)
-                    withCredentials([string(credentialsId: 'tmn-app-image-name', variable: 'IMG')]) {
+                    // Credential ID: "tmn-app-backend-image-name" (Secret text) – Docker image repo (e.g. account/image-name)
+                    withCredentials([string(credentialsId: 'tmn-app-backend-image-name', variable: 'IMG')]) {
                         env.IMAGE_NAME = IMG
                     }
                     echo "Building version: ${env.APP_VERSION}"
