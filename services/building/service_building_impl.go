@@ -122,10 +122,10 @@ func (service *ServiceBuildingImpl) FindAll(ctx context.Context, request webBuil
 	helpers.PanicIfError(err)
 	defer helpers.CommitOrRollback(tx)
 
-	buildings, err := service.RepositoryBuildingInterface.FindAll(ctx, tx, request.GetTake(), request.GetSkip(), request.GetOrderBy(), request.GetOrderDirection(), request.GetSearch(), request.GetBuildingStatus(), request.GetSellable(), request.GetConnectivity(), request.GetResourceType(), request.GetCompetitorLocation(), request.GetCbdArea(), request.GetSubdistrict(), request.GetCitytown(), request.GetProvince(), request.GetGradeResource(), request.GetBuildingType())
+	buildings, err := service.RepositoryBuildingInterface.FindAll(ctx, tx, request.GetTake(), request.GetSkip(), request.GetOrderBy(), request.GetOrderDirection(), request.GetSearch(), request.GetBuildingStatus(), request.GetSellable(), request.GetConnectivity(), request.GetResourceType(), request.GetCompetitorLocation(), request.GetCbdArea(), request.GetSubdistrict(), request.GetCitytown(), request.GetProvince(), request.GetGradeResource(), request.GetBuildingType(), request.GetExcludeIds())
 	helpers.PanicIfError(err)
 
-	total, err := service.RepositoryBuildingInterface.CountAll(ctx, tx, request.GetSearch(), request.GetBuildingStatus(), request.GetSellable(), request.GetConnectivity(), request.GetResourceType(), request.GetCompetitorLocation(), request.GetCbdArea(), request.GetSubdistrict(), request.GetCitytown(), request.GetProvince(), request.GetGradeResource(), request.GetBuildingType())
+	total, err := service.RepositoryBuildingInterface.CountAll(ctx, tx, request.GetSearch(), request.GetBuildingStatus(), request.GetSellable(), request.GetConnectivity(), request.GetResourceType(), request.GetCompetitorLocation(), request.GetCbdArea(), request.GetSubdistrict(), request.GetCitytown(), request.GetProvince(), request.GetGradeResource(), request.GetBuildingType(), request.GetExcludeIds())
 	helpers.PanicIfError(err)
 
 	return webBuilding.BuildingModelsToListBuildingResponse(buildings), total

@@ -36,7 +36,16 @@ func TestSalesPackageCreate_HappyPath(t *testing.T) {
 	svc := newSalesPackageService(db, repoPkg, repoBuilding)
 
 	bldg := testutil.NewBuilding(10, "Tower A")
-	created := newSalesPackageModel(1, "Package Alpha", models.BuildingRef{Id: 10, Name: "Tower A"})
+	createdRef := models.BuildingRef{
+		Id:           10,
+		Name:         "Tower A",
+		ProjectName:  "Alpha Project",
+		Subdistrict:  "Menteng",
+		Citytown:     "Jakarta Pusat",
+		Province:     "DKI Jakarta",
+		BuildingType: "Office",
+	}
+	created := newSalesPackageModel(1, "Package Alpha", createdRef)
 
 	sqlMock.ExpectBegin()
 	sqlMock.ExpectCommit()
@@ -62,6 +71,11 @@ func TestSalesPackageCreate_HappyPath(t *testing.T) {
 	assert.Len(t, response.Buildings, 1)
 	assert.Equal(t, 10, response.Buildings[0].Id)
 	assert.Equal(t, "Tower A", response.Buildings[0].Name)
+	assert.Equal(t, "Alpha Project", response.Buildings[0].ProjectName)
+	assert.Equal(t, "Menteng", response.Buildings[0].Subdistrict)
+	assert.Equal(t, "Jakarta Pusat", response.Buildings[0].Citytown)
+	assert.Equal(t, "DKI Jakarta", response.Buildings[0].Province)
+	assert.Equal(t, "Office", response.Buildings[0].BuildingType)
 
 	repoPkg.AssertExpectations(t)
 	repoBuilding.AssertExpectations(t)

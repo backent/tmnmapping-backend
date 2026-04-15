@@ -231,9 +231,9 @@ func (r *RepositoryBuildingRestrictionImpl) FindByNames(ctx context.Context, tx 
 	return restrictions, rows.Err()
 }
 
-// findBuildingRefsByBuildingRestrictionId returns building id+name for a restriction
+// findBuildingRefsByBuildingRestrictionId returns enriched building ref rows for a restriction
 func (r *RepositoryBuildingRestrictionImpl) findBuildingRefsByBuildingRestrictionId(ctx context.Context, tx *sql.Tx, buildingRestrictionId int) ([]models.BuildingRef, error) {
-	SQL := `SELECT b.id, b.name FROM ` + models.BuildingTable + ` b
+	SQL := `SELECT b.id, b.name, b.project_name, b.subdistrict, b.citytown, b.province, b.building_type FROM ` + models.BuildingTable + ` b
 		INNER JOIN ` + models.BuildingRestrictionBuildingTable + ` brb ON brb.building_id = b.id
 		WHERE brb.building_restriction_id = $1 ORDER BY b.name`
 	rows, err := tx.QueryContext(ctx, SQL, buildingRestrictionId)
@@ -243,8 +243,8 @@ func (r *RepositoryBuildingRestrictionImpl) findBuildingRefsByBuildingRestrictio
 	defer rows.Close()
 	var refs []models.BuildingRef
 	for rows.Next() {
-		var ref models.BuildingRef
-		if err := rows.Scan(&ref.Id, &ref.Name); err != nil {
+		ref, err := scanBuildingRef(rows)
+		if err != nil {
 			return nil, err
 		}
 		refs = append(refs, ref)
@@ -263,7 +263,7 @@ func (r *RepositoryBuildingRestrictionImpl) findBuildingRefsByBuildingRestrictio
 		placeholders[i] = "$" + strconv.Itoa(i+1)
 		args[i] = id
 	}
-	SQL := `SELECT brb.building_restriction_id, b.id, b.name FROM ` + models.BuildingTable + ` b
+	SQL := `SELECT brb.building_restriction_id, b.id, b.name, b.project_name, b.subdistrict, b.citytown, b.province, b.building_type FROM ` + models.BuildingTable + ` b
 		INNER JOIN ` + models.BuildingRestrictionBuildingTable + ` brb ON brb.building_id = b.id
 		WHERE brb.building_restriction_id IN (` + strings.Join(placeholders, ",") + `) ORDER BY brb.building_restriction_id, b.name`
 	rows, err := tx.QueryContext(ctx, SQL, args...)
@@ -274,11 +274,34 @@ func (r *RepositoryBuildingRestrictionImpl) findBuildingRefsByBuildingRestrictio
 	out := make(map[int][]models.BuildingRef)
 	for rows.Next() {
 		var restrictionId int
+		var projectName, subdistrict, citytown, province, buildingType sql.NullString
 		var ref models.BuildingRef
-		if err := rows.Scan(&restrictionId, &ref.Id, &ref.Name); err != nil {
+		if err := rows.Scan(&restrictionId, &ref.Id, &ref.Name, &projectName, &subdistrict, &citytown, &province, &buildingType); err != nil {
 			return nil, err
 		}
+		ref.ProjectName = projectName.String
+		ref.Subdistrict = subdistrict.String
+		ref.Citytown = citytown.String
+		ref.Province = province.String
+		ref.BuildingType = buildingType.String
 		out[restrictionId] = append(out[restrictionId], ref)
 	}
 	return out, rows.Err()
+}
+
+// scanBuildingRef scans the 7-column enriched BuildingRef projection.
+// Nullable columns on the buildings table are stored as sql.NullString
+// to tolerate legacy NULLs, then collapsed to empty string for the API.
+func scanBuildingRef(rows *sql.Rows) (models.BuildingRef, error) {
+	var ref models.BuildingRef
+	var projectName, subdistrict, citytown, province, buildingType sql.NullString
+	if err := rows.Scan(&ref.Id, &ref.Name, &projectName, &subdistrict, &citytown, &province, &buildingType); err != nil {
+		return models.BuildingRef{}, err
+	}
+	ref.ProjectName = projectName.String
+	ref.Subdistrict = subdistrict.String
+	ref.Citytown = citytown.String
+	ref.Province = province.String
+	ref.BuildingType = buildingType.String
+	return ref, nil
 }

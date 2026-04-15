@@ -29,13 +29,13 @@ func (m *MockRepositoryBuilding) FindByExternalId(ctx context.Context, tx *sql.T
 	return args.Get(0).(models.Building), args.Error(1)
 }
 
-func (m *MockRepositoryBuilding) FindAll(ctx context.Context, tx *sql.Tx, take int, skip int, orderBy string, orderDirection string, search string, buildingStatus string, sellable string, connectivity string, resourceType string, competitorLocation *bool, cbdArea string, subdistrict string, citytown string, province string, gradeResource string, buildingType string) ([]models.Building, error) {
-	args := m.Called(ctx, tx, take, skip, orderBy, orderDirection, search, buildingStatus, sellable, connectivity, resourceType, competitorLocation, cbdArea, subdistrict, citytown, province, gradeResource, buildingType)
+func (m *MockRepositoryBuilding) FindAll(ctx context.Context, tx *sql.Tx, take int, skip int, orderBy string, orderDirection string, search string, buildingStatus string, sellable string, connectivity string, resourceType string, competitorLocation *bool, cbdArea string, subdistrict string, citytown string, province string, gradeResource string, buildingType string, excludeIds string) ([]models.Building, error) {
+	args := m.Called(ctx, tx, take, skip, orderBy, orderDirection, search, buildingStatus, sellable, connectivity, resourceType, competitorLocation, cbdArea, subdistrict, citytown, province, gradeResource, buildingType, excludeIds)
 	return args.Get(0).([]models.Building), args.Error(1)
 }
 
-func (m *MockRepositoryBuilding) CountAll(ctx context.Context, tx *sql.Tx, search string, buildingStatus string, sellable string, connectivity string, resourceType string, competitorLocation *bool, cbdArea string, subdistrict string, citytown string, province string, gradeResource string, buildingType string) (int, error) {
-	args := m.Called(ctx, tx, search, buildingStatus, sellable, connectivity, resourceType, competitorLocation, cbdArea, subdistrict, citytown, province, gradeResource, buildingType)
+func (m *MockRepositoryBuilding) CountAll(ctx context.Context, tx *sql.Tx, search string, buildingStatus string, sellable string, connectivity string, resourceType string, competitorLocation *bool, cbdArea string, subdistrict string, citytown string, province string, gradeResource string, buildingType string, excludeIds string) (int, error) {
+	args := m.Called(ctx, tx, search, buildingStatus, sellable, connectivity, resourceType, competitorLocation, cbdArea, subdistrict, citytown, province, gradeResource, buildingType, excludeIds)
 	return args.Int(0), args.Error(1)
 }
 

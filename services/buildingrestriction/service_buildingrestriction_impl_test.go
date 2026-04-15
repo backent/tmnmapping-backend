@@ -36,7 +36,16 @@ func TestRestrictionCreate_HappyPath(t *testing.T) {
 	svc := newRestrictionService(db, repoRestriction, repoBuilding)
 
 	bldg := testutil.NewBuilding(5, "Office A")
-	created := newRestrictionModel(1, "Zone 1", models.BuildingRef{Id: 5, Name: "Office A"})
+	createdRef := models.BuildingRef{
+		Id:           5,
+		Name:         "Office A",
+		ProjectName:  "Alpha Complex",
+		Subdistrict:  "Kuningan",
+		Citytown:     "Jakarta Selatan",
+		Province:     "DKI Jakarta",
+		BuildingType: "Office",
+	}
+	created := newRestrictionModel(1, "Zone 1", createdRef)
 
 	sqlMock.ExpectBegin()
 	sqlMock.ExpectCommit()
@@ -59,6 +68,11 @@ func TestRestrictionCreate_HappyPath(t *testing.T) {
 	assert.Equal(t, "Zone 1", response.Name)
 	assert.Len(t, response.Buildings, 1)
 	assert.Equal(t, 5, response.Buildings[0].Id)
+	assert.Equal(t, "Alpha Complex", response.Buildings[0].ProjectName)
+	assert.Equal(t, "Kuningan", response.Buildings[0].Subdistrict)
+	assert.Equal(t, "Jakarta Selatan", response.Buildings[0].Citytown)
+	assert.Equal(t, "DKI Jakarta", response.Buildings[0].Province)
+	assert.Equal(t, "Office", response.Buildings[0].BuildingType)
 
 	repoRestriction.AssertExpectations(t)
 	repoBuilding.AssertExpectations(t)

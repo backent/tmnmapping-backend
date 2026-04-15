@@ -1,8 +1,13 @@
 package salespackage
 
 type BuildingRefResponse struct {
-	Id   int    `json:"id"`
-	Name string `json:"name"`
+	Id           int    `json:"id"`
+	Name         string `json:"name"`
+	ProjectName  string `json:"project_name"`
+	Subdistrict  string `json:"subdistrict"`
+	Citytown     string `json:"citytown"`
+	Province     string `json:"province"`
+	BuildingType string `json:"building_type"`
 }
 
 type SalesPackageResponse struct {

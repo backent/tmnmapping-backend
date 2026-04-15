@@ -239,7 +239,15 @@ func (s *ServiceBuildingRestrictionImpl) Export(ctx context.Context, search stri
 func (s *ServiceBuildingRestrictionImpl) modelToResponse(r models.BuildingRestriction) webBuildingRestriction.BuildingRestrictionResponse {
 	buildings := make([]webBuildingRestriction.BuildingRefResponse, len(r.Buildings))
 	for i, b := range r.Buildings {
-		buildings[i] = webBuildingRestriction.BuildingRefResponse{Id: b.Id, Name: b.Name}
+		buildings[i] = webBuildingRestriction.BuildingRefResponse{
+			Id:           b.Id,
+			Name:         b.Name,
+			ProjectName:  b.ProjectName,
+			Subdistrict:  b.Subdistrict,
+			Citytown:     b.Citytown,
+			Province:     b.Province,
+			BuildingType: b.BuildingType,
+		}
 	}
 	return webBuildingRestriction.BuildingRestrictionResponse{
 		Id:        r.Id,

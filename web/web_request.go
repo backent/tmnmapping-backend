@@ -78,6 +78,7 @@ type RequestFilter interface {
 	SetProvince(province string)
 	SetGradeResource(gradeResource string)
 	SetBuildingType(buildingType string)
+	SetExcludeIds(excludeIds string)
 }
 
 func SetFilters(request RequestFilter, r *http.Request) {
@@ -158,6 +159,13 @@ func SetFilters(request RequestFilter, r *http.Request) {
 		buildingType := r.URL.Query().Get("building_type")
 		if buildingType != "" {
 			request.SetBuildingType(buildingType)
+		}
+	}
+
+	if r.URL.Query().Has("exclude_ids") {
+		excludeIds := r.URL.Query().Get("exclude_ids")
+		if excludeIds != "" {
+			request.SetExcludeIds(excludeIds)
 		}
 	}
 }

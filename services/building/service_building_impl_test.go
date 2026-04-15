@@ -199,6 +199,7 @@ func TestFindAll_HappyPath(t *testing.T) {
 		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
 		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
 		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+		mock.Anything,
 	).Return(buildingList, nil)
 
 	repoBuilding.On("CountAll",
@@ -206,6 +207,7 @@ func TestFindAll_HappyPath(t *testing.T) {
 		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
 		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
 		mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+		mock.Anything,
 	).Return(2, nil)
 
 	var request webBuilding.BuildingRequestFindAll

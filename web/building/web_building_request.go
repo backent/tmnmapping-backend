@@ -32,6 +32,7 @@ type BuildingRequestFindAll struct {
 	province        string
 	gradeResource   string
 	buildingType    string
+	excludeIds      string
 }
 
 func (r *BuildingRequestFindAll) SetSkip(skip int) {
@@ -168,6 +169,14 @@ func (r *BuildingRequestFindAll) SetBuildingType(buildingType string) {
 
 func (r *BuildingRequestFindAll) GetBuildingType() string {
 	return r.buildingType
+}
+
+func (r *BuildingRequestFindAll) SetExcludeIds(excludeIds string) {
+	r.excludeIds = excludeIds
+}
+
+func (r *BuildingRequestFindAll) GetExcludeIds() string {
+	return r.excludeIds
 }
 
 // ExportMappingRequest is the request body for POST /admin/mapping-building/export (legacy, by IDs)

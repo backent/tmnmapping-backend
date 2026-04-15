@@ -12,10 +12,17 @@ type SalesPackage struct {
 	UpdatedAt string        `json:"updated_at"`
 }
 
-// BuildingRef holds id and name for response (from buildings table)
+// BuildingRef holds a lightweight subset of building fields used in relation responses
+// (sales packages, building restrictions). It carries enough context for the frontend
+// selector UI to render rich rows without a separate hydration call.
 type BuildingRef struct {
-	Id   int    `json:"id"`
-	Name string `json:"name"`
+	Id           int    `json:"id"`
+	Name         string `json:"name"`
+	ProjectName  string `json:"project_name"`
+	Subdistrict  string `json:"subdistrict"`
+	Citytown     string `json:"citytown"`
+	Province     string `json:"province"`
+	BuildingType string `json:"building_type"`
 }
 
 // SalesPackageBuilding is a junction row (sales_package_buildings table)

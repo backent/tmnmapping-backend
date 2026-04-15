@@ -231,9 +231,9 @@ func (r *RepositorySalesPackageImpl) FindByNames(ctx context.Context, tx *sql.Tx
 	return packages, rows.Err()
 }
 
-// findBuildingRefsBySalesPackageId returns building id+name for a package
+// findBuildingRefsBySalesPackageId returns enriched building ref rows for a package
 func (r *RepositorySalesPackageImpl) findBuildingRefsBySalesPackageId(ctx context.Context, tx *sql.Tx, salesPackageId int) ([]models.BuildingRef, error) {
-	SQL := `SELECT b.id, b.name FROM ` + models.BuildingTable + ` b
+	SQL := `SELECT b.id, b.name, b.project_name, b.subdistrict, b.citytown, b.province, b.building_type FROM ` + models.BuildingTable + ` b
 		INNER JOIN ` + models.SalesPackageBuildingTable + ` spb ON spb.building_id = b.id
 		WHERE spb.sales_package_id = $1 ORDER BY b.name`
 	rows, err := tx.QueryContext(ctx, SQL, salesPackageId)
@@ -243,8 +243,8 @@ func (r *RepositorySalesPackageImpl) findBuildingRefsBySalesPackageId(ctx contex
 	defer rows.Close()
 	var refs []models.BuildingRef
 	for rows.Next() {
-		var ref models.BuildingRef
-		if err := rows.Scan(&ref.Id, &ref.Name); err != nil {
+		ref, err := scanBuildingRef(rows)
+		if err != nil {
 			return nil, err
 		}
 		refs = append(refs, ref)
@@ -263,7 +263,7 @@ func (r *RepositorySalesPackageImpl) findBuildingRefsBySalesPackageIds(ctx conte
 		placeholders[i] = "$" + strconv.Itoa(i+1)
 		args[i] = id
 	}
-	SQL := `SELECT spb.sales_package_id, b.id, b.name FROM ` + models.BuildingTable + ` b
+	SQL := `SELECT spb.sales_package_id, b.id, b.name, b.project_name, b.subdistrict, b.citytown, b.province, b.building_type FROM ` + models.BuildingTable + ` b
 		INNER JOIN ` + models.SalesPackageBuildingTable + ` spb ON spb.building_id = b.id
 		WHERE spb.sales_package_id IN (` + strings.Join(placeholders, ",") + `) ORDER BY spb.sales_package_id, b.name`
 	rows, err := tx.QueryContext(ctx, SQL, args...)
@@ -274,11 +274,34 @@ func (r *RepositorySalesPackageImpl) findBuildingRefsBySalesPackageIds(ctx conte
 	out := make(map[int][]models.BuildingRef)
 	for rows.Next() {
 		var pkgId int
+		var projectName, subdistrict, citytown, province, buildingType sql.NullString
 		var ref models.BuildingRef
-		if err := rows.Scan(&pkgId, &ref.Id, &ref.Name); err != nil {
+		if err := rows.Scan(&pkgId, &ref.Id, &ref.Name, &projectName, &subdistrict, &citytown, &province, &buildingType); err != nil {
 			return nil, err
 		}
+		ref.ProjectName = projectName.String
+		ref.Subdistrict = subdistrict.String
+		ref.Citytown = citytown.String
+		ref.Province = province.String
+		ref.BuildingType = buildingType.String
 		out[pkgId] = append(out[pkgId], ref)
 	}
 	return out, rows.Err()
+}
+
+// scanBuildingRef scans the 7-column enriched BuildingRef projection.
+// Nullable columns on the buildings table are stored as sql.NullString
+// to tolerate legacy NULLs, then collapsed to empty string for the API.
+func scanBuildingRef(rows *sql.Rows) (models.BuildingRef, error) {
+	var ref models.BuildingRef
+	var projectName, subdistrict, citytown, province, buildingType sql.NullString
+	if err := rows.Scan(&ref.Id, &ref.Name, &projectName, &subdistrict, &citytown, &province, &buildingType); err != nil {
+		return models.BuildingRef{}, err
+	}
+	ref.ProjectName = projectName.String
+	ref.Subdistrict = subdistrict.String
+	ref.Citytown = citytown.String
+	ref.Province = province.String
+	ref.BuildingType = buildingType.String
+	return ref, nil
 }

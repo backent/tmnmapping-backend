@@ -239,7 +239,15 @@ func (s *ServiceSalesPackageImpl) Export(ctx context.Context, search string) ([]
 func (s *ServiceSalesPackageImpl) modelToResponse(p models.SalesPackage) webSalesPackage.SalesPackageResponse {
 	buildings := make([]webSalesPackage.BuildingRefResponse, len(p.Buildings))
 	for i, b := range p.Buildings {
-		buildings[i] = webSalesPackage.BuildingRefResponse{Id: b.Id, Name: b.Name}
+		buildings[i] = webSalesPackage.BuildingRefResponse{
+			Id:           b.Id,
+			Name:         b.Name,
+			ProjectName:  b.ProjectName,
+			Subdistrict:  b.Subdistrict,
+			Citytown:     b.Citytown,
+			Province:     b.Province,
+			BuildingType: b.BuildingType,
+		}
 	}
 	return webSalesPackage.SalesPackageResponse{
 		Id:        p.Id,

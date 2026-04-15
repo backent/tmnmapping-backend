@@ -241,7 +241,7 @@ func (repository *RepositoryBuildingImpl) FindByExternalId(ctx context.Context, 
 }
 
 // FindAll retrieves all buildings with pagination, sorting, search, and filters
-func (repository *RepositoryBuildingImpl) FindAll(ctx context.Context, tx *sql.Tx, take int, skip int, orderBy string, orderDirection string, search string, buildingStatus string, sellable string, connectivity string, resourceType string, competitorLocation *bool, cbdArea string, subdistrict string, citytown string, province string, gradeResource string, buildingType string) ([]models.Building, error) {
+func (repository *RepositoryBuildingImpl) FindAll(ctx context.Context, tx *sql.Tx, take int, skip int, orderBy string, orderDirection string, search string, buildingStatus string, sellable string, connectivity string, resourceType string, competitorLocation *bool, cbdArea string, subdistrict string, citytown string, province string, gradeResource string, buildingType string, excludeIds string) ([]models.Building, error) {
 	SQL := `SELECT id, external_building_id, iris_code, name, project_name, audience, 
 		impression, cbd_area, building_status, competitor_location, competitor_exclusive, competitor_presence, sellable, connectivity, 
 		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, latitude, longitude, images, lcd_presence_status, synced_at, created_at, updated_at 
@@ -345,6 +345,16 @@ func (repository *RepositoryBuildingImpl) FindAll(ctx context.Context, tx *sql.T
 		argIndex = newIndex
 	}
 
+	// Exclude specific ids (used by picker to hide already-attached buildings)
+	if excludeIds != "" {
+		cond, newArgs, newIndex := buildNotInIntCondition("id", excludeIds, argIndex)
+		if cond != "" {
+			whereConditions = append(whereConditions, cond)
+			args = append(args, newArgs...)
+			argIndex = newIndex
+		}
+	}
+
 	// Build WHERE clause
 	if len(whereConditions) > 0 {
 		SQL += ` WHERE ` + whereConditions[0]
@@ -405,7 +415,7 @@ func (repository *RepositoryBuildingImpl) FindAll(ctx context.Context, tx *sql.T
 }
 
 // CountAll returns the total count of buildings with optional search and filters
-func (repository *RepositoryBuildingImpl) CountAll(ctx context.Context, tx *sql.Tx, search string, buildingStatus string, sellable string, connectivity string, resourceType string, competitorLocation *bool, cbdArea string, subdistrict string, citytown string, province string, gradeResource string, buildingType string) (int, error) {
+func (repository *RepositoryBuildingImpl) CountAll(ctx context.Context, tx *sql.Tx, search string, buildingStatus string, sellable string, connectivity string, resourceType string, competitorLocation *bool, cbdArea string, subdistrict string, citytown string, province string, gradeResource string, buildingType string, excludeIds string) (int, error) {
 	SQL := "SELECT COUNT(*) FROM " + models.BuildingTable
 
 	args := []interface{}{}
@@ -504,6 +514,16 @@ func (repository *RepositoryBuildingImpl) CountAll(ctx context.Context, tx *sql.
 		whereConditions = append(whereConditions, cond)
 		args = append(args, newArgs...)
 		argIndex = newIndex
+	}
+
+	// Exclude specific ids (used by picker to hide already-attached buildings)
+	if excludeIds != "" {
+		cond, newArgs, newIndex := buildNotInIntCondition("id", excludeIds, argIndex)
+		if cond != "" {
+			whereConditions = append(whereConditions, cond)
+			args = append(args, newArgs...)
+			argIndex = newIndex
+		}
 	}
 
 	// Build WHERE clause
@@ -1002,6 +1022,31 @@ func (repository *RepositoryBuildingImpl) FindAllDropdown(ctx context.Context, t
 		buildings = append(buildings, b)
 	}
 	return buildings, rows.Err()
+}
+
+// buildNotInIntCondition builds a SQL NOT IN condition for an integer column with comma-separated values.
+// Non-integer tokens are skipped. Returns empty cond when no valid ids are found.
+func buildNotInIntCondition(column string, value string, argIndex int) (string, []interface{}, int) {
+	parts := strings.Split(value, ",")
+	placeholders := make([]string, 0, len(parts))
+	args := make([]interface{}, 0, len(parts))
+	for _, p := range parts {
+		trimmed := strings.TrimSpace(p)
+		if trimmed == "" {
+			continue
+		}
+		id, err := strconv.Atoi(trimmed)
+		if err != nil {
+			continue
+		}
+		placeholders = append(placeholders, "$"+strconv.Itoa(argIndex))
+		args = append(args, id)
+		argIndex++
+	}
+	if len(placeholders) == 0 {
+		return "", nil, argIndex
+	}
+	return column + ` NOT IN (` + strings.Join(placeholders, ",") + `)`, args, argIndex
 }
 
 // buildInCondition builds a SQL IN condition for a column with comma-separated values.
