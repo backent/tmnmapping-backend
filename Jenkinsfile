@@ -1,13 +1,7 @@
 pipeline {
     agent any
 
-    environment {
-        IMAGE_NAME  = 'backent/tmn-mapping-backend'
-        SERVER_HOST = '108.136.218.247'
-        SERVER_USER = 'ubuntu'
-    }
-
-    stages {
+g    stages {
 
         // ── 1. Checkout ───────────────────────────────────────────────────────
         stage('Checkout') {
@@ -29,11 +23,15 @@ pipeline {
             }
         }
 
-        // ── 3. Read Version ───────────────────────────────────────────────────
-        stage('Read Version') {
+        // ── 3. Read Version & Config ──────────────────────────────────────────
+        stage('Read Version & Config') {
             steps {
                 script {
                     env.APP_VERSION = readFile('VERSION').trim()
+                    // Credential ID: "tmn-app-image-name" (Secret text) – Docker image repo (e.g. backent/tmn-mapping-backend)
+                    withCredentials([string(credentialsId: 'tmn-app-image-name', variable: 'IMG')]) {
+                        env.IMAGE_NAME = IMG
+                    }
                     echo "Building version: ${env.APP_VERSION}"
                 }
             }
@@ -46,7 +44,7 @@ pipeline {
                 stage('Build Image') {
                     steps {
                         // Dockerfile is at repo root; build context is .
-                        sh "docker build -t ${IMAGE_NAME}:${env.APP_VERSION} . --platform=linux/amd64"
+                        sh "docker build -t ${env.IMAGE_NAME}:${env.APP_VERSION} . --platform=linux/amd64"
                     }
                 }
 
@@ -78,7 +76,7 @@ pipeline {
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
                     sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
-                    sh "docker push ${IMAGE_NAME}:${env.APP_VERSION}"
+                    sh "docker push ${env.IMAGE_NAME}:${env.APP_VERSION}"
                 }
             }
         }
@@ -86,24 +84,29 @@ pipeline {
         // ── 6. Deploy to Server ───────────────────────────────────────────────
         stage('Deploy to Server') {
             steps {
+                // Credential IDs (all "Secret text"):
+                //   tmn-app-server-host  – SSH server address (e.g. 108.136.218.247)
+                //   tmn-app-server-user  – SSH username       (e.g. ubuntu)
+                //   tmn-app-server-port  – SSH port           (e.g. 22)
                 // Credential ID: "tmn-app-ssh-key"
-                // Type         : SSH Username with private key
-                // Username     : ubuntu
-                // Private key  : contents of tmn-app-key.pem
-                withCredentials([sshUserPrivateKey(
-                    credentialsId: 'tmn-app-ssh-key',
-                    keyFileVariable: 'SSH_KEY_FILE'
-                )]) {
+                //   Type        : SSH Username with private key
+                //   Private key : contents of tmn-app-key.pem
+                withCredentials([
+                    sshUserPrivateKey(credentialsId: 'tmn-app-ssh-key', keyFileVariable: 'SSH_KEY_FILE'),
+                    string(credentialsId: 'tmn-app-server-host', variable: 'SERVER_HOST'),
+                    string(credentialsId: 'tmn-app-server-user', variable: 'SERVER_USER'),
+                    string(credentialsId: 'tmn-app-server-port', variable: 'SERVER_PORT')
+                ]) {
                     sh """
-                        ssh -i \$SSH_KEY_FILE -o StrictHostKeyChecking=no ${SERVER_USER}@${SERVER_HOST} '
-                            sudo docker pull ${IMAGE_NAME}:${env.APP_VERSION} &&
+                        ssh -i \$SSH_KEY_FILE -o StrictHostKeyChecking=no -p \$SERVER_PORT \$SERVER_USER@\$SERVER_HOST '
+                            sudo docker pull ${env.IMAGE_NAME}:${env.APP_VERSION} &&
                             sudo docker rm -f backend || true &&
                             sudo docker run -dp 127.0.0.1:8080:8088 \\
                                 --env-file .env \\
                                 --network global-network \\
                                 --name backend \\
                                 --restart unless-stopped \\
-                                ${IMAGE_NAME}:${env.APP_VERSION}
+                                ${env.IMAGE_NAME}:${env.APP_VERSION}
                         '
                     """
                 }
@@ -182,10 +185,10 @@ pipeline {
             sh 'docker logout || true'
         }
         success {
-            echo "Deployed ${IMAGE_NAME}:${env.APP_VERSION} successfully."
+            echo "Deployed ${env.IMAGE_NAME}:${env.APP_VERSION} successfully."
         }
         failure {
-            echo "Pipeline failed. Image ${IMAGE_NAME}:${env.APP_VERSION} was NOT deployed."
+            echo "Pipeline failed. Image ${env.IMAGE_NAME}:${env.APP_VERSION} was NOT deployed."
         }
     }
 }
