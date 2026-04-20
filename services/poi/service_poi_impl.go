@@ -197,11 +197,22 @@ func (service *ServicePOIImpl) Import(ctx context.Context, fileBytes []byte, fil
 	type brandGroup struct {
 		brand    string
 		pointIds []int
+		seenAt   map[int]int // pointId -> first Excel row number where this pointId was added
 	}
 	brandOrder := []string{}
 	groups := map[string]*brandGroup{}
 
-	for _, row := range rows[1:] {
+	type duplicateEntry struct {
+		Brand   string `json:"brand"`
+		POIName string `json:"poi_name"`
+		Address string `json:"address"`
+		Rows    []int  `json:"rows"`
+	}
+	duplicateIndex := map[string]*duplicateEntry{} // key: brand + "|" + pointId
+
+	for i, row := range rows[1:] {
+		excelRow := i + 2 // header is Excel row 1; data rows start at 2
+
 		brandVal := getColValue(row, colMap, "brand")
 		if brandVal == "" {
 			continue
@@ -242,10 +253,44 @@ func (service *ServicePOIImpl) Import(ctx context.Context, fileBytes []byte, fil
 		}
 
 		if _, exists := groups[brandVal]; !exists {
-			groups[brandVal] = &brandGroup{brand: brandVal}
+			groups[brandVal] = &brandGroup{
+				brand:  brandVal,
+				seenAt: map[int]int{},
+			}
 			brandOrder = append(brandOrder, brandVal)
 		}
-		groups[brandVal].pointIds = append(groups[brandVal].pointIds, pointId)
+		group := groups[brandVal]
+		if firstRow, dup := group.seenAt[pointId]; dup {
+			key := fmt.Sprintf("%s|%d", brandVal, pointId)
+			if entry, ok := duplicateIndex[key]; ok {
+				entry.Rows = append(entry.Rows, excelRow)
+			} else {
+				duplicateIndex[key] = &duplicateEntry{
+					Brand:   brandVal,
+					POIName: poiName,
+					Address: address,
+					Rows:    []int{firstRow, excelRow},
+				}
+			}
+			continue
+		}
+		group.seenAt[pointId] = excelRow
+		group.pointIds = append(group.pointIds, pointId)
+	}
+
+	if len(duplicateIndex) > 0 {
+		duplicates := make([]duplicateEntry, 0, len(duplicateIndex))
+		for _, brandKey := range brandOrder {
+			for _, entry := range duplicateIndex {
+				if entry.Brand == brandKey {
+					duplicates = append(duplicates, *entry)
+				}
+			}
+		}
+		panic(exceptions.NewBadRequestWithExtras(
+			"Duplicate rows found: the same brand cannot reference the same POI (by name and address) more than once.",
+			map[string]interface{}{"duplicates": duplicates},
+		))
 	}
 
 	// Replace: delete any existing POIs whose brand matches the imported brands

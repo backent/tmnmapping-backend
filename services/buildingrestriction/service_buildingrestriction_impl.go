@@ -172,19 +172,30 @@ func (s *ServiceBuildingRestrictionImpl) Import(ctx context.Context, fileBytes [
 	type importGroup struct {
 		name        string
 		buildingIds []int
+		seenAt      map[int]int // buildingId -> first Excel row number
 	}
 	nameOrder := []string{}
 	groups := map[string]*importGroup{}
 
-	for _, row := range rows[1:] {
+	type duplicateEntry struct {
+		Name         string `json:"name"`
+		BuildingName string `json:"building_name"`
+		Rows         []int  `json:"rows"`
+	}
+	duplicateIndex := map[string]*duplicateEntry{} // key: name + "|" + buildingId
+
+	for i, row := range rows[1:] {
+		excelRow := i + 2 // header is Excel row 1; data rows start at 2
+
 		name := brGetColValue(row, colMap, "name")
 		if name == "" {
 			continue
 		}
-		buildingName := strings.TrimSpace(strings.ToLower(brGetColValue(row, colMap, "building_name")))
+		rawBuildingName := brGetColValue(row, colMap, "building_name")
+		buildingName := strings.TrimSpace(strings.ToLower(rawBuildingName))
 
 		if _, exists := groups[name]; !exists {
-			groups[name] = &importGroup{name: name}
+			groups[name] = &importGroup{name: name, seenAt: map[int]int{}}
 			nameOrder = append(nameOrder, name)
 		}
 
@@ -193,8 +204,38 @@ func (s *ServiceBuildingRestrictionImpl) Import(ctx context.Context, fileBytes [
 			if !ok {
 				panic(exceptions.NewBadRequestError(fmt.Sprintf("Building not found: %s", buildingName)))
 			}
-			groups[name].buildingIds = append(groups[name].buildingIds, bid)
+			group := groups[name]
+			if firstRow, dup := group.seenAt[bid]; dup {
+				key := fmt.Sprintf("%s|%d", name, bid)
+				if entry, ok := duplicateIndex[key]; ok {
+					entry.Rows = append(entry.Rows, excelRow)
+				} else {
+					duplicateIndex[key] = &duplicateEntry{
+						Name:         name,
+						BuildingName: rawBuildingName,
+						Rows:         []int{firstRow, excelRow},
+					}
+				}
+				continue
+			}
+			group.seenAt[bid] = excelRow
+			group.buildingIds = append(group.buildingIds, bid)
 		}
+	}
+
+	if len(duplicateIndex) > 0 {
+		duplicates := make([]duplicateEntry, 0, len(duplicateIndex))
+		for _, nameKey := range nameOrder {
+			for _, entry := range duplicateIndex {
+				if entry.Name == nameKey {
+					duplicates = append(duplicates, *entry)
+				}
+			}
+		}
+		panic(exceptions.NewBadRequestWithExtras(
+			"Duplicate rows found: the same building restriction cannot reference the same building more than once.",
+			map[string]interface{}{"duplicates": duplicates},
+		))
 	}
 
 	// Delete existing building restrictions with matching names

@@ -39,6 +39,7 @@ func RouterPanicHandler(w http.ResponseWriter, r *http.Request, i interface{}) {
 			Code:   http.StatusBadRequest,
 			Status: "BAD REQUEST",
 			Data:   err.Error,
+			Extras: err.Extras,
 		}
 	} else if err, ok := i.(Unauthorized); ok {
 		requestFields["status_code"] = http.StatusUnauthorized
