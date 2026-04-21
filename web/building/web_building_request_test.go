@@ -127,6 +127,27 @@ func TestMappingByFilterRequest_DecodesFrontendBoundsPayload(t *testing.T) {
 	assert.Equal(t, "106.86", req.GetMaxLng())
 }
 
+// Regression: the frontend MappingFilters sends `poi_ids: number[]` (plural,
+// array of category ids), not `poi_id: int`. A field-name/type mismatch would
+// silently drop the filter and fall back to a map_center radius search —
+// visibly wrong markers on the map for the user.
+func TestMappingByFilterRequest_DecodesPoiIdsPayload(t *testing.T) {
+	raw := []byte(`{
+		"filters": {"lcd_presence": ["TMN"], "poi_ids": [90, 91], "radius": 2},
+		"map_center": {"lat": -6.2, "lng": 106.8166}
+	}`)
+
+	var body MappingByFilterRequest
+	err := json.Unmarshal(raw, &body)
+	assert.NoError(t, err)
+
+	assert.Equal(t, []int{90, 91}, body.Filters.PoiIDs)
+
+	req := BuildMappingRequestFromBody(&body)
+	assert.Equal(t, "90,91", req.GetPOIId())
+	assert.Equal(t, "2000", req.GetRadius())
+}
+
 func TestBuildMappingRequestFromBody_RadiusKmToMeters(t *testing.T) {
 	radius := 2.5 // km
 	body := &MappingByFilterRequest{

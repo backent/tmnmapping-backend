@@ -209,7 +209,7 @@ type ExportMappingFilters struct {
 	Lat                   *float64 `json:"lat"`
 	Lng                   *float64 `json:"lng"`
 	Radius                *float64 `json:"radius"` // km; backend expects meters
-	PoiID                 *int     `json:"poi_id"`
+	PoiIDs                []int    `json:"poi_ids"` // POI category ids; multi-select (matches frontend MappingFilters.poi_ids)
 	Polygon []struct {
 		Lat float64 `json:"lat"`
 		Lng float64 `json:"lng"`
@@ -301,8 +301,8 @@ func BuildMappingRequestFromExportBody(body *ExportMappingByFilterRequest) Mappi
 	if f.Radius != nil {
 		req.SetRadius(fmt.Sprintf("%.0f", *f.Radius*1000)) // km -> meters
 	}
-	if f.PoiID != nil {
-		req.SetPOIId(strconv.Itoa(*f.PoiID))
+	if len(f.PoiIDs) > 0 {
+		req.SetPOIId(intSliceToComma(f.PoiIDs))
 	}
 	if len(f.Polygon) >= 3 {
 		polyJSON, _ := json.Marshal(f.Polygon)
