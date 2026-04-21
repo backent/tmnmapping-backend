@@ -98,7 +98,7 @@ func NewRouter(
 		loggingMiddleware.Log(
 			authMiddleware.RequireAuth(controllersBuilding.GetDropdownOptions)))
 
-	router.GET("/mapping-buildings",
+	router.POST("/mapping-buildings",
 		loggingMiddleware.Log(
 			authMiddleware.RequireAuth(controllersBuilding.FindAllForMapping)))
 

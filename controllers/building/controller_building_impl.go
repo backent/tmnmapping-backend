@@ -114,11 +114,14 @@ func (controller *ControllerBuildingImpl) GetFilterOptions(w http.ResponseWriter
 	helpers.ReturnReponseJSON(w, response)
 }
 
-// FindAllForMapping handles GET /mapping-buildings
+// FindAllForMapping handles POST /mapping-buildings (body: filters + map_center + bounds)
 func (controller *ControllerBuildingImpl) FindAllForMapping(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-	var request webBuilding.MappingBuildingRequest
+	var body webBuilding.MappingByFilterRequest
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		panic(exceptions.NewBadRequest("invalid request body"))
+	}
 
-	web.SetMappingFilters(&request, r)
+	request := webBuilding.BuildMappingRequestFromBody(&body)
 
 	mappingResponse := controller.service.FindAllForMapping(r.Context(), request)
 

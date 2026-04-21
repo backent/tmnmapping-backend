@@ -216,6 +216,42 @@ type ExportMappingFilters struct {
 	} `json:"polygon"`
 }
 
+// MappingBounds is the typed viewport payload for the POST mapping endpoint.
+// Keys are camelCase to match the frontend MapBounds interface.
+type MappingBounds struct {
+	MinLat float64 `json:"minLat"`
+	MaxLat float64 `json:"maxLat"`
+	MinLng float64 `json:"minLng"`
+	MaxLng float64 `json:"maxLng"`
+}
+
+// MappingByFilterRequest is the POST body for /mapping-buildings.
+// Shares the filter projection with the export endpoint but carries a typed, optional bounds field.
+type MappingByFilterRequest struct {
+	Filters   ExportMappingFilters `json:"filters"`
+	MapCenter *struct {
+		Lat float64 `json:"lat"`
+		Lng float64 `json:"lng"`
+	} `json:"map_center"`
+	Bounds *MappingBounds `json:"bounds"`
+}
+
+// BuildMappingRequestFromBody maps the POST body into the internal MappingBuildingRequest, including bounds.
+func BuildMappingRequestFromBody(body *MappingByFilterRequest) MappingBuildingRequest {
+	req := BuildMappingRequestFromExportBody(&ExportMappingByFilterRequest{
+		Filters:   body.Filters,
+		MapCenter: body.MapCenter,
+		Bounds:    nil,
+	})
+	if body.Bounds != nil {
+		req.SetMinLat(fmt.Sprintf("%v", body.Bounds.MinLat))
+		req.SetMaxLat(fmt.Sprintf("%v", body.Bounds.MaxLat))
+		req.SetMinLng(fmt.Sprintf("%v", body.Bounds.MinLng))
+		req.SetMaxLng(fmt.Sprintf("%v", body.Bounds.MaxLng))
+	}
+	return req
+}
+
 // BuildMappingRequestFromExportBody maps ExportMappingByFilterRequest into MappingBuildingRequest.
 // Bounds are never set (export is always all buildings matching filters).
 func BuildMappingRequestFromExportBody(body *ExportMappingByFilterRequest) MappingBuildingRequest {
