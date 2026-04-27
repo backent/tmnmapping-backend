@@ -18,7 +18,6 @@ import (
 	"github.com/malikabdulaziz/tmn-backend/controllers/image"
 	motherbrand3 "github.com/malikabdulaziz/tmn-backend/controllers/motherbrand"
 	poi3 "github.com/malikabdulaziz/tmn-backend/controllers/poi"
-	poipoint3 "github.com/malikabdulaziz/tmn-backend/controllers/poipoint"
 	salespackage3 "github.com/malikabdulaziz/tmn-backend/controllers/salespackage"
 	savedpolygon3 "github.com/malikabdulaziz/tmn-backend/controllers/savedpolygon"
 	subcategory3 "github.com/malikabdulaziz/tmn-backend/controllers/subcategory"
@@ -32,7 +31,6 @@ import (
 	"github.com/malikabdulaziz/tmn-backend/repositories/dashboard"
 	"github.com/malikabdulaziz/tmn-backend/repositories/motherbrand"
 	"github.com/malikabdulaziz/tmn-backend/repositories/poi"
-	"github.com/malikabdulaziz/tmn-backend/repositories/poipoint"
 	"github.com/malikabdulaziz/tmn-backend/repositories/salespackage"
 	"github.com/malikabdulaziz/tmn-backend/repositories/savedpolygon"
 	"github.com/malikabdulaziz/tmn-backend/repositories/subcategory"
@@ -48,7 +46,6 @@ import (
 	"github.com/malikabdulaziz/tmn-backend/services/loi"
 	motherbrand2 "github.com/malikabdulaziz/tmn-backend/services/motherbrand"
 	poi2 "github.com/malikabdulaziz/tmn-backend/services/poi"
-	poipoint2 "github.com/malikabdulaziz/tmn-backend/services/poipoint"
 	salespackage2 "github.com/malikabdulaziz/tmn-backend/services/salespackage"
 	savedpolygon2 "github.com/malikabdulaziz/tmn-backend/services/savedpolygon"
 	subcategory2 "github.com/malikabdulaziz/tmn-backend/services/subcategory"
@@ -69,8 +66,6 @@ func InitializeRouter() *httprouter.Router {
 	salesPackageMiddleware := middlewares.NewSalesPackageMiddleware(validate, db, repositorySalesPackageInterface)
 	repositoryBuildingRestrictionInterface := buildingrestriction.NewRepositoryBuildingRestrictionImpl()
 	buildingRestrictionMiddleware := middlewares.NewBuildingRestrictionMiddleware(validate, db, repositoryBuildingRestrictionInterface)
-	repositoryPOIPointInterface := poipoint.NewRepositoryPOIPointImpl()
-	poiPointMiddleware := middlewares.NewPOIPointMiddleware(validate, db, repositoryPOIPointInterface)
 	repositorySavedPolygonInterface := savedpolygon.NewRepositorySavedPolygonImpl()
 	savedPolygonMiddleware := middlewares.NewSavedPolygonMiddleware(validate, db, repositorySavedPolygonInterface)
 	loggingMiddleware := middlewares.NewLoggingMiddleware()
@@ -90,14 +85,12 @@ func InitializeRouter() *httprouter.Router {
 	serviceBuildingInterface := building2.NewServiceBuildingImpl(db, repositoryBuildingInterface, repositoryPOIInterface, erpClient, logger)
 	controllerBuildingInterface := building3.NewControllerBuildingImpl(serviceBuildingInterface)
 	controllerImageInterface := image.NewControllerImageImpl()
-	servicePOIInterface := poi2.NewServicePOIImpl(db, repositoryPOIInterface, repositoryPOIPointInterface, repositoryCategoryInterface, repositorySubCategoryInterface, repositoryMotherBrandInterface, repositoryBranchInterface)
+	servicePOIInterface := poi2.NewServicePOIImpl(db, repositoryPOIInterface, repositoryCategoryInterface, repositorySubCategoryInterface, repositoryMotherBrandInterface, repositoryBranchInterface)
 	controllerPOIInterface := poi3.NewControllerPOIImpl(servicePOIInterface)
 	serviceSalesPackageInterface := salespackage2.NewServiceSalesPackageImpl(db, repositorySalesPackageInterface, repositoryBuildingInterface)
 	controllerSalesPackageInterface := salespackage3.NewControllerSalesPackageImpl(serviceSalesPackageInterface)
 	serviceBuildingRestrictionInterface := buildingrestriction2.NewServiceBuildingRestrictionImpl(db, repositoryBuildingRestrictionInterface, repositoryBuildingInterface)
 	controllerBuildingRestrictionInterface := buildingrestriction3.NewControllerBuildingRestrictionImpl(serviceBuildingRestrictionInterface)
-	servicePOIPointInterface := poipoint2.NewServicePOIPointImpl(db, repositoryPOIPointInterface, repositoryCategoryInterface, repositorySubCategoryInterface, repositoryMotherBrandInterface, repositoryBranchInterface)
-	controllerPOIPointInterface := poipoint3.NewControllerPOIPointImpl(servicePOIPointInterface)
 	serviceSavedPolygonInterface := savedpolygon2.NewServiceSavedPolygonImpl(db, repositorySavedPolygonInterface)
 	controllerSavedPolygonInterface := savedpolygon3.NewControllerSavedPolygonImpl(serviceSavedPolygonInterface)
 	repositoryDashboardInterface := dashboard.NewRepositoryDashboardImpl()
@@ -111,7 +104,7 @@ func InitializeRouter() *httprouter.Router {
 	controllerMotherBrandInterface := motherbrand3.NewControllerMotherBrandImpl(serviceMotherBrandInterface)
 	serviceBranchInterface := branch2.NewServiceBranchImpl(db, repositoryBranchInterface)
 	controllerBranchInterface := branch3.NewControllerBranchImpl(serviceBranchInterface)
-	router := libs.NewRouter(authMiddleware, buildingMiddleware, poiMiddleware, salesPackageMiddleware, buildingRestrictionMiddleware, poiPointMiddleware, savedPolygonMiddleware, loggingMiddleware, categoryMiddleware, subCategoryMiddleware, motherBrandMiddleware, branchMiddleware, controllerAuthInterface, controllerBuildingInterface, controllerImageInterface, controllerPOIInterface, controllerSalesPackageInterface, controllerBuildingRestrictionInterface, controllerPOIPointInterface, controllerSavedPolygonInterface, controllerDashboardInterface, controllerCategoryInterface, controllerSubCategoryInterface, controllerMotherBrandInterface, controllerBranchInterface)
+	router := libs.NewRouter(authMiddleware, buildingMiddleware, poiMiddleware, salesPackageMiddleware, buildingRestrictionMiddleware, savedPolygonMiddleware, loggingMiddleware, categoryMiddleware, subCategoryMiddleware, motherBrandMiddleware, branchMiddleware, controllerAuthInterface, controllerBuildingInterface, controllerImageInterface, controllerPOIInterface, controllerSalesPackageInterface, controllerBuildingRestrictionInterface, controllerSavedPolygonInterface, controllerDashboardInterface, controllerCategoryInterface, controllerSubCategoryInterface, controllerMotherBrandInterface, controllerBranchInterface)
 	return router
 }
 
@@ -167,8 +160,6 @@ var branchSet = wire.NewSet(branch.NewRepositoryBranchImpl, branch2.NewServiceBr
 
 var poiSet = wire.NewSet(poi.NewRepositoryPOIImpl, poi2.NewServicePOIImpl, poi3.NewControllerPOIImpl)
 
-var poipointSet = wire.NewSet(poipoint.NewRepositoryPOIPointImpl, poipoint2.NewServicePOIPointImpl, poipoint3.NewControllerPOIPointImpl)
-
 var salespackageSet = wire.NewSet(salespackage.NewRepositorySalesPackageImpl, salespackage2.NewServiceSalesPackageImpl, salespackage3.NewControllerSalesPackageImpl)
 
 var buildingrestrictionSet = wire.NewSet(buildingrestriction.NewRepositoryBuildingRestrictionImpl, buildingrestriction2.NewServiceBuildingRestrictionImpl, buildingrestriction3.NewControllerBuildingRestrictionImpl)
@@ -177,4 +168,4 @@ var savedpolygonSet = wire.NewSet(savedpolygon.NewRepositorySavedPolygonImpl, sa
 
 var dashboardSet = wire.NewSet(dashboard.NewRepositoryDashboardImpl, dashboard2.NewServiceDashboardImpl, dashboard3.NewControllerDashboardImpl)
 
-var middlewareSet = wire.NewSet(middlewares.NewAuthMiddleware, middlewares.NewBuildingMiddleware, middlewares.NewPOIMiddleware, middlewares.NewPOIPointMiddleware, middlewares.NewSalesPackageMiddleware, middlewares.NewBuildingRestrictionMiddleware, middlewares.NewSavedPolygonMiddleware, middlewares.NewLoggingMiddleware, middlewares.NewCategoryMiddleware, middlewares.NewSubCategoryMiddleware, middlewares.NewMotherBrandMiddleware, middlewares.NewBranchMiddleware)
+var middlewareSet = wire.NewSet(middlewares.NewAuthMiddleware, middlewares.NewBuildingMiddleware, middlewares.NewPOIMiddleware, middlewares.NewSalesPackageMiddleware, middlewares.NewBuildingRestrictionMiddleware, middlewares.NewSavedPolygonMiddleware, middlewares.NewLoggingMiddleware, middlewares.NewCategoryMiddleware, middlewares.NewSubCategoryMiddleware, middlewares.NewMotherBrandMiddleware, middlewares.NewBranchMiddleware)

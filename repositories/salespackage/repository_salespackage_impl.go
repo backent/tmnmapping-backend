@@ -55,7 +55,7 @@ func (r *RepositorySalesPackageImpl) Create(ctx context.Context, tx *sql.Tx, pkg
 func (r *RepositorySalesPackageImpl) FindAll(ctx context.Context, tx *sql.Tx, take int, skip int, orderBy string, orderDirection string) ([]models.SalesPackage, error) {
 	orderBy, orderDirection = safeOrder(orderBy, orderDirection)
 	SQL := `SELECT id, name, created_at, updated_at FROM ` + models.SalesPackageTable + `
-		ORDER BY ` + orderBy + ` ` + orderDirection + ` LIMIT $1 OFFSET $2`
+		ORDER BY ` + orderBy + ` ` + orderDirection + `, name ASC LIMIT $1 OFFSET $2`
 	rows, err := tx.QueryContext(ctx, SQL, take, skip)
 	if err != nil {
 		return nil, err

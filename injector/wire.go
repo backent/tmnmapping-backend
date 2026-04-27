@@ -15,7 +15,6 @@ import (
 	controllersImage "github.com/malikabdulaziz/tmn-backend/controllers/image"
 	controllersMotherBrand "github.com/malikabdulaziz/tmn-backend/controllers/motherbrand"
 	controllersPOI "github.com/malikabdulaziz/tmn-backend/controllers/poi"
-	controllersPOIPoint "github.com/malikabdulaziz/tmn-backend/controllers/poipoint"
 	controllersSalesPackage "github.com/malikabdulaziz/tmn-backend/controllers/salespackage"
 	controllersSavedPolygon "github.com/malikabdulaziz/tmn-backend/controllers/savedpolygon"
 	controllersSubCategory "github.com/malikabdulaziz/tmn-backend/controllers/subcategory"
@@ -29,7 +28,6 @@ import (
 	repositoriesDashboard "github.com/malikabdulaziz/tmn-backend/repositories/dashboard"
 	repositoriesMotherBrand "github.com/malikabdulaziz/tmn-backend/repositories/motherbrand"
 	repositoriesPOI "github.com/malikabdulaziz/tmn-backend/repositories/poi"
-	repositoriesPOIPoint "github.com/malikabdulaziz/tmn-backend/repositories/poipoint"
 	repositoriesSalesPackage "github.com/malikabdulaziz/tmn-backend/repositories/salespackage"
 	repositoriesSavedPolygon "github.com/malikabdulaziz/tmn-backend/repositories/savedpolygon"
 	repositoriesSubCategory "github.com/malikabdulaziz/tmn-backend/repositories/subcategory"
@@ -45,7 +43,6 @@ import (
 	servicesLOI "github.com/malikabdulaziz/tmn-backend/services/loi"
 	servicesMotherBrand "github.com/malikabdulaziz/tmn-backend/services/motherbrand"
 	servicesPOI "github.com/malikabdulaziz/tmn-backend/services/poi"
-	servicesPOIPoint "github.com/malikabdulaziz/tmn-backend/services/poipoint"
 	servicesSalesPackage "github.com/malikabdulaziz/tmn-backend/services/salespackage"
 	servicesSavedPolygon "github.com/malikabdulaziz/tmn-backend/services/savedpolygon"
 	servicesSubCategory "github.com/malikabdulaziz/tmn-backend/services/subcategory"
@@ -98,12 +95,6 @@ var poiSet = wire.NewSet(
 	controllersPOI.NewControllerPOIImpl,
 )
 
-var poipointSet = wire.NewSet(
-	repositoriesPOIPoint.NewRepositoryPOIPointImpl,
-	servicesPOIPoint.NewServicePOIPointImpl,
-	controllersPOIPoint.NewControllerPOIPointImpl,
-)
-
 var salespackageSet = wire.NewSet(
 	repositoriesSalesPackage.NewRepositorySalesPackageImpl,
 	servicesSalesPackage.NewServiceSalesPackageImpl,
@@ -132,7 +123,6 @@ var middlewareSet = wire.NewSet(
 	middlewares.NewAuthMiddleware,
 	middlewares.NewBuildingMiddleware,
 	middlewares.NewPOIMiddleware,
-	middlewares.NewPOIPointMiddleware,
 	middlewares.NewSalesPackageMiddleware,
 	middlewares.NewBuildingRestrictionMiddleware,
 	middlewares.NewSavedPolygonMiddleware,
@@ -157,7 +147,6 @@ func InitializeRouter() *httprouter.Router {
 		motherBrandSet,
 		branchSet,
 		poiSet,
-		poipointSet,
 		salespackageSet,
 		buildingrestrictionSet,
 		savedpolygonSet,

@@ -17,7 +17,6 @@ import (
 	repositoriesCategory "github.com/malikabdulaziz/tmn-backend/repositories/category"
 	repositoriesMotherBrand "github.com/malikabdulaziz/tmn-backend/repositories/motherbrand"
 	repositoriesPOI "github.com/malikabdulaziz/tmn-backend/repositories/poi"
-	repositoriesPOIPoint "github.com/malikabdulaziz/tmn-backend/repositories/poipoint"
 	repositoriesSubCategory "github.com/malikabdulaziz/tmn-backend/repositories/subcategory"
 	webPOI "github.com/malikabdulaziz/tmn-backend/web/poi"
 	"github.com/xuri/excelize/v2"
@@ -34,7 +33,6 @@ var colorPalette = []string{
 type ServicePOIImpl struct {
 	DB                             *sql.DB
 	RepositoryPOIInterface         repositoriesPOI.RepositoryPOIInterface
-	RepositoryPOIPointInterface    repositoriesPOIPoint.RepositoryPOIPointInterface
 	RepositoryCategoryInterface    repositoriesCategory.RepositoryCategoryInterface
 	RepositorySubCategoryInterface repositoriesSubCategory.RepositorySubCategoryInterface
 	RepositoryMotherBrandInterface repositoriesMotherBrand.RepositoryMotherBrandInterface
@@ -44,7 +42,6 @@ type ServicePOIImpl struct {
 func NewServicePOIImpl(
 	db *sql.DB,
 	repositoryPOI repositoriesPOI.RepositoryPOIInterface,
-	repositoryPOIPoint repositoriesPOIPoint.RepositoryPOIPointInterface,
 	repoCategory repositoriesCategory.RepositoryCategoryInterface,
 	repoSubCategory repositoriesSubCategory.RepositorySubCategoryInterface,
 	repoMotherBrand repositoriesMotherBrand.RepositoryMotherBrandInterface,
@@ -53,7 +50,6 @@ func NewServicePOIImpl(
 	return &ServicePOIImpl{
 		DB:                             db,
 		RepositoryPOIInterface:         repositoryPOI,
-		RepositoryPOIPointInterface:    repositoryPOIPoint,
 		RepositoryCategoryInterface:    repoCategory,
 		RepositorySubCategoryInterface: repoSubCategory,
 		RepositoryMotherBrandInterface: repoMotherBrand,
@@ -61,27 +57,29 @@ func NewServicePOIImpl(
 	}
 }
 
-// Create creates a new POI with links to existing points
+// Create creates a new POI together with its owned points.
 func (service *ServicePOIImpl) Create(ctx context.Context, request webPOI.CreatePOIRequest) webPOI.POIResponse {
 	tx, err := service.DB.Begin()
 	helpers.PanicIfError(err)
 	defer helpers.CommitOrRollback(tx)
 
-	// Validate that all point IDs exist
-	service.validatePointIds(ctx, tx, request.PointIds)
+	service.validateMetadata(ctx, tx, request.CategoryId, request.SubCategoryId, request.MotherBrandId)
+	service.validateBranches(ctx, tx, request.Points)
 
 	poi := models.POI{
-		Brand: request.Brand,
-		Color: request.Color,
+		Brand:         request.Brand,
+		Color:         request.Color,
+		CategoryId:    request.CategoryId,
+		SubCategoryId: request.SubCategoryId,
+		MotherBrandId: request.MotherBrandId,
 	}
 
-	createdPOI, err := service.RepositoryPOIInterface.Create(ctx, tx, poi, request.PointIds)
+	createdPOI, err := service.RepositoryPOIInterface.Create(ctx, tx, poi, pointsFromInputs(request.Points))
 	helpers.PanicIfError(err)
 
 	return service.poiModelToResponse(createdPOI)
 }
 
-// FindAll retrieves all POIs with their points, with pagination
 func (service *ServicePOIImpl) FindAll(ctx context.Context, request webPOI.POIRequestFindAll) ([]webPOI.POIResponse, int) {
 	tx, err := service.DB.Begin()
 	helpers.PanicIfError(err)
@@ -103,7 +101,6 @@ func (service *ServicePOIImpl) FindAll(ctx context.Context, request webPOI.POIRe
 	return responses, total
 }
 
-// FindById retrieves a POI by ID with its points
 func (service *ServicePOIImpl) FindById(ctx context.Context, id int) webPOI.POIResponse {
 	tx, err := service.DB.Begin()
 	helpers.PanicIfError(err)
@@ -118,7 +115,7 @@ func (service *ServicePOIImpl) FindById(ctx context.Context, id int) webPOI.POIR
 	return service.poiModelToResponse(poi)
 }
 
-// Update updates a POI and replaces its point links
+// Update updates a POI and replaces its owned points.
 func (service *ServicePOIImpl) Update(ctx context.Context, request webPOI.UpdatePOIRequest, id int) webPOI.POIResponse {
 	tx, err := service.DB.Begin()
 	helpers.PanicIfError(err)
@@ -130,19 +127,22 @@ func (service *ServicePOIImpl) Update(ctx context.Context, request webPOI.Update
 	}
 	helpers.PanicIfError(err)
 
-	// Validate that all point IDs exist
-	service.validatePointIds(ctx, tx, request.PointIds)
+	service.validateMetadata(ctx, tx, request.CategoryId, request.SubCategoryId, request.MotherBrandId)
+	service.validateBranches(ctx, tx, request.Points)
 
 	existingPOI.Brand = request.Brand
 	existingPOI.Color = request.Color
+	existingPOI.CategoryId = request.CategoryId
+	existingPOI.SubCategoryId = request.SubCategoryId
+	existingPOI.MotherBrandId = request.MotherBrandId
 
-	updatedPOI, err := service.RepositoryPOIInterface.Update(ctx, tx, existingPOI, request.PointIds)
+	updatedPOI, err := service.RepositoryPOIInterface.Update(ctx, tx, existingPOI, pointsFromInputs(request.Points))
 	helpers.PanicIfError(err)
 
 	return service.poiModelToResponse(updatedPOI)
 }
 
-// Delete deletes a POI (cascade removes junction links, NOT the points themselves)
+// Delete cascades to owned points via the FK on poi_points.poi_id.
 func (service *ServicePOIImpl) Delete(ctx context.Context, id int) {
 	tx, err := service.DB.Begin()
 	helpers.PanicIfError(err)
@@ -158,7 +158,9 @@ func (service *ServicePOIImpl) Delete(ctx context.Context, id int) {
 	helpers.PanicIfError(err)
 }
 
-// Import parses an xlsx or csv file and creates POIs grouped by brand, creating points as needed
+// Import parses xlsx/csv. Each row is a point; rows are grouped by Brand. The first
+// row of each brand sets the POI metadata (category/sub_category/mother_brand). If
+// a later row of the same brand disagrees, the whole file is rejected.
 func (service *ServicePOIImpl) Import(ctx context.Context, fileBytes []byte, fileType string) []webPOI.POIResponse {
 	tx, err := service.DB.Begin()
 	helpers.PanicIfError(err)
@@ -181,87 +183,104 @@ func (service *ServicePOIImpl) Import(ctx context.Context, fileBytes []byte, fil
 		panic(exceptions.NewBadRequestError("File must contain a header row and at least one data row."))
 	}
 
-	// Parse header to find column indices
 	header := rows[0]
 	colMap := mapHeaderColumns(header)
 
-	// Validate required columns
-	requiredCols := []string{"brand", "coordinate"}
-	for _, col := range requiredCols {
+	for _, col := range []string{"brand", "coordinate"} {
 		if _, exists := colMap[col]; !exists {
 			panic(exceptions.NewBadRequestError(fmt.Sprintf("Missing required column: %s", col)))
 		}
 	}
 
-	// Group rows by Brand, creating standalone points for each row
 	type brandGroup struct {
-		brand    string
-		pointIds []int
-		seenAt   map[int]int // pointId -> first Excel row number where this pointId was added
+		brand           string
+		categoryName    string
+		subCategoryName string
+		motherBrandName string
+		firstRow        int
+		rows            []int // every Excel row that belongs to this brand group
+		points          []models.POIPoint
+		seenAt          map[string]int // poi_name|address -> first Excel row
 	}
-	brandOrder := []string{}
-	groups := map[string]*brandGroup{}
-
 	type duplicateEntry struct {
 		Brand   string `json:"brand"`
 		POIName string `json:"poi_name"`
 		Address string `json:"address"`
 		Rows    []int  `json:"rows"`
 	}
-	duplicateIndex := map[string]*duplicateEntry{} // key: brand + "|" + pointId
+	type metadataMismatch struct {
+		Brand string `json:"brand"`
+		Field string `json:"field"`
+		Rows  []int  `json:"rows"`
+	}
 
+	brandOrder := []string{}
+	groups := map[string]*brandGroup{}
+	duplicateIndex := map[string]*duplicateEntry{}
+	// mismatchedFields[brand] is the set of fields ("category", "sub_category",
+	// "mother_brand") where any row in that brand disagreed with another.
+	mismatchedFields := map[string]map[string]struct{}{}
+
+	noteMismatch := func(brand, field string) {
+		if _, ok := mismatchedFields[brand]; !ok {
+			mismatchedFields[brand] = map[string]struct{}{}
+		}
+		mismatchedFields[brand][field] = struct{}{}
+	}
+
+	var lastBrand string
 	for i, row := range rows[1:] {
-		excelRow := i + 2 // header is Excel row 1; data rows start at 2
+		excelRow := i + 2
 
 		brandVal := getColValue(row, colMap, "brand")
 		if brandVal == "" {
-			continue
+			// Inherit brand from the previous non-empty row (handles merged
+			// cells and spreadsheets where brand is filled once per group).
+			// A fully blank row is still skipped.
+			if lastBrand == "" || isRowBlank(row) {
+				continue
+			}
+			brandVal = lastBrand
+		} else {
+			lastBrand = brandVal
 		}
 
+		categoryName := getColValue(row, colMap, "category")
+		subCategoryName := getColValue(row, colMap, "sub_category")
+		motherBrandName := getColValue(row, colMap, "mother_brand")
+		branchName := getColValue(row, colMap, "branch")
 		poiName := getColValue(row, colMap, "poi_name")
 		address := getColValue(row, colMap, "address")
+		lat, lng := parseCoordinate(getColValue(row, colMap, "coordinate"))
 
-		// Check if a point with the same name and address already exists
-		var pointId int
-		existing, err := service.RepositoryPOIPointInterface.FindByNameAndAddress(ctx, tx, poiName, address)
-		if err == nil {
-			pointId = existing.Id
-		} else if err == sql.ErrNoRows {
-			// Resolve metadata IDs via find-or-create
-			categoryId := service.findOrCreateCategory(ctx, tx, getColValue(row, colMap, "category"))
-			subCategoryId := service.findOrCreateSubCategory(ctx, tx, getColValue(row, colMap, "sub_category"))
-			motherBrandId := service.findOrCreateMotherBrand(ctx, tx, getColValue(row, colMap, "mother_brand"))
-			branchId := service.findOrCreateBranch(ctx, tx, getColValue(row, colMap, "branch"))
-
-			// Create a new standalone point
-			lat, lng := parseCoordinate(getColValue(row, colMap, "coordinate"))
-			point := models.POIPoint{
-				POIName:       poiName,
-				Address:       address,
-				Latitude:      lat,
-				Longitude:     lng,
-				CategoryId:    categoryId,
-				SubCategoryId: subCategoryId,
-				MotherBrandId: motherBrandId,
-				BranchId:      branchId,
+		group, exists := groups[brandVal]
+		if !exists {
+			group = &brandGroup{
+				brand:           brandVal,
+				categoryName:    categoryName,
+				subCategoryName: subCategoryName,
+				motherBrandName: motherBrandName,
+				firstRow:        excelRow,
+				seenAt:          map[string]int{},
 			}
-			createdPoint, createErr := service.RepositoryPOIPointInterface.Create(ctx, tx, point)
-			helpers.PanicIfError(createErr)
-			pointId = createdPoint.Id
-		} else {
-			helpers.PanicIfError(err)
-		}
-
-		if _, exists := groups[brandVal]; !exists {
-			groups[brandVal] = &brandGroup{
-				brand:  brandVal,
-				seenAt: map[int]int{},
-			}
+			groups[brandVal] = group
 			brandOrder = append(brandOrder, brandVal)
+		} else {
+			if !strings.EqualFold(group.categoryName, categoryName) {
+				noteMismatch(brandVal, "category")
+			}
+			if !strings.EqualFold(group.subCategoryName, subCategoryName) {
+				noteMismatch(brandVal, "sub_category")
+			}
+			if !strings.EqualFold(group.motherBrandName, motherBrandName) {
+				noteMismatch(brandVal, "mother_brand")
+			}
 		}
-		group := groups[brandVal]
-		if firstRow, dup := group.seenAt[pointId]; dup {
-			key := fmt.Sprintf("%s|%d", brandVal, pointId)
+		group.rows = append(group.rows, excelRow)
+
+		dupKey := strings.ToLower(poiName) + "|" + strings.ToLower(address)
+		if firstRow, dup := group.seenAt[dupKey]; dup {
+			key := fmt.Sprintf("%s|%s", brandVal, dupKey)
 			if entry, ok := duplicateIndex[key]; ok {
 				entry.Rows = append(entry.Rows, excelRow)
 			} else {
@@ -274,18 +293,48 @@ func (service *ServicePOIImpl) Import(ctx context.Context, fileBytes []byte, fil
 			}
 			continue
 		}
-		group.seenAt[pointId] = excelRow
-		group.pointIds = append(group.pointIds, pointId)
+		group.seenAt[dupKey] = excelRow
+
+		branchId := service.findOrCreateBranch(ctx, tx, branchName)
+		group.points = append(group.points, models.POIPoint{
+			POIName:   poiName,
+			Address:   address,
+			Latitude:  lat,
+			Longitude: lng,
+			BranchId:  branchId,
+		})
+	}
+
+	if len(mismatchedFields) > 0 {
+		mismatches := make([]metadataMismatch, 0)
+		for _, brand := range brandOrder {
+			fields, ok := mismatchedFields[brand]
+			if !ok {
+				continue
+			}
+			group := groups[brand]
+			for _, field := range []string{"category", "sub_category", "mother_brand"} {
+				if _, hit := fields[field]; !hit {
+					continue
+				}
+				rowsCopy := append([]int(nil), group.rows...)
+				mismatches = append(mismatches, metadataMismatch{
+					Brand: brand,
+					Field: field,
+					Rows:  rowsCopy,
+				})
+			}
+		}
+		panic(exceptions.NewBadRequestWithExtras(
+			"Metadata mismatch within a brand group: all rows of the same brand must share the same Category, Sub-Category, and Mother Brand. Please review the rows below.",
+			map[string]interface{}{"mismatches": mismatches},
+		))
 	}
 
 	if len(duplicateIndex) > 0 {
 		duplicates := make([]duplicateEntry, 0, len(duplicateIndex))
-		for _, brandKey := range brandOrder {
-			for _, entry := range duplicateIndex {
-				if entry.Brand == brandKey {
-					duplicates = append(duplicates, *entry)
-				}
-			}
+		for _, entry := range duplicateIndex {
+			duplicates = append(duplicates, *entry)
 		}
 		panic(exceptions.NewBadRequestWithExtras(
 			"Duplicate rows found: the same brand cannot reference the same POI (by name and address) more than once.",
@@ -293,37 +342,39 @@ func (service *ServicePOIImpl) Import(ctx context.Context, fileBytes []byte, fil
 		))
 	}
 
-	// Replace: delete any existing POIs whose brand matches the imported brands
+	// Replace: delete any existing POIs whose brand matches the imported brands.
 	existing, err := service.RepositoryPOIInterface.FindByBrands(ctx, tx, brandOrder)
 	helpers.PanicIfError(err)
 	for _, existingPOI := range existing {
-		err = service.RepositoryPOIInterface.DeletePointLinksByPOIId(ctx, tx, existingPOI.Id)
-		helpers.PanicIfError(err)
 		err = service.RepositoryPOIInterface.Delete(ctx, tx, existingPOI.Id)
 		helpers.PanicIfError(err)
 	}
 
-	// Create fresh POIs from the imported data
 	var responses []webPOI.POIResponse
 	for i, brandKey := range brandOrder {
 		group := groups[brandKey]
 		color := colorPalette[i%len(colorPalette)]
 
+		categoryId := service.findOrCreateCategory(ctx, tx, group.categoryName)
+		subCategoryId := service.findOrCreateSubCategory(ctx, tx, group.subCategoryName)
+		motherBrandId := service.findOrCreateMotherBrand(ctx, tx, group.motherBrandName)
+
 		poi := models.POI{
-			Brand: group.brand,
-			Color: color,
+			Brand:         group.brand,
+			Color:         color,
+			CategoryId:    categoryId,
+			SubCategoryId: subCategoryId,
+			MotherBrandId: motherBrandId,
 		}
 
-		createdPOI, err := service.RepositoryPOIInterface.Create(ctx, tx, poi, group.pointIds)
+		createdPOI, err := service.RepositoryPOIInterface.Create(ctx, tx, poi, group.points)
 		helpers.PanicIfError(err)
-
 		responses = append(responses, service.poiModelToResponse(createdPOI))
 	}
 
 	return responses
 }
 
-// Export generates an xlsx file with all POIs flattened
 func (service *ServicePOIImpl) Export(ctx context.Context, search string) ([]byte, error) {
 	tx, err := service.DB.Begin()
 	if err != nil {
@@ -339,18 +390,49 @@ func (service *ServicePOIImpl) Export(ctx context.Context, search string) ([]byt
 	return buildPOIExcel(pois)
 }
 
-// validatePointIds ensures all point IDs exist
-func (service *ServicePOIImpl) validatePointIds(ctx context.Context, tx *sql.Tx, pointIds []int) {
-	for _, pid := range pointIds {
-		_, err := service.RepositoryPOIPointInterface.FindById(ctx, tx, pid)
-		if err == sql.ErrNoRows {
-			panic(exceptions.NewBadRequest("POI point not found"))
+// validateMetadata ensures provided category/sub/mother-brand IDs exist.
+func (service *ServicePOIImpl) validateMetadata(ctx context.Context, tx *sql.Tx, categoryId, subCategoryId, motherBrandId *int) {
+	if categoryId != nil {
+		if _, err := service.RepositoryCategoryInterface.FindById(ctx, tx, *categoryId); err != nil {
+			if err == sql.ErrNoRows {
+				panic(exceptions.NewBadRequest("Category not found"))
+			}
+			helpers.PanicIfError(err)
 		}
-		helpers.PanicIfError(err)
+	}
+	if subCategoryId != nil {
+		if _, err := service.RepositorySubCategoryInterface.FindById(ctx, tx, *subCategoryId); err != nil {
+			if err == sql.ErrNoRows {
+				panic(exceptions.NewBadRequest("Sub-Category not found"))
+			}
+			helpers.PanicIfError(err)
+		}
+	}
+	if motherBrandId != nil {
+		if _, err := service.RepositoryMotherBrandInterface.FindById(ctx, tx, *motherBrandId); err != nil {
+			if err == sql.ErrNoRows {
+				panic(exceptions.NewBadRequest("Mother Brand not found"))
+			}
+			helpers.PanicIfError(err)
+		}
 	}
 }
 
-// findOrCreateCategory resolves a category name to an ID (find or create)
+// validateBranches ensures provided branch IDs on each point exist.
+func (service *ServicePOIImpl) validateBranches(ctx context.Context, tx *sql.Tx, points []webPOI.POIPointInput) {
+	for _, pt := range points {
+		if pt.BranchId == nil {
+			continue
+		}
+		if _, err := service.RepositoryBranchInterface.FindById(ctx, tx, *pt.BranchId); err != nil {
+			if err == sql.ErrNoRows {
+				panic(exceptions.NewBadRequest("Branch not found"))
+			}
+			helpers.PanicIfError(err)
+		}
+	}
+}
+
 func (service *ServicePOIImpl) findOrCreateCategory(ctx context.Context, tx *sql.Tx, name string) *int {
 	if name == "" {
 		return nil
@@ -366,7 +448,6 @@ func (service *ServicePOIImpl) findOrCreateCategory(ctx context.Context, tx *sql
 	return &id
 }
 
-// findOrCreateSubCategory resolves a sub_category name to an ID (find or create)
 func (service *ServicePOIImpl) findOrCreateSubCategory(ctx context.Context, tx *sql.Tx, name string) *int {
 	if name == "" {
 		return nil
@@ -382,7 +463,6 @@ func (service *ServicePOIImpl) findOrCreateSubCategory(ctx context.Context, tx *
 	return &id
 }
 
-// findOrCreateMotherBrand resolves a mother_brand name to an ID (find or create)
 func (service *ServicePOIImpl) findOrCreateMotherBrand(ctx context.Context, tx *sql.Tx, name string) *int {
 	if name == "" {
 		return nil
@@ -398,7 +478,6 @@ func (service *ServicePOIImpl) findOrCreateMotherBrand(ctx context.Context, tx *
 	return &id
 }
 
-// findOrCreateBranch resolves a branch name to an ID (find or create)
 func (service *ServicePOIImpl) findOrCreateBranch(ctx context.Context, tx *sql.Tx, name string) *int {
 	if name == "" {
 		return nil
@@ -414,33 +493,50 @@ func (service *ServicePOIImpl) findOrCreateBranch(ctx context.Context, tx *sql.T
 	return &id
 }
 
-// Helper function to convert model to response
 func (service *ServicePOIImpl) poiModelToResponse(poi models.POI) webPOI.POIResponse {
 	points := make([]webPOI.POIPointResponse, len(poi.Points))
 	for i, point := range poi.Points {
 		points[i] = webPOI.POIPointResponse{
-			Id:          point.Id,
-			POIName:     point.POIName,
-			Address:     point.Address,
-			Latitude:    point.Latitude,
-			Longitude:   point.Longitude,
-			Category:    point.CategoryName,
-			SubCategory: point.SubCategoryName,
-			MotherBrand: point.MotherBrandName,
-			Branch:      point.BranchName,
-			CreatedAt:   point.CreatedAt,
-			UpdatedAt:   point.UpdatedAt,
+			Id:        point.Id,
+			POIName:   point.POIName,
+			Address:   point.Address,
+			Latitude:  point.Latitude,
+			Longitude: point.Longitude,
+			Branch:    point.BranchName,
+			BranchId:  point.BranchId,
+			CreatedAt: point.CreatedAt,
+			UpdatedAt: point.UpdatedAt,
 		}
 	}
 
 	return webPOI.POIResponse{
-		Id:        poi.Id,
-		Brand:     poi.Brand,
-		Color:     poi.Color,
-		Points:    points,
-		CreatedAt: poi.CreatedAt,
-		UpdatedAt: poi.UpdatedAt,
+		Id:            poi.Id,
+		Brand:         poi.Brand,
+		Color:         poi.Color,
+		Category:      poi.CategoryName,
+		SubCategory:   poi.SubCategoryName,
+		MotherBrand:   poi.MotherBrandName,
+		CategoryId:    poi.CategoryId,
+		SubCategoryId: poi.SubCategoryId,
+		MotherBrandId: poi.MotherBrandId,
+		Points:        points,
+		CreatedAt:     poi.CreatedAt,
+		UpdatedAt:     poi.UpdatedAt,
 	}
+}
+
+func pointsFromInputs(inputs []webPOI.POIPointInput) []models.POIPoint {
+	out := make([]models.POIPoint, len(inputs))
+	for i, in := range inputs {
+		out[i] = models.POIPoint{
+			POIName:   in.POIName,
+			Address:   in.Address,
+			Latitude:  in.Latitude,
+			Longitude: in.Longitude,
+			BranchId:  in.BranchId,
+		}
+	}
+	return out
 }
 
 // --- Import helpers ---
@@ -472,7 +568,6 @@ func parseCSV(fileBytes []byte) ([][]string, error) {
 	return rows, nil
 }
 
-// mapHeaderColumns maps normalized column names to their indices
 func mapHeaderColumns(header []string) map[string]int {
 	colMap := make(map[string]int)
 	for i, h := range header {
@@ -502,6 +597,16 @@ func mapHeaderColumns(header []string) map[string]int {
 	return colMap
 }
 
+// isRowBlank reports whether every cell in the row is empty after trimming.
+func isRowBlank(row []string) bool {
+	for _, cell := range row {
+		if strings.TrimSpace(cell) != "" {
+			return false
+		}
+	}
+	return true
+}
+
 func getColValue(row []string, colMap map[string]int, key string) string {
 	idx, exists := colMap[key]
 	if !exists || idx >= len(row) {
@@ -510,7 +615,6 @@ func getColValue(row []string, colMap map[string]int, key string) string {
 	return strings.TrimSpace(row[idx])
 }
 
-// parseCoordinate parses a coordinate string like "-6.226203670181947, 106.79693887621839"
 func parseCoordinate(coord string) (float64, float64) {
 	if coord == "" {
 		return 0, 0
@@ -560,9 +664,9 @@ func buildPOIExcel(pois []models.POI) ([]byte, error) {
 				coordinate = fmt.Sprintf("%f, %f", point.Latitude, point.Longitude)
 			}
 
-			_ = f.SetCellValue(sheet, mustCell(1, rowIdx), point.CategoryName)
-			_ = f.SetCellValue(sheet, mustCell(2, rowIdx), point.SubCategoryName)
-			_ = f.SetCellValue(sheet, mustCell(3, rowIdx), point.MotherBrandName)
+			_ = f.SetCellValue(sheet, mustCell(1, rowIdx), poi.CategoryName)
+			_ = f.SetCellValue(sheet, mustCell(2, rowIdx), poi.SubCategoryName)
+			_ = f.SetCellValue(sheet, mustCell(3, rowIdx), poi.MotherBrandName)
 			_ = f.SetCellValue(sheet, mustCell(4, rowIdx), poi.Brand)
 			_ = f.SetCellValue(sheet, mustCell(5, rowIdx), point.BranchName)
 			_ = f.SetCellValue(sheet, mustCell(6, rowIdx), point.POIName)

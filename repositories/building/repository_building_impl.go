@@ -363,7 +363,7 @@ func (repository *RepositoryBuildingImpl) FindAll(ctx context.Context, tx *sql.T
 		}
 	}
 
-	SQL += ` ORDER BY ` + orderBy + ` ` + orderDirection + ` LIMIT $` + strconv.Itoa(argIndex) + ` OFFSET $` + strconv.Itoa(argIndex+1)
+	SQL += ` ORDER BY ` + orderBy + ` ` + orderDirection + `, name ASC LIMIT $` + strconv.Itoa(argIndex) + ` OFFSET $` + strconv.Itoa(argIndex+1)
 	args = append(args, take, skip)
 
 	rows, err := tx.QueryContext(ctx, SQL, args...)

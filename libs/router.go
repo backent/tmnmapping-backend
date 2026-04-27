@@ -13,7 +13,6 @@ import (
 	controllersImage "github.com/malikabdulaziz/tmn-backend/controllers/image"
 	controllersMotherBrand "github.com/malikabdulaziz/tmn-backend/controllers/motherbrand"
 	controllersPOI "github.com/malikabdulaziz/tmn-backend/controllers/poi"
-	controllersPOIPoint "github.com/malikabdulaziz/tmn-backend/controllers/poipoint"
 	controllersSalesPackage "github.com/malikabdulaziz/tmn-backend/controllers/salespackage"
 	controllersSavedPolygon "github.com/malikabdulaziz/tmn-backend/controllers/savedpolygon"
 	controllersSubCategory "github.com/malikabdulaziz/tmn-backend/controllers/subcategory"
@@ -27,7 +26,6 @@ func NewRouter(
 	poiMiddleware *middlewares.POIMiddleware,
 	salesPackageMiddleware *middlewares.SalesPackageMiddleware,
 	buildingRestrictionMiddleware *middlewares.BuildingRestrictionMiddleware,
-	poiPointMiddleware *middlewares.POIPointMiddleware,
 	savedPolygonMiddleware *middlewares.SavedPolygonMiddleware,
 	loggingMiddleware *middlewares.LoggingMiddleware,
 	categoryMiddleware *middlewares.CategoryMiddleware,
@@ -40,7 +38,6 @@ func NewRouter(
 	controllersPOI controllersPOI.ControllerPOIInterface,
 	controllersSalesPackage controllersSalesPackage.ControllerSalesPackageInterface,
 	controllersBuildingRestriction controllersBuildingRestriction.ControllerBuildingRestrictionInterface,
-	controllersPOIPoint controllersPOIPoint.ControllerPOIPointInterface,
 	controllersSavedPolygon controllersSavedPolygon.ControllerSavedPolygonInterface,
 	controllersDashboard controllersDashboard.ControllerDashboardInterface,
 	controllersCategory controllersCategory.ControllerCategoryInterface,
@@ -141,45 +138,6 @@ func NewRouter(
 	router.DELETE("/pois/:id",
 		loggingMiddleware.Log(
 			authMiddleware.RequireAuth(controllersPOI.Delete)))
-
-	// POI Point routes (protected)
-	router.POST("/poi-points",
-		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(
-				poiPointMiddleware.ValidateCreate(controllersPOIPoint.Create))))
-
-	router.GET("/poi-points",
-		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersPOIPoint.FindAll)))
-
-	router.GET("/poi-points-dropdown",
-		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersPOIPoint.FindAllDropdown)))
-
-	router.GET("/poi-points/:id",
-		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersPOIPoint.FindById)))
-
-	router.GET("/poi-points/:id/usage",
-		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersPOIPoint.GetPointUsage)))
-
-	router.PUT("/poi-points/:id",
-		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(
-				poiPointMiddleware.ValidateUpdate(controllersPOIPoint.Update))))
-
-	router.DELETE("/poi-points/:id",
-		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersPOIPoint.Delete)))
-
-	router.POST("/poi-points-import",
-		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersPOIPoint.Import)))
-
-	router.GET("/poi-points-export",
-		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersPOIPoint.Export)))
 
 	// Sales package routes (protected)
 	router.POST("/sales-packages",

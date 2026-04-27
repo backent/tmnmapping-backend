@@ -62,7 +62,7 @@ func (r *RepositorySavedPolygonImpl) CreatePoint(ctx context.Context, tx *sql.Tx
 func (r *RepositorySavedPolygonImpl) FindAll(ctx context.Context, tx *sql.Tx, take int, skip int, orderBy string, orderDirection string) ([]models.SavedPolygon, error) {
 	orderBy, orderDirection = safeOrder(orderBy, orderDirection)
 	SQL := `SELECT id, name, created_at, updated_at FROM ` + models.SavedPolygonTable + `
-		ORDER BY ` + orderBy + ` ` + orderDirection + ` LIMIT $1 OFFSET $2`
+		ORDER BY ` + orderBy + ` ` + orderDirection + `, name ASC LIMIT $1 OFFSET $2`
 	rows, err := tx.QueryContext(ctx, SQL, take, skip)
 	if err != nil {
 		return nil, err

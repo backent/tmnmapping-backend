@@ -4,16 +4,31 @@ import (
 	"strings"
 )
 
+type POIPointInput struct {
+	Id        *int    `json:"id,omitempty"`
+	POIName   string  `json:"poi_name" validate:"required"`
+	Address   string  `json:"address"`
+	Latitude  float64 `json:"latitude" validate:"required"`
+	Longitude float64 `json:"longitude" validate:"required"`
+	BranchId  *int    `json:"branch_id,omitempty"`
+}
+
 type CreatePOIRequest struct {
-	Brand    string `json:"brand" validate:"required"`
-	Color    string `json:"color" validate:"required"`
-	PointIds []int  `json:"point_ids" validate:"required,min=1"`
+	Brand         string          `json:"brand" validate:"required"`
+	Color         string          `json:"color" validate:"required"`
+	CategoryId    *int            `json:"category_id" validate:"required"`
+	SubCategoryId *int            `json:"sub_category_id" validate:"required"`
+	MotherBrandId *int            `json:"mother_brand_id" validate:"required"`
+	Points        []POIPointInput `json:"points" validate:"required,min=1,dive"`
 }
 
 type UpdatePOIRequest struct {
-	Brand    string `json:"brand" validate:"required"`
-	Color    string `json:"color" validate:"required"`
-	PointIds []int  `json:"point_ids" validate:"required,min=1"`
+	Brand         string          `json:"brand" validate:"required"`
+	Color         string          `json:"color" validate:"required"`
+	CategoryId    *int            `json:"category_id" validate:"required"`
+	SubCategoryId *int            `json:"sub_category_id" validate:"required"`
+	MotherBrandId *int            `json:"mother_brand_id" validate:"required"`
+	Points        []POIPointInput `json:"points" validate:"required,min=1,dive"`
 }
 
 type POIRequestFindAll struct {
@@ -49,7 +64,6 @@ func (r *POIRequestFindAll) SetOrderDirection(orderDirection string) {
 }
 
 func (r *POIRequestFindAll) GetOrderBy() string {
-	// set default order by
 	if r.orderBy == "" {
 		return "created_at"
 	}
@@ -57,7 +71,6 @@ func (r *POIRequestFindAll) GetOrderBy() string {
 }
 
 func (r *POIRequestFindAll) GetOrderDirection() string {
-	// set default order direction
 	if r.orderDirection == "" {
 		return "DESC"
 	}

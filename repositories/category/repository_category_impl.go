@@ -38,10 +38,10 @@ func (r *RepositoryCategoryImpl) FindAll(ctx context.Context, tx *sql.Tx, take i
 	var rows *sql.Rows
 	var err error
 	if search != "" {
-		SQL := `SELECT id, name, created_at, updated_at FROM ` + models.CategoryTable + ` WHERE name ILIKE $1 ORDER BY ` + orderBy + ` ` + orderDirection + ` LIMIT $2 OFFSET $3`
+		SQL := `SELECT id, name, created_at, updated_at FROM ` + models.CategoryTable + ` WHERE name ILIKE $1 ORDER BY ` + orderBy + ` ` + orderDirection + `, name ASC LIMIT $2 OFFSET $3`
 		rows, err = tx.QueryContext(ctx, SQL, "%"+search+"%", take, skip)
 	} else {
-		SQL := `SELECT id, name, created_at, updated_at FROM ` + models.CategoryTable + ` ORDER BY ` + orderBy + ` ` + orderDirection + ` LIMIT $1 OFFSET $2`
+		SQL := `SELECT id, name, created_at, updated_at FROM ` + models.CategoryTable + ` ORDER BY ` + orderBy + ` ` + orderDirection + `, name ASC LIMIT $1 OFFSET $2`
 		rows, err = tx.QueryContext(ctx, SQL, take, skip)
 	}
 	if err != nil {

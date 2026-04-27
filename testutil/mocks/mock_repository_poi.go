@@ -13,8 +13,8 @@ type MockRepositoryPOI struct {
 	mock.Mock
 }
 
-func (m *MockRepositoryPOI) Create(ctx context.Context, tx *sql.Tx, poi models.POI, pointIds []int) (models.POI, error) {
-	args := m.Called(ctx, tx, poi, pointIds)
+func (m *MockRepositoryPOI) Create(ctx context.Context, tx *sql.Tx, poi models.POI, points []models.POIPoint) (models.POI, error) {
+	args := m.Called(ctx, tx, poi, points)
 	return args.Get(0).(models.POI), args.Error(1)
 }
 
@@ -38,19 +38,9 @@ func (m *MockRepositoryPOI) FindById(ctx context.Context, tx *sql.Tx, id int) (m
 	return args.Get(0).(models.POI), args.Error(1)
 }
 
-func (m *MockRepositoryPOI) Update(ctx context.Context, tx *sql.Tx, poi models.POI, pointIds []int) (models.POI, error) {
-	args := m.Called(ctx, tx, poi, pointIds)
+func (m *MockRepositoryPOI) Update(ctx context.Context, tx *sql.Tx, poi models.POI, points []models.POIPoint) (models.POI, error) {
+	args := m.Called(ctx, tx, poi, points)
 	return args.Get(0).(models.POI), args.Error(1)
-}
-
-func (m *MockRepositoryPOI) CreatePointLink(ctx context.Context, tx *sql.Tx, poiId int, pointId int) error {
-	args := m.Called(ctx, tx, poiId, pointId)
-	return args.Error(0)
-}
-
-func (m *MockRepositoryPOI) DeletePointLinksByPOIId(ctx context.Context, tx *sql.Tx, poiId int) error {
-	args := m.Called(ctx, tx, poiId)
-	return args.Error(0)
 }
 
 func (m *MockRepositoryPOI) Delete(ctx context.Context, tx *sql.Tx, id int) error {
