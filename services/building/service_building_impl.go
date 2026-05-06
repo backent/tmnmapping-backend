@@ -155,45 +155,27 @@ func (service *ServiceBuildingImpl) Update(ctx context.Context, request webBuild
 	return webBuilding.BuildingModelToBuildingResponse(building)
 }
 
-// calculateLcdPresenceStatus calculates the LCD presence status based on competitor fields, workflow state, and screen count
-// Returns: "TMN", "Competitor", "CoExist", "Opportunity", or empty string if insufficient data
-func calculateLcdPresenceStatus(competitorPresence, competitorExclusive bool, workflowState string, screenCount int) string {
-	// Normalize workflow_state for case-insensitive comparison
+// calculateLcdPresenceStatus calculates the LCD presence status based on competitor fields and workflow state.
+// Returns: "TMN", "Competitor", "CoExist", "Opportunity", or empty string for unmatched/contradictory data.
+// Note: "BAST Signed" + competitor_exclusive=1 is logically contradictory and falls through to "".
+func calculateLcdPresenceStatus(competitorPresence, competitorExclusive bool, workflowState string) string {
 	workflowStateNormalized := strings.ToLower(strings.TrimSpace(workflowState))
 	isBastSigned := workflowStateNormalized == "bast signed"
 
-	// 1. TMN Check (requires all fields)
-	if workflowState != "" {
-		if isBastSigned && !competitorPresence && !competitorExclusive {
+	if isBastSigned {
+		if !competitorPresence && !competitorExclusive {
 			return "TMN"
 		}
-	}
-
-	// 2. Competitor Check (needs competitor + workflow_state)
-	// If workflow_state is empty, assume != "BAST Signed" (assumption)
-	if workflowState == "" || !isBastSigned {
-		if competitorPresence || competitorExclusive {
-			return "Competitor"
-		}
-	}
-
-	// 3. CoExist Check (requires all fields)
-	if workflowState != "" && screenCount > 0 {
-		if isBastSigned && !competitorExclusive && competitorPresence {
+		if competitorPresence && !competitorExclusive {
 			return "CoExist"
 		}
+		return ""
 	}
 
-	// 4. Opportunity Check (needs competitor + workflow_state)
-	// If workflow_state is empty, assume != "BAST Signed" (assumption)
-	if workflowState == "" || !isBastSigned {
-		if !competitorPresence && !competitorExclusive {
-			return "Opportunity"
-		}
+	if competitorPresence || competitorExclusive {
+		return "Competitor"
 	}
-
-	// Default: Return empty string if no conditions match
-	return ""
+	return "Opportunity"
 }
 
 // processBuilding handles the processing of a single building (create or update)
@@ -229,7 +211,6 @@ func (service *ServiceBuildingImpl) processBuilding(
 		erpBuilding.CompetitorPresence != 0,
 		erpBuilding.CompetitorExclusive != 0,
 		workflowState,
-		screenCount,
 	)
 
 	// Log building data for debugging

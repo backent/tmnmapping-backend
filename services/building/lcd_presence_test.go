@@ -14,16 +14,14 @@ func TestCalculateLcdPresenceStatus(t *testing.T) {
 		competitorPresence  bool
 		competitorExclusive bool
 		workflowState       string
-		screenCount         int
 		expected            string
 	}{
 		// TMN cases
 		{
-			name:                "TMN: bast signed, no competitors, has screens",
+			name:                "TMN: bast signed, no competitors",
 			competitorPresence:  false,
 			competitorExclusive: false,
 			workflowState:       "BAST Signed",
-			screenCount:         2,
 			expected:            "TMN",
 		},
 		{
@@ -31,7 +29,6 @@ func TestCalculateLcdPresenceStatus(t *testing.T) {
 			competitorPresence:  false,
 			competitorExclusive: false,
 			workflowState:       "bast signed",
-			screenCount:         1,
 			expected:            "TMN",
 		},
 		{
@@ -39,7 +36,6 @@ func TestCalculateLcdPresenceStatus(t *testing.T) {
 			competitorPresence:  false,
 			competitorExclusive: false,
 			workflowState:       "  BAST Signed  ",
-			screenCount:         1,
 			expected:            "TMN",
 		},
 		// Competitor cases
@@ -48,7 +44,6 @@ func TestCalculateLcdPresenceStatus(t *testing.T) {
 			competitorPresence:  true,
 			competitorExclusive: false,
 			workflowState:       "",
-			screenCount:         0,
 			expected:            "Competitor",
 		},
 		{
@@ -56,35 +51,21 @@ func TestCalculateLcdPresenceStatus(t *testing.T) {
 			competitorPresence:  false,
 			competitorExclusive: true,
 			workflowState:       "",
-			screenCount:         0,
 			expected:            "Competitor",
-		},
-		{
-			// When workflowState is "BAST Signed", the Competitor check is skipped
-			// (it requires workflowState=="" || !isBastSigned). No other condition matches either,
-			// so the function returns "".
-			name:                "Empty: exclusive true but BAST Signed workflow skips Competitor check",
-			competitorPresence:  false,
-			competitorExclusive: true,
-			workflowState:       "BAST Signed",
-			screenCount:         0,
-			expected:            "",
 		},
 		{
 			name:                "Competitor: both presence and exclusive, non-bast workflow",
 			competitorPresence:  true,
 			competitorExclusive: true,
 			workflowState:       "In Progress",
-			screenCount:         0,
 			expected:            "Competitor",
 		},
-		// CoExist cases
+		// CoExist cases (no longer depends on screen count)
 		{
-			name:                "CoExist: bast signed, presence true, exclusive false, has screens",
+			name:                "CoExist: bast signed, presence true, exclusive false",
 			competitorPresence:  true,
 			competitorExclusive: false,
 			workflowState:       "BAST Signed",
-			screenCount:         3,
 			expected:            "CoExist",
 		},
 		// Opportunity cases
@@ -93,7 +74,6 @@ func TestCalculateLcdPresenceStatus(t *testing.T) {
 			competitorPresence:  false,
 			competitorExclusive: false,
 			workflowState:       "",
-			screenCount:         0,
 			expected:            "Opportunity",
 		},
 		{
@@ -101,26 +81,22 @@ func TestCalculateLcdPresenceStatus(t *testing.T) {
 			competitorPresence:  false,
 			competitorExclusive: false,
 			workflowState:       "In Progress",
-			screenCount:         0,
 			expected:            "Opportunity",
 		},
-		// TMN does NOT require screenCount > 0 — it only checks isBastSigned + no competitors.
+		// Empty (contradictory data): BAST Signed combined with competitor_exclusive
+		// is logically impossible — falls through to "" as anomaly indicator.
 		{
-			name:                "TMN: bast signed, no competitors, zero screens still returns TMN",
+			name:                "Empty: exclusive true with BAST Signed workflow (anomaly)",
 			competitorPresence:  false,
-			competitorExclusive: false,
+			competitorExclusive: true,
 			workflowState:       "BAST Signed",
-			screenCount:         0,
-			expected:            "TMN",
+			expected:            "",
 		},
-		// Empty (no conditions match): exclusive competitor + bast signed workflow
-		// falls through all checks and returns ""
 		{
-			name:                "Empty: both competitors, BAST Signed workflow, has screens",
+			name:                "Empty: both competitors with BAST Signed workflow (anomaly)",
 			competitorPresence:  true,
 			competitorExclusive: true,
 			workflowState:       "BAST Signed",
-			screenCount:         5,
 			expected:            "",
 		},
 	}
@@ -131,7 +107,6 @@ func TestCalculateLcdPresenceStatus(t *testing.T) {
 				tt.competitorPresence,
 				tt.competitorExclusive,
 				tt.workflowState,
-				tt.screenCount,
 			)
 			assert.Equal(t, tt.expected, result)
 		})
