@@ -191,15 +191,14 @@ func (repository *RepositoryPOIImpl) Delete(ctx context.Context, tx *sql.Tx, id 
 
 // ----- reads -----
 
-func (repository *RepositoryPOIImpl) FindAll(ctx context.Context, tx *sql.Tx, take int, skip int, orderBy string, orderDirection string, search string) ([]models.POI, error) {
+func (repository *RepositoryPOIImpl) FindAll(ctx context.Context, tx *sql.Tx, take int, skip int, orderBy string, orderDirection string, search string, categoryIds string, subCategoryIds string, motherBrandIds string) ([]models.POI, error) {
 	var args []interface{}
 	paramIdx := 1
 
 	SQL := `SELECT ` + poiSelectCols + ` FROM ` + models.POITable + ` p` + poiJoins
-	if search != "" {
-		SQL += ` WHERE p.brand ILIKE '%' || $` + strconv.Itoa(paramIdx) + ` || '%'`
-		args = append(args, search)
-		paramIdx++
+	whereClauses := buildPOIFilterClauses(search, categoryIds, subCategoryIds, motherBrandIds, &args, &paramIdx)
+	if len(whereClauses) > 0 {
+		SQL += ` WHERE ` + strings.Join(whereClauses, " AND ")
 	}
 	SQL += ` ORDER BY p.` + orderBy + ` ` + orderDirection + `, p.brand ASC`
 	SQL += ` LIMIT $` + strconv.Itoa(paramIdx) + ` OFFSET $` + strconv.Itoa(paramIdx+1)
@@ -208,24 +207,70 @@ func (repository *RepositoryPOIImpl) FindAll(ctx context.Context, tx *sql.Tx, ta
 	return repository.queryPOIs(ctx, tx, SQL, args)
 }
 
-func (repository *RepositoryPOIImpl) CountAll(ctx context.Context, tx *sql.Tx, search string) (int, error) {
-	SQL := `SELECT COUNT(*) FROM ` + models.POITable
+func (repository *RepositoryPOIImpl) CountAll(ctx context.Context, tx *sql.Tx, search string, categoryIds string, subCategoryIds string, motherBrandIds string) (int, error) {
+	SQL := `SELECT COUNT(*) FROM ` + models.POITable + ` p`
 	var args []interface{}
-	if search != "" {
-		SQL += ` WHERE brand ILIKE '%' || $1 || '%'`
-		args = append(args, search)
+	paramIdx := 1
+	whereClauses := buildPOIFilterClauses(search, categoryIds, subCategoryIds, motherBrandIds, &args, &paramIdx)
+	if len(whereClauses) > 0 {
+		SQL += ` WHERE ` + strings.Join(whereClauses, " AND ")
 	}
 	var total int
 	err := tx.QueryRowContext(ctx, SQL, args...).Scan(&total)
 	return total, err
 }
 
-func (repository *RepositoryPOIImpl) FindAllFlat(ctx context.Context, tx *sql.Tx, search string) ([]models.POI, error) {
+// buildPOIFilterClauses builds SQL WHERE clauses for the POI list/count queries.
+// Mutates args and paramIdx in place. Returns the list of clauses to be joined with AND.
+func buildPOIFilterClauses(search, categoryIds, subCategoryIds, motherBrandIds string, args *[]interface{}, paramIdx *int) []string {
+	var clauses []string
+	if search != "" {
+		clauses = append(clauses, `p.brand ILIKE '%' || $`+strconv.Itoa(*paramIdx)+` || '%'`)
+		*args = append(*args, search)
+		*paramIdx++
+	}
+	if c := buildIdInClause("p.category_id", categoryIds, args, paramIdx); c != "" {
+		clauses = append(clauses, c)
+	}
+	if c := buildIdInClause("p.sub_category_id", subCategoryIds, args, paramIdx); c != "" {
+		clauses = append(clauses, c)
+	}
+	if c := buildIdInClause("p.mother_brand_id", motherBrandIds, args, paramIdx); c != "" {
+		clauses = append(clauses, c)
+	}
+	return clauses
+}
+
+// buildIdInClause turns a comma-separated list of IDs into "<col> IN ($n,$n+1,...)".
+// Returns "" when ids is empty.
+func buildIdInClause(col, ids string, args *[]interface{}, paramIdx *int) string {
+	if ids == "" {
+		return ""
+	}
+	parts := strings.Split(ids, ",")
+	placeholders := make([]string, 0, len(parts))
+	for _, raw := range parts {
+		v := strings.TrimSpace(raw)
+		if v == "" {
+			continue
+		}
+		placeholders = append(placeholders, "$"+strconv.Itoa(*paramIdx))
+		*args = append(*args, v)
+		*paramIdx++
+	}
+	if len(placeholders) == 0 {
+		return ""
+	}
+	return col + ` IN (` + strings.Join(placeholders, ",") + `)`
+}
+
+func (repository *RepositoryPOIImpl) FindAllFlat(ctx context.Context, tx *sql.Tx, search string, categoryIds string, subCategoryIds string, motherBrandIds string) ([]models.POI, error) {
 	SQL := `SELECT ` + poiSelectCols + ` FROM ` + models.POITable + ` p` + poiJoins
 	var args []interface{}
-	if search != "" {
-		SQL += ` WHERE p.brand ILIKE '%' || $1 || '%'`
-		args = append(args, search)
+	paramIdx := 1
+	whereClauses := buildPOIFilterClauses(search, categoryIds, subCategoryIds, motherBrandIds, &args, &paramIdx)
+	if len(whereClauses) > 0 {
+		SQL += ` WHERE ` + strings.Join(whereClauses, " AND ")
 	}
 	SQL += ` ORDER BY p.brand ASC`
 	return repository.queryPOIs(ctx, tx, SQL, args)

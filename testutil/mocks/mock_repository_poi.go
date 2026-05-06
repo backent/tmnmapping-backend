@@ -18,18 +18,18 @@ func (m *MockRepositoryPOI) Create(ctx context.Context, tx *sql.Tx, poi models.P
 	return args.Get(0).(models.POI), args.Error(1)
 }
 
-func (m *MockRepositoryPOI) FindAll(ctx context.Context, tx *sql.Tx, take int, skip int, orderBy string, orderDirection string, search string) ([]models.POI, error) {
-	args := m.Called(ctx, tx, take, skip, orderBy, orderDirection, search)
+func (m *MockRepositoryPOI) FindAll(ctx context.Context, tx *sql.Tx, take int, skip int, orderBy string, orderDirection string, search string, categoryIds string, subCategoryIds string, motherBrandIds string) ([]models.POI, error) {
+	args := m.Called(ctx, tx, take, skip, orderBy, orderDirection, search, categoryIds, subCategoryIds, motherBrandIds)
 	return args.Get(0).([]models.POI), args.Error(1)
 }
 
-func (m *MockRepositoryPOI) CountAll(ctx context.Context, tx *sql.Tx, search string) (int, error) {
-	args := m.Called(ctx, tx, search)
+func (m *MockRepositoryPOI) CountAll(ctx context.Context, tx *sql.Tx, search string, categoryIds string, subCategoryIds string, motherBrandIds string) (int, error) {
+	args := m.Called(ctx, tx, search, categoryIds, subCategoryIds, motherBrandIds)
 	return args.Int(0), args.Error(1)
 }
 
-func (m *MockRepositoryPOI) FindAllFlat(ctx context.Context, tx *sql.Tx, search string) ([]models.POI, error) {
-	args := m.Called(ctx, tx, search)
+func (m *MockRepositoryPOI) FindAllFlat(ctx context.Context, tx *sql.Tx, search string, categoryIds string, subCategoryIds string, motherBrandIds string) ([]models.POI, error) {
+	args := m.Called(ctx, tx, search, categoryIds, subCategoryIds, motherBrandIds)
 	return args.Get(0).([]models.POI), args.Error(1)
 }
 

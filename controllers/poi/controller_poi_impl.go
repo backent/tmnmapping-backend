@@ -48,6 +48,9 @@ func (controller *ControllerPOIImpl) FindAll(w http.ResponseWriter, r *http.Requ
 	web.SetPagination(&request, r)
 	web.SetOrder(&request, r)
 	web.SetSearch(&request, r)
+	request.SetCategoryIds(r.URL.Query().Get("category_ids"))
+	request.SetSubCategoryIds(r.URL.Query().Get("sub_category_ids"))
+	request.SetMotherBrandIds(r.URL.Query().Get("mother_brand_ids"))
 
 	poiResponses, total := controller.service.FindAll(r.Context(), request)
 
@@ -155,8 +158,11 @@ func (controller *ControllerPOIImpl) Import(w http.ResponseWriter, r *http.Reque
 // Export handles GET /pois/export
 func (controller *ControllerPOIImpl) Export(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 	search := r.URL.Query().Get("search")
+	categoryIds := r.URL.Query().Get("category_ids")
+	subCategoryIds := r.URL.Query().Get("sub_category_ids")
+	motherBrandIds := r.URL.Query().Get("mother_brand_ids")
 
-	excelBytes, err := controller.service.Export(r.Context(), search)
+	excelBytes, err := controller.service.Export(r.Context(), search, categoryIds, subCategoryIds, motherBrandIds)
 	helpers.PanicIfError(err)
 
 	filename := "POI_Export_" + time.Now().Format("02-01-2006") + ".xlsx"

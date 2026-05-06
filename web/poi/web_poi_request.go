@@ -37,6 +37,9 @@ type POIRequestFindAll struct {
 	orderBy        string
 	orderDirection string
 	search         string
+	categoryIds    string
+	subCategoryIds string
+	motherBrandIds string
 }
 
 func (r *POIRequestFindAll) SetSkip(skip int) {
@@ -83,4 +86,28 @@ func (r *POIRequestFindAll) SetSearch(search string) {
 
 func (r *POIRequestFindAll) GetSearch() string {
 	return r.search
+}
+
+func (r *POIRequestFindAll) SetCategoryIds(ids string) {
+	r.categoryIds = ids
+}
+
+func (r *POIRequestFindAll) GetCategoryIds() string {
+	return r.categoryIds
+}
+
+func (r *POIRequestFindAll) SetSubCategoryIds(ids string) {
+	r.subCategoryIds = ids
+}
+
+func (r *POIRequestFindAll) GetSubCategoryIds() string {
+	return r.subCategoryIds
+}
+
+func (r *POIRequestFindAll) SetMotherBrandIds(ids string) {
+	r.motherBrandIds = ids
+}
+
+func (r *POIRequestFindAll) GetMotherBrandIds() string {
+	return r.motherBrandIds
 }

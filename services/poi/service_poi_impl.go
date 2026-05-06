@@ -86,11 +86,14 @@ func (service *ServicePOIImpl) FindAll(ctx context.Context, request webPOI.POIRe
 	defer helpers.CommitOrRollback(tx)
 
 	search := request.GetSearch()
+	categoryIds := request.GetCategoryIds()
+	subCategoryIds := request.GetSubCategoryIds()
+	motherBrandIds := request.GetMotherBrandIds()
 
-	pois, err := service.RepositoryPOIInterface.FindAll(ctx, tx, request.GetTake(), request.GetSkip(), request.GetOrderBy(), request.GetOrderDirection(), search)
+	pois, err := service.RepositoryPOIInterface.FindAll(ctx, tx, request.GetTake(), request.GetSkip(), request.GetOrderBy(), request.GetOrderDirection(), search, categoryIds, subCategoryIds, motherBrandIds)
 	helpers.PanicIfError(err)
 
-	total, err := service.RepositoryPOIInterface.CountAll(ctx, tx, search)
+	total, err := service.RepositoryPOIInterface.CountAll(ctx, tx, search, categoryIds, subCategoryIds, motherBrandIds)
 	helpers.PanicIfError(err)
 
 	responses := make([]webPOI.POIResponse, len(pois))
@@ -375,14 +378,14 @@ func (service *ServicePOIImpl) Import(ctx context.Context, fileBytes []byte, fil
 	return responses
 }
 
-func (service *ServicePOIImpl) Export(ctx context.Context, search string) ([]byte, error) {
+func (service *ServicePOIImpl) Export(ctx context.Context, search string, categoryIds string, subCategoryIds string, motherBrandIds string) ([]byte, error) {
 	tx, err := service.DB.Begin()
 	if err != nil {
 		return nil, err
 	}
 	defer helpers.CommitOrRollback(tx)
 
-	pois, err := service.RepositoryPOIInterface.FindAllFlat(ctx, tx, search)
+	pois, err := service.RepositoryPOIInterface.FindAllFlat(ctx, tx, search, categoryIds, subCategoryIds, motherBrandIds)
 	if err != nil {
 		return nil, err
 	}
