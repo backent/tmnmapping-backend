@@ -225,37 +225,37 @@ func (service *ServiceBuildingImpl) processBuilding(
 		"external_building_id": erpBuilding.BuildingId,
 	}).Info("Processing building from ERP")
 
-		tx, err := service.DB.Begin()
-		if err != nil {
+	tx, err := service.DB.Begin()
+	if err != nil {
 		service.Logger.WithError(err).WithField("building_id", erpBuilding.BuildingId).Error("Failed to start transaction")
 		counters.addError(erpBuilding.BuildingId, erpBuilding.BuildingName, err)
 		return
-		}
+	}
 
-		// Check if building exists by external ID
-		existingBuilding, err := service.RepositoryBuildingInterface.FindByExternalId(ctx, tx, erpBuilding.BuildingId)
+	// Check if building exists by external ID
+	existingBuilding, err := service.RepositoryBuildingInterface.FindByExternalId(ctx, tx, erpBuilding.BuildingId)
 
-		if err == sql.ErrNoRows {
+	if err == sql.ErrNoRows {
 		// Use workflow_state as building_status
 		buildingStatus := workflowState
 
-			// Convert ERP image fields to JSON array format
-			images := []models.BuildingImage{}
-			if erpBuilding.FrontSidePhoto != "" {
-				images = append(images, models.BuildingImage{Name: "front_side", Path: erpBuilding.FrontSidePhoto})
-			}
-			if erpBuilding.BackSidePhoto != "" {
-				images = append(images, models.BuildingImage{Name: "back_side", Path: erpBuilding.BackSidePhoto})
-			}
-			if erpBuilding.LeftSidePhoto != "" {
-				images = append(images, models.BuildingImage{Name: "left_side", Path: erpBuilding.LeftSidePhoto})
-			}
-			if erpBuilding.RightSidePhoto != "" {
-				images = append(images, models.BuildingImage{Name: "right_side", Path: erpBuilding.RightSidePhoto})
-			}
+		// Convert ERP image fields to JSON array format
+		images := []models.BuildingImage{}
+		if erpBuilding.FrontSidePhoto != "" {
+			images = append(images, models.BuildingImage{Name: "front_side", Path: erpBuilding.FrontSidePhoto})
+		}
+		if erpBuilding.BackSidePhoto != "" {
+			images = append(images, models.BuildingImage{Name: "back_side", Path: erpBuilding.BackSidePhoto})
+		}
+		if erpBuilding.LeftSidePhoto != "" {
+			images = append(images, models.BuildingImage{Name: "left_side", Path: erpBuilding.LeftSidePhoto})
+		}
+		if erpBuilding.RightSidePhoto != "" {
+			images = append(images, models.BuildingImage{Name: "right_side", Path: erpBuilding.RightSidePhoto})
+		}
 
-			// Create new building
-			newBuilding := models.Building{
+		// Create new building
+		newBuilding := models.Building{
 			ExternalBuildingId:  erpBuilding.BuildingId,
 			IrisCode:            erpBuilding.IrisCode,
 			Name:                erpBuilding.BuildingName,
@@ -278,15 +278,15 @@ func (service *ServiceBuildingImpl) processBuilding(
 			LcdPresenceStatus:   calculatedStatus,
 			Images:              images,
 			SyncedAt:            time.Now().Format(time.RFC3339),
-			}
+		}
 
-			_, err = service.RepositoryBuildingInterface.Create(ctx, tx, newBuilding)
-			if err != nil {
+		_, err = service.RepositoryBuildingInterface.Create(ctx, tx, newBuilding)
+		if err != nil {
 			service.Logger.WithError(err).WithFields(logrus.Fields{
 				"building_id":   erpBuilding.BuildingId,
 				"building_name": erpBuilding.BuildingName,
 			}).Error("Failed to create building")
-				tx.Rollback()
+			tx.Rollback()
 			counters.addError(erpBuilding.BuildingId, erpBuilding.BuildingName, err)
 			return
 		}
@@ -308,35 +308,35 @@ func (service *ServiceBuildingImpl) processBuilding(
 		// Use workflow_state as building_status
 		buildingStatus := workflowState
 
-			// Convert ERP image fields to JSON array format
-			images := []models.BuildingImage{}
-			if erpBuilding.FrontSidePhoto != "" {
-				images = append(images, models.BuildingImage{Name: "front_side", Path: erpBuilding.FrontSidePhoto})
-			}
-			if erpBuilding.BackSidePhoto != "" {
-				images = append(images, models.BuildingImage{Name: "back_side", Path: erpBuilding.BackSidePhoto})
-			}
-			if erpBuilding.LeftSidePhoto != "" {
-				images = append(images, models.BuildingImage{Name: "left_side", Path: erpBuilding.LeftSidePhoto})
-			}
-			if erpBuilding.RightSidePhoto != "" {
-				images = append(images, models.BuildingImage{Name: "right_side", Path: erpBuilding.RightSidePhoto})
-			}
+		// Convert ERP image fields to JSON array format
+		images := []models.BuildingImage{}
+		if erpBuilding.FrontSidePhoto != "" {
+			images = append(images, models.BuildingImage{Name: "front_side", Path: erpBuilding.FrontSidePhoto})
+		}
+		if erpBuilding.BackSidePhoto != "" {
+			images = append(images, models.BuildingImage{Name: "back_side", Path: erpBuilding.BackSidePhoto})
+		}
+		if erpBuilding.LeftSidePhoto != "" {
+			images = append(images, models.BuildingImage{Name: "left_side", Path: erpBuilding.LeftSidePhoto})
+		}
+		if erpBuilding.RightSidePhoto != "" {
+			images = append(images, models.BuildingImage{Name: "right_side", Path: erpBuilding.RightSidePhoto})
+		}
 
-			// Update existing building (ERP fields only)
-			existingBuilding.ExternalBuildingId = erpBuilding.BuildingId
-			existingBuilding.IrisCode = erpBuilding.IrisCode
-			existingBuilding.Name = erpBuilding.BuildingName
-			existingBuilding.ProjectName = erpBuilding.BuildingProject
-			existingBuilding.Audience = erpBuilding.AudienceActual
-			existingBuilding.Impression = erpBuilding.AudienceProjection
-			existingBuilding.CbdArea = erpBuilding.CbdArea
-			existingBuilding.Subdistrict = erpBuilding.Subdistrict
-			existingBuilding.Citytown = erpBuilding.Citytown
-			existingBuilding.Province = erpBuilding.Province
-			existingBuilding.GradeResource = erpBuilding.GradeResource
-			existingBuilding.BuildingType = erpBuilding.BuildingType
-			existingBuilding.CompletionYear = erpBuilding.CompletionYear
+		// Update existing building (ERP fields only)
+		existingBuilding.ExternalBuildingId = erpBuilding.BuildingId
+		existingBuilding.IrisCode = erpBuilding.IrisCode
+		existingBuilding.Name = erpBuilding.BuildingName
+		existingBuilding.ProjectName = erpBuilding.BuildingProject
+		existingBuilding.Audience = erpBuilding.AudienceActual
+		existingBuilding.Impression = erpBuilding.AudienceProjection
+		existingBuilding.CbdArea = erpBuilding.CbdArea
+		existingBuilding.Subdistrict = erpBuilding.Subdistrict
+		existingBuilding.Citytown = erpBuilding.Citytown
+		existingBuilding.Province = erpBuilding.Province
+		existingBuilding.GradeResource = erpBuilding.GradeResource
+		existingBuilding.BuildingType = erpBuilding.BuildingType
+		existingBuilding.CompletionYear = erpBuilding.CompletionYear
 		// Zero-preservation logic: only update latitude/longitude if ERP provides non-zero values
 		if erpBuilding.Latitude != 0 {
 			existingBuilding.Latitude = erpBuilding.Latitude
@@ -344,16 +344,16 @@ func (service *ServiceBuildingImpl) processBuilding(
 		if erpBuilding.Longitude != 0 {
 			existingBuilding.Longitude = erpBuilding.Longitude
 		}
-			existingBuilding.BuildingStatus = buildingStatus
-			existingBuilding.CompetitorLocation = erpBuilding.CompetitorPresence != 0
+		existingBuilding.BuildingStatus = buildingStatus
+		existingBuilding.CompetitorLocation = erpBuilding.CompetitorPresence != 0
 		existingBuilding.CompetitorExclusive = erpBuilding.CompetitorExclusive != 0
 		existingBuilding.CompetitorPresence = erpBuilding.CompetitorPresence != 0
 		existingBuilding.LcdPresenceStatus = calculatedStatus
-			existingBuilding.Images = images
-			existingBuilding.SyncedAt = time.Now().Format(time.RFC3339)
+		existingBuilding.Images = images
+		existingBuilding.SyncedAt = time.Now().Format(time.RFC3339)
 
-			_, err = service.RepositoryBuildingInterface.UpdateFromSync(ctx, tx, existingBuilding)
-			if err != nil {
+		_, err = service.RepositoryBuildingInterface.UpdateFromSync(ctx, tx, existingBuilding)
+		if err != nil {
 			service.Logger.WithError(err).WithFields(logrus.Fields{
 				"building_id":   erpBuilding.BuildingId,
 				"building_name": erpBuilding.BuildingName,
@@ -600,8 +600,14 @@ func (service *ServiceBuildingImpl) FindAllForMapping(ctx context.Context, reque
 	var latPtr *float64
 	var lngPtr *float64
 	var radiusPtr *int
-	var poiPoints []struct{ Lat float64; Lng float64 }
-	var polygonPoints []struct{ Lat float64; Lng float64 }
+	var poiPoints []struct {
+		Lat float64
+		Lng float64
+	}
+	var polygonPoints []struct {
+		Lat float64
+		Lng float64
+	}
 
 	// Polygon filter takes priority: when set, use only polygon for spatial filter
 	if polygonStr := request.GetPolygon(); polygonStr != "" {
@@ -610,9 +616,15 @@ func (service *ServiceBuildingImpl) FindAllForMapping(ctx context.Context, reque
 			Lng float64 `json:"lng"`
 		}
 		if err := json.Unmarshal([]byte(polygonStr), &parsed); err == nil && len(parsed) >= 3 {
-			polygonPoints = make([]struct{ Lat float64; Lng float64 }, len(parsed))
+			polygonPoints = make([]struct {
+				Lat float64
+				Lng float64
+			}, len(parsed))
 			for i, p := range parsed {
-				polygonPoints[i] = struct{ Lat float64; Lng float64 }{Lat: p.Lat, Lng: p.Lng}
+				polygonPoints[i] = struct {
+					Lat float64
+					Lng float64
+				}{Lat: p.Lat, Lng: p.Lng}
 			}
 		}
 	}
@@ -631,7 +643,10 @@ func (service *ServiceBuildingImpl) FindAllForMapping(ctx context.Context, reque
 					continue
 				}
 				for _, point := range poi.Points {
-					poiPoints = append(poiPoints, struct{ Lat float64; Lng float64 }{
+					poiPoints = append(poiPoints, struct {
+						Lat float64
+						Lng float64
+					}{
 						Lat: point.Latitude,
 						Lng: point.Longitude,
 					})
