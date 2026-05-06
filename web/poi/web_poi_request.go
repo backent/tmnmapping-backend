@@ -16,18 +16,18 @@ type POIPointInput struct {
 type CreatePOIRequest struct {
 	Brand         string          `json:"brand" validate:"required"`
 	Color         string          `json:"color" validate:"required"`
-	CategoryId    *int            `json:"category_id" validate:"required"`
-	SubCategoryId *int            `json:"sub_category_id" validate:"required"`
-	MotherBrandId *int            `json:"mother_brand_id" validate:"required"`
+	CategoryId    *int            `json:"category_id"`
+	SubCategoryId *int            `json:"sub_category_id"`
+	MotherBrandId *int            `json:"mother_brand_id"`
 	Points        []POIPointInput `json:"points" validate:"required,min=1,dive"`
 }
 
 type UpdatePOIRequest struct {
 	Brand         string          `json:"brand" validate:"required"`
 	Color         string          `json:"color" validate:"required"`
-	CategoryId    *int            `json:"category_id" validate:"required"`
-	SubCategoryId *int            `json:"sub_category_id" validate:"required"`
-	MotherBrandId *int            `json:"mother_brand_id" validate:"required"`
+	CategoryId    *int            `json:"category_id"`
+	SubCategoryId *int            `json:"sub_category_id"`
+	MotherBrandId *int            `json:"mother_brand_id"`
 	Points        []POIPointInput `json:"points" validate:"required,min=1,dive"`
 }
 
