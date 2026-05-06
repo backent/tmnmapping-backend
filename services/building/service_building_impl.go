@@ -800,22 +800,23 @@ func (service *ServiceBuildingImpl) FindAllForMapping(ctx context.Context, reque
 		}
 
 		mappingBuilding := webBuilding.MappingBuildingResponse{
-			Id:                building.Id,
-			Name:              building.Name,
-			BuildingType:      building.BuildingType,
-			GradeResource:     building.GradeResource,
-			CompletionYear:    building.CompletionYear,
-			Subdistrict:       building.Subdistrict,
-			Citytown:          building.Citytown,
-			Province:          building.Province,
-			Address:           address,
-			BuildingStatus:    building.BuildingStatus,
-			Sellable:          building.Sellable,
-			Connectivity:      building.Connectivity,
-			Latitude:          building.Latitude,
-			Longitude:         building.Longitude,
-			LcdPresenceStatus: building.LcdPresenceStatus,
-			Images:            images,
+			Id:                 building.Id,
+			ExternalBuildingId: building.ExternalBuildingId,
+			Name:               building.Name,
+			BuildingType:       building.BuildingType,
+			GradeResource:      building.GradeResource,
+			CompletionYear:     building.CompletionYear,
+			Subdistrict:        building.Subdistrict,
+			Citytown:           building.Citytown,
+			Province:           building.Province,
+			Address:            address,
+			BuildingStatus:     building.BuildingStatus,
+			Sellable:           building.Sellable,
+			Connectivity:       building.Connectivity,
+			Latitude:           building.Latitude,
+			Longitude:          building.Longitude,
+			LcdPresenceStatus:  building.LcdPresenceStatus,
+			Images:             images,
 		}
 
 		mappingBuildings = append(mappingBuildings, mappingBuilding)
@@ -990,14 +991,14 @@ func buildExcelFromMappingBuildings(data []webBuilding.MappingBuildingResponse) 
 	f := excelize.NewFile()
 	sheetName := "Buildings"
 	const sheet = "Sheet1"
-	headers := []string{"ID", "Name", "Building Type", "Grade", "Completion Year", "Subdistrict", "City", "Province", "Address", "Status", "Sellable", "Connectivity", "Latitude", "Longitude", "LCD Presence"}
+	headers := []string{"Building ID", "Name", "Building Type", "Grade", "Completion Year", "Subdistrict", "City", "Province", "Address", "Status", "Sellable", "Connectivity", "Latitude", "Longitude", "LCD Presence"}
 	for i, h := range headers {
 		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
 		_ = f.SetCellValue(sheet, cell, h)
 	}
 	for row, b := range data {
 		rowIdx := row + 2
-		_ = f.SetCellValue(sheet, mustCell(1, rowIdx), b.Id)
+		_ = f.SetCellValue(sheet, mustCell(1, rowIdx), b.ExternalBuildingId)
 		_ = f.SetCellValue(sheet, mustCell(2, rowIdx), b.Name)
 		_ = f.SetCellValue(sheet, mustCell(3, rowIdx), b.BuildingType)
 		_ = f.SetCellValue(sheet, mustCell(4, rowIdx), b.GradeResource)
