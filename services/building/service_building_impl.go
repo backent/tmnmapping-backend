@@ -267,7 +267,7 @@ func (service *ServiceBuildingImpl) processBuilding(
 			Citytown:            erpBuilding.Citytown,
 			Province:            erpBuilding.Province,
 			GradeResource:       erpBuilding.GradeResource,
-			BuildingType:        erpBuilding.BuildingType,
+			BuildingType:        CanonicalizeBuildingType(erpBuilding.BuildingType),
 			CompletionYear:      erpBuilding.CompletionYear,
 			Latitude:            erpBuilding.Latitude,
 			Longitude:           erpBuilding.Longitude,
@@ -335,7 +335,7 @@ func (service *ServiceBuildingImpl) processBuilding(
 		existingBuilding.Citytown = erpBuilding.Citytown
 		existingBuilding.Province = erpBuilding.Province
 		existingBuilding.GradeResource = erpBuilding.GradeResource
-		existingBuilding.BuildingType = erpBuilding.BuildingType
+		existingBuilding.BuildingType = CanonicalizeBuildingType(erpBuilding.BuildingType)
 		existingBuilding.CompletionYear = erpBuilding.CompletionYear
 		// Zero-preservation logic: only update latitude/longitude if ERP provides non-zero values
 		if erpBuilding.Latitude != 0 {
