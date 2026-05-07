@@ -15,7 +15,7 @@ var CanonicalBuildingTypes = []string{
 	"Golf Course",
 	"Tennis & Padel",
 	"Yoga Pilates",
-	"Dinning",
+	"Dining",
 	"Spa & Reflexology",
 	"Other",
 }
