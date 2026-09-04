@@ -16,6 +16,7 @@ import (
 	controllersSalesPackage "github.com/malikabdulaziz/tmn-backend/controllers/salespackage"
 	controllersSavedPolygon "github.com/malikabdulaziz/tmn-backend/controllers/savedpolygon"
 	controllersSubCategory "github.com/malikabdulaziz/tmn-backend/controllers/subcategory"
+	controllersUser "github.com/malikabdulaziz/tmn-backend/controllers/user"
 	"github.com/malikabdulaziz/tmn-backend/exceptions"
 	"github.com/malikabdulaziz/tmn-backend/middlewares"
 	"github.com/malikabdulaziz/tmn-backend/models"
@@ -33,6 +34,7 @@ func NewRouter(
 	subCategoryMiddleware *middlewares.SubCategoryMiddleware,
 	motherBrandMiddleware *middlewares.MotherBrandMiddleware,
 	branchMiddleware *middlewares.BranchMiddleware,
+	userMiddleware *middlewares.UserMiddleware,
 	controllersAuth controllersAuth.ControllerAuthInterface,
 	controllersBuilding controllersBuilding.ControllerBuildingInterface,
 	controllersImage controllersImage.ControllerImageInterface,
@@ -45,6 +47,7 @@ func NewRouter(
 	controllersSubCategory controllersSubCategory.ControllerSubCategoryInterface,
 	controllersMotherBrand controllersMotherBrand.ControllerMotherBrandInterface,
 	controllersBranch controllersBranch.ControllerBranchInterface,
+	controllersUser controllersUser.ControllerUserInterface,
 ) *httprouter.Router {
 	router := httprouter.New()
 
@@ -364,6 +367,34 @@ func NewRouter(
 	router.GET("/branches-export",
 		loggingMiddleware.Log(
 			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersBranch.Export))))
+
+	// User management routes (admin only — these change who can do what)
+	router.GET("/users",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequireRole(models.RoleAdmin)(controllersUser.FindAll))))
+
+	router.GET("/users/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequireRole(models.RoleAdmin)(controllersUser.FindById))))
+
+	router.POST("/users",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequireRole(models.RoleAdmin)(
+					userMiddleware.ValidateCreate(controllersUser.Create)))))
+
+	router.PUT("/users/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequireRole(models.RoleAdmin)(
+					userMiddleware.ValidateUpdate(controllersUser.Update)))))
+
+	router.DELETE("/users/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequireRole(models.RoleAdmin)(controllersUser.Delete))))
 
 	router.GET("/dashboard/building-lcd-presence",
 		loggingMiddleware.Log(

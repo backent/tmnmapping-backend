@@ -7,8 +7,8 @@ import (
 	"github.com/google/wire"
 	"github.com/julienschmidt/httprouter"
 	controllersAuth "github.com/malikabdulaziz/tmn-backend/controllers/auth"
-	controllersBuilding "github.com/malikabdulaziz/tmn-backend/controllers/building"
 	controllersBranch "github.com/malikabdulaziz/tmn-backend/controllers/branch"
+	controllersBuilding "github.com/malikabdulaziz/tmn-backend/controllers/building"
 	controllersBuildingRestriction "github.com/malikabdulaziz/tmn-backend/controllers/buildingrestriction"
 	controllersCategory "github.com/malikabdulaziz/tmn-backend/controllers/category"
 	controllersDashboard "github.com/malikabdulaziz/tmn-backend/controllers/dashboard"
@@ -18,6 +18,7 @@ import (
 	controllersSalesPackage "github.com/malikabdulaziz/tmn-backend/controllers/salespackage"
 	controllersSavedPolygon "github.com/malikabdulaziz/tmn-backend/controllers/savedpolygon"
 	controllersSubCategory "github.com/malikabdulaziz/tmn-backend/controllers/subcategory"
+	controllersUser "github.com/malikabdulaziz/tmn-backend/controllers/user"
 	"github.com/malikabdulaziz/tmn-backend/libs"
 	"github.com/malikabdulaziz/tmn-backend/middlewares"
 	repositoriesAuth "github.com/malikabdulaziz/tmn-backend/repositories/auth"
@@ -46,6 +47,7 @@ import (
 	servicesSalesPackage "github.com/malikabdulaziz/tmn-backend/services/salespackage"
 	servicesSavedPolygon "github.com/malikabdulaziz/tmn-backend/services/savedpolygon"
 	servicesSubCategory "github.com/malikabdulaziz/tmn-backend/services/subcategory"
+	servicesUser "github.com/malikabdulaziz/tmn-backend/services/user"
 )
 
 var authSet = wire.NewSet(
@@ -87,6 +89,11 @@ var branchSet = wire.NewSet(
 	repositoriesBranch.NewRepositoryBranchImpl,
 	servicesBranch.NewServiceBranchImpl,
 	controllersBranch.NewControllerBranchImpl,
+)
+
+var userSet = wire.NewSet(
+	servicesUser.NewServiceUserImpl,
+	controllersUser.NewControllerUserImpl,
 )
 
 var poiSet = wire.NewSet(
@@ -131,6 +138,7 @@ var middlewareSet = wire.NewSet(
 	middlewares.NewSubCategoryMiddleware,
 	middlewares.NewMotherBrandMiddleware,
 	middlewares.NewBranchMiddleware,
+	middlewares.NewUserMiddleware,
 )
 
 func InitializeRouter() *httprouter.Router {
@@ -146,6 +154,7 @@ func InitializeRouter() *httprouter.Router {
 		subCategorySet,
 		motherBrandSet,
 		branchSet,
+		userSet,
 		poiSet,
 		salespackageSet,
 		buildingrestrictionSet,

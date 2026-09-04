@@ -21,6 +21,7 @@ import (
 	salespackage3 "github.com/malikabdulaziz/tmn-backend/controllers/salespackage"
 	savedpolygon3 "github.com/malikabdulaziz/tmn-backend/controllers/savedpolygon"
 	subcategory3 "github.com/malikabdulaziz/tmn-backend/controllers/subcategory"
+	user2 "github.com/malikabdulaziz/tmn-backend/controllers/user"
 	"github.com/malikabdulaziz/tmn-backend/libs"
 	"github.com/malikabdulaziz/tmn-backend/middlewares"
 	"github.com/malikabdulaziz/tmn-backend/repositories/auth"
@@ -49,6 +50,7 @@ import (
 	salespackage2 "github.com/malikabdulaziz/tmn-backend/services/salespackage"
 	savedpolygon2 "github.com/malikabdulaziz/tmn-backend/services/savedpolygon"
 	subcategory2 "github.com/malikabdulaziz/tmn-backend/services/subcategory"
+	user3 "github.com/malikabdulaziz/tmn-backend/services/user"
 )
 
 // Injectors from wire.go:
@@ -78,6 +80,7 @@ func InitializeRouter() *httprouter.Router {
 	motherBrandMiddleware := middlewares.NewMotherBrandMiddleware(validate, db, repositoryMotherBrandInterface)
 	repositoryBranchInterface := branch.NewRepositoryBranchImpl()
 	branchMiddleware := middlewares.NewBranchMiddleware(validate, db, repositoryBranchInterface)
+	userMiddleware := middlewares.NewUserMiddleware(validate, db, repositoryUserInterface)
 	serviceAuthInterface := auth2.NewServiceAuthImpl(db, repositoryAuthInterface, repositoryUserInterface)
 	controllerAuthInterface := auth3.NewControllerAuthImpl(db, serviceAuthInterface, repositoryUserInterface)
 	erpClient := libs.ProvideERPClient()
@@ -104,7 +107,9 @@ func InitializeRouter() *httprouter.Router {
 	controllerMotherBrandInterface := motherbrand3.NewControllerMotherBrandImpl(serviceMotherBrandInterface)
 	serviceBranchInterface := branch2.NewServiceBranchImpl(db, repositoryBranchInterface)
 	controllerBranchInterface := branch3.NewControllerBranchImpl(serviceBranchInterface)
-	router := libs.NewRouter(authMiddleware, buildingMiddleware, poiMiddleware, salesPackageMiddleware, buildingRestrictionMiddleware, savedPolygonMiddleware, loggingMiddleware, categoryMiddleware, subCategoryMiddleware, motherBrandMiddleware, branchMiddleware, controllerAuthInterface, controllerBuildingInterface, controllerImageInterface, controllerPOIInterface, controllerSalesPackageInterface, controllerBuildingRestrictionInterface, controllerSavedPolygonInterface, controllerDashboardInterface, controllerCategoryInterface, controllerSubCategoryInterface, controllerMotherBrandInterface, controllerBranchInterface)
+	serviceUserInterface := user3.NewServiceUserImpl(db, repositoryUserInterface)
+	controllerUserInterface := user2.NewControllerUserImpl(serviceUserInterface)
+	router := libs.NewRouter(authMiddleware, buildingMiddleware, poiMiddleware, salesPackageMiddleware, buildingRestrictionMiddleware, savedPolygonMiddleware, loggingMiddleware, categoryMiddleware, subCategoryMiddleware, motherBrandMiddleware, branchMiddleware, userMiddleware, controllerAuthInterface, controllerBuildingInterface, controllerImageInterface, controllerPOIInterface, controllerSalesPackageInterface, controllerBuildingRestrictionInterface, controllerSavedPolygonInterface, controllerDashboardInterface, controllerCategoryInterface, controllerSubCategoryInterface, controllerMotherBrandInterface, controllerBranchInterface, controllerUserInterface)
 	return router
 }
 
@@ -156,6 +161,8 @@ var subCategorySet = wire.NewSet(subcategory.NewRepositorySubCategoryImpl, subca
 
 var motherBrandSet = wire.NewSet(motherbrand.NewRepositoryMotherBrandImpl, motherbrand2.NewServiceMotherBrandImpl, motherbrand3.NewControllerMotherBrandImpl)
 
+var userSet = wire.NewSet(user3.NewServiceUserImpl, user2.NewControllerUserImpl)
+
 var branchSet = wire.NewSet(branch.NewRepositoryBranchImpl, branch2.NewServiceBranchImpl, branch3.NewControllerBranchImpl)
 
 var poiSet = wire.NewSet(poi.NewRepositoryPOIImpl, poi2.NewServicePOIImpl, poi3.NewControllerPOIImpl)
@@ -168,4 +175,4 @@ var savedpolygonSet = wire.NewSet(savedpolygon.NewRepositorySavedPolygonImpl, sa
 
 var dashboardSet = wire.NewSet(dashboard.NewRepositoryDashboardImpl, dashboard2.NewServiceDashboardImpl, dashboard3.NewControllerDashboardImpl)
 
-var middlewareSet = wire.NewSet(middlewares.NewAuthMiddleware, middlewares.NewBuildingMiddleware, middlewares.NewPOIMiddleware, middlewares.NewSalesPackageMiddleware, middlewares.NewBuildingRestrictionMiddleware, middlewares.NewSavedPolygonMiddleware, middlewares.NewLoggingMiddleware, middlewares.NewCategoryMiddleware, middlewares.NewSubCategoryMiddleware, middlewares.NewMotherBrandMiddleware, middlewares.NewBranchMiddleware)
+var middlewareSet = wire.NewSet(middlewares.NewAuthMiddleware, middlewares.NewBuildingMiddleware, middlewares.NewPOIMiddleware, middlewares.NewSalesPackageMiddleware, middlewares.NewBuildingRestrictionMiddleware, middlewares.NewSavedPolygonMiddleware, middlewares.NewLoggingMiddleware, middlewares.NewCategoryMiddleware, middlewares.NewSubCategoryMiddleware, middlewares.NewMotherBrandMiddleware, middlewares.NewBranchMiddleware, middlewares.NewUserMiddleware)

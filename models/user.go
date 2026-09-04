@@ -11,6 +11,8 @@ type User struct {
 	Role                string
 	CanCreateQuotations bool
 	SalesGroup          string
+	CreatedAt           string
+	UpdatedAt           string
 }
 
 type NullAbleUser struct {
@@ -22,6 +24,8 @@ type NullAbleUser struct {
 	Role                sql.NullString
 	CanCreateQuotations sql.NullBool
 	SalesGroup          sql.NullString
+	CreatedAt           sql.NullString
+	UpdatedAt           sql.NullString
 }
 
 var UserTable string = "users"
@@ -38,5 +42,7 @@ func NullAbleUserToUser(nullAbleUser NullAbleUser) User {
 		Role:                nullAbleUser.Role.String,
 		CanCreateQuotations: nullAbleUser.CanCreateQuotations.Bool,
 		SalesGroup:          nullAbleUser.SalesGroup.String,
+		CreatedAt:           nullAbleUser.CreatedAt.String,
+		UpdatedAt:           nullAbleUser.UpdatedAt.String,
 	}
 }

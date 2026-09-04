@@ -4,7 +4,7 @@ Tracking doc for the first phase of the sales quotation feature.
 Source analysis: `docs/QUOTATION_FEATURE_ANALYSIS.md` in the `tmn-mapping` project root (§5, §8).
 
 **Status:** ✅ Complete — backend and frontend, tests green, not yet deployed.
-**Branch:** `feat/phase-0-roles-authorization` (both `backend/` and `frontend/`)
+**Branches:** `feat/phase-0-roles-authorization`, then `feat/user-management` (both `backend/` and `frontend/`)
 **Started / finished:** 2026-09-04
 
 ---
@@ -139,6 +139,44 @@ security boundary. Every mutation is server-enforced.
 
 ---
 
+## 5b. User management (follow-up, same phase)
+
+Phase 0 created a gap it did not fill: roles could only be changed by SQL. Built on
+`feat/user-management`, branched off the Phase 0 work.
+
+**Backend** — a full CRUD slice following the existing controller → service → repository
+pattern: `repositories/user` (extended with `Create`, `FindAll`, `CountAll`, `Update`,
+`UpdatePassword`, `Delete`, `CountByRole`), `services/user`, `controllers/user`,
+`web/user`, `middlewares/user.go`, and five routes — `GET/POST /users`,
+`GET/PUT/DELETE /users/:id` — all behind `RequireRole(models.RoleAdmin)`.
+
+**Frontend** — `types/user.ts`, `http/user.ts`, `stores/user.ts`, `pages/users.vue`,
+`pages/user-form.vue`, an Administration section in the nav, and `ROLE_LABELS` /
+`ROLE_DESCRIPTIONS` / `ROLE_OPTIONS` / `SALES_GROUP_OPTIONS` in `config/roles.ts`.
+
+### Four guards worth knowing about
+
+These live in `services/user`, not in the UI, so they hold regardless of client:
+
+| Guard | Why |
+|---|---|
+| **Cannot change your own role** | An admin who demotes themselves loses this screen and needs SQL to recover. |
+| **Cannot delete your own account** | Same reason, more final. |
+| **Cannot demote or delete the last admin** | Backed by `CountByRole`. Otherwise nobody can manage users or master data. |
+| **Password is optional on update** | An empty `password` means "leave it alone", so editing a profile cannot silently reset someone's login. On create it is required, min 8 characters. |
+
+The UI mirrors the first two — the role select is disabled and the delete button is
+hidden on your own row — but the server is what enforces them.
+
+`UserResponse` has no password field. The repository projection includes the hash
+because the auth service needs it, so that omission is the thing keeping it out of API
+output.
+
+**Not built:** `user_proxy_sales` has no management UI. Proxy entry is a Phase 3
+feature, so an allow-list editor for it would be speculative now.
+
+---
+
 ## 6. Tests
 
 All green as of the last run.
@@ -149,14 +187,16 @@ All green as of the last run.
 |---|---|
 | `models/role_test.go` (**new**, 5 tests) | Canonical pass-through, all four legacy aliases, unknown/empty/wrong-case → no role, `admin` is not an approver, `HasRole` never matches an empty role. |
 | `middlewares/auth_test.go` (**new**, 11 tests) | Runs through a real `httprouter` with the real panic handler, so it asserts on the HTTP status a client receives: no token → 401, invalid token → 401, deleted account → 401, context carries id + role, legacy role normalised, `Authorization` header fallback, matching role → 200, wrong role → **403** with the handler not running, any-of-several-roles, unknown stored role → 403, `RequireRole` wired without `RequireAuth` → 401 (fails closed). |
+| `services/user/service_user_impl_test.go` (**new**, 14 tests) | Password is bcrypt-hashed on create and never returned; duplicate username rejected on create and on update; blank password leaves the hash alone; a supplied password is hashed; self role change refused; editing your own profile without touching the role allowed; last admin cannot be demoted or deleted; demotion allowed when other admins remain; self-deletion refused; legacy roles normalised in list responses; not-found paths. |
 
-**Frontend** — `npm test` (`vue-tsc --noEmit && vitest run`) → **289 passed, 15 files**
+**Frontend** — `npm test` (`vue-tsc --noEmit && vitest run`) → **303 passed, 16 files**
 
 | File | Covers |
 |---|---|
 | `src/__tests__/config/roles.test.ts` (**new**, 34 tests) | Normalisation, validity, `APPROVER_ROLES` excludes admin, and a sweep asserting *every* `.manage` permission is admin-only and every `.view` shared permission is open to all roles. |
 | `src/__tests__/plugins/routerGuards.test.ts` (**new**, 31 tests) | Login redirects, session restore, restore failure → `/login`, permitted/denied routes, unknown role denied, `/not-authorized` reachable by any role but still requires a session. Plus a route-table sweep: every `new`/`edit` form route is gated, and `/dashboard`, `/mapping`, `/buildings`, `/pois`, `/sales-packages` stay open. |
 | `src/__tests__/stores/auth.test.ts` (**rewritten getters block**) | Fixtures moved to the new vocabulary; the dead-getter assertions are replaced with `role`, `isAdmin`, `isSales`, `isApprover`, `can`, `hasAnyRole`, `canCreateQuotations`. |
+| `src/__tests__/stores/user.test.ts` (**new**, 11 tests) | Pagination derived from `extras` and the fallback path, loading flag cleared on failure, create appends, update replaces in-list and refreshes `currentItem` only when it matches, delete removes and clears, failed delete leaves the list intact. |
 
 ### Not covered
 
@@ -175,13 +215,17 @@ All green as of the last run.
    FROM users GROUP BY role ORDER BY 2 DESC;
    ```
 2. **Narrow the admins.** Everyone landed on `admin` by design. Decide who is actually
-   `sales` / `head_of_sales` / `head_of_business_control` / `ceo` and update them.
-   There is no user-management UI yet, so this is SQL for now (see §8).
+   `sales` / `head_of_sales` / `head_of_business_control` / `ceo` and update them at
+   **Administration → Users**. The service refuses to demote the last admin, so promote
+   a second admin before narrowing the first.
 3. **Smoke test as a non-admin:** dashboard, mapping (POI picker + restriction filter),
-   buildings list, sales packages list should all work; the Master Data and Restrictions
-   nav sections should be gone; `/categories/new` typed directly should land on
-   `/not-authorized`; a `DELETE /pois/:id` should come back 403.
-4. Deploy backend and frontend together — the frontend reads `can_create_quotations`
+   buildings list, sales packages list should all work; the Master Data, Restrictions and
+   Administration nav sections should be gone; `/categories/new` and `/users` typed
+   directly should land on `/not-authorized`; a `DELETE /pois/:id` should come back 403.
+4. **Smoke test user management as an admin:** create a user, edit them without touching
+   the password and confirm they can still log in, try to change your own role (should be
+   refused), try to delete yourself (button hidden; the API refuses it too).
+5. Deploy backend and frontend together — the frontend reads `can_create_quotations`
    from `/current-user`, which only exists after the backend ships.
 
 ---
@@ -190,7 +234,8 @@ All green as of the last run.
 
 | Item | Note |
 |---|---|
-| **User management UI** | There is no screen to set a user's role or capabilities. Roles must be changed by SQL. This is the biggest usability gap left by Phase 0. |
+| ~~User management UI~~ | ✅ Done — see §5b. |
+| **Proxy-entry allow-list UI** | `user_proxy_sales` is modelled but has no editor. Phase 3, when proxy entry exists. |
 | **Capability enforcement** | `can_create_quotations`, `sales_group` and `user_proxy_sales` are stored and returned but nothing checks them yet. Phase 3. |
 | **Approval directory** | Which concrete user holds each approver role must come from configuration or user data, never hardcoded names. Not yet built — Phase 4. |
 | **Route policy test** | See §6. |
@@ -203,6 +248,7 @@ All green as of the last run.
 | Phase | Scope | Status |
 |---|---|---|
 | **0. Roles & authorization** | `RequireRole`, role model + capabilities, frontend guards, retrofit existing routes | ✅ **Done** |
+| **0b. User management** | Admin CRUD for accounts, roles and capabilities | ✅ **Done** |
 | 1. Customer / Brand / Assignment | Migrations 016–017, CRUD + import/export, admin pages | Not started |
 | 2. Rate card | Migrations 018–019, upload → validate → publish, versioning | Not started |
 | 3. Quotation core | Migration 020, `services/quotation` pricing + routing, wizard | Not started |
@@ -211,7 +257,8 @@ All green as of the last run.
 | 6. Polish | Notifications, PDF, localization, dashboards | Not started |
 
 > Migration numbers for phases 1–3 have shifted by one from the analysis doc, which
-> assumed Phase 0 would use `020`. Phase 0 took `015`.
+> assumed Phase 0 would use `020`. Phase 0 took `015`; user management needed no
+> migration of its own.
 
 **Blocking before Phase 1:** the ten business decisions in §7 of the analysis doc.
 The three with the widest blast radius are the tax rate (the prototype hardcodes a
