@@ -18,6 +18,7 @@ import (
 	controllersSubCategory "github.com/malikabdulaziz/tmn-backend/controllers/subcategory"
 	"github.com/malikabdulaziz/tmn-backend/exceptions"
 	"github.com/malikabdulaziz/tmn-backend/middlewares"
+	"github.com/malikabdulaziz/tmn-backend/models"
 )
 
 func NewRouter(
@@ -80,12 +81,12 @@ func NewRouter(
 
 	router.PUT("/buildings/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(
-				buildingMiddleware.ValidateUpdate(controllersBuilding.Update))))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+				buildingMiddleware.ValidateUpdate(controllersBuilding.Update)))))
 
 	router.POST("/buildings/sync",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersBuilding.SyncManual)))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersBuilding.SyncManual))))
 
 	router.GET("/building-filter-options",
 		loggingMiddleware.Log(
@@ -101,7 +102,7 @@ func NewRouter(
 
 	router.POST("/admin/mapping-building/export",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersBuilding.ExportMappingBuildings)))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersBuilding.ExportMappingBuildings))))
 
 	// Image proxy route (protected)
 	router.GET("/erp-images/*filepath",
@@ -111,16 +112,16 @@ func NewRouter(
 	// POI routes (protected)
 	router.POST("/pois-import",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersPOI.Import)))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersPOI.Import))))
 
 	router.GET("/pois-export",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersPOI.Export)))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersPOI.Export))))
 
 	router.POST("/pois",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(
-				poiMiddleware.ValidateCreate(controllersPOI.Create))))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+				poiMiddleware.ValidateCreate(controllersPOI.Create)))))
 
 	router.GET("/pois",
 		loggingMiddleware.Log(
@@ -132,18 +133,18 @@ func NewRouter(
 
 	router.PUT("/pois/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(
-				poiMiddleware.ValidateUpdate(controllersPOI.Update))))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+				poiMiddleware.ValidateUpdate(controllersPOI.Update)))))
 
 	router.DELETE("/pois/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersPOI.Delete)))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersPOI.Delete))))
 
 	// Sales package routes (protected)
 	router.POST("/sales-packages",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(
-				salesPackageMiddleware.ValidateCreate(controllersSalesPackage.Create))))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+				salesPackageMiddleware.ValidateCreate(controllersSalesPackage.Create)))))
 
 	router.GET("/sales-packages",
 		loggingMiddleware.Log(
@@ -155,26 +156,26 @@ func NewRouter(
 
 	router.PUT("/sales-packages/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(
-				salesPackageMiddleware.ValidateUpdate(controllersSalesPackage.Update))))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+				salesPackageMiddleware.ValidateUpdate(controllersSalesPackage.Update)))))
 
 	router.DELETE("/sales-packages/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersSalesPackage.Delete)))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersSalesPackage.Delete))))
 
 	router.POST("/sales-packages-import",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersSalesPackage.Import)))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersSalesPackage.Import))))
 
 	router.GET("/sales-packages-export",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersSalesPackage.Export)))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersSalesPackage.Export))))
 
 	// Building restriction routes (protected)
 	router.POST("/building-restrictions",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(
-				buildingRestrictionMiddleware.ValidateCreate(controllersBuildingRestriction.Create))))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+				buildingRestrictionMiddleware.ValidateCreate(controllersBuildingRestriction.Create)))))
 
 	router.GET("/building-restrictions",
 		loggingMiddleware.Log(
@@ -186,20 +187,20 @@ func NewRouter(
 
 	router.PUT("/building-restrictions/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(
-				buildingRestrictionMiddleware.ValidateUpdate(controllersBuildingRestriction.Update))))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+				buildingRestrictionMiddleware.ValidateUpdate(controllersBuildingRestriction.Update)))))
 
 	router.DELETE("/building-restrictions/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersBuildingRestriction.Delete)))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersBuildingRestriction.Delete))))
 
 	router.POST("/building-restrictions-import",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersBuildingRestriction.Import)))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersBuildingRestriction.Import))))
 
 	router.GET("/building-restrictions-export",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersBuildingRestriction.Export)))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersBuildingRestriction.Export))))
 
 	// Saved polygon routes (protected)
 	router.POST("/saved-polygons",
@@ -227,8 +228,8 @@ func NewRouter(
 	// Category routes (protected)
 	router.POST("/categories",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(
-				categoryMiddleware.ValidateCreate(controllersCategory.Create))))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+				categoryMiddleware.ValidateCreate(controllersCategory.Create)))))
 
 	router.GET("/categories",
 		loggingMiddleware.Log(
@@ -244,26 +245,26 @@ func NewRouter(
 
 	router.PUT("/categories/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(
-				categoryMiddleware.ValidateUpdate(controllersCategory.Update))))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+				categoryMiddleware.ValidateUpdate(controllersCategory.Update)))))
 
 	router.DELETE("/categories/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersCategory.Delete)))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersCategory.Delete))))
 
 	router.POST("/categories-import",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersCategory.Import)))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersCategory.Import))))
 
 	router.GET("/categories-export",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersCategory.Export)))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersCategory.Export))))
 
 	// Sub-Category routes (protected)
 	router.POST("/sub-categories",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(
-				subCategoryMiddleware.ValidateCreate(controllersSubCategory.Create))))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+				subCategoryMiddleware.ValidateCreate(controllersSubCategory.Create)))))
 
 	router.GET("/sub-categories",
 		loggingMiddleware.Log(
@@ -279,26 +280,26 @@ func NewRouter(
 
 	router.PUT("/sub-categories/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(
-				subCategoryMiddleware.ValidateUpdate(controllersSubCategory.Update))))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+				subCategoryMiddleware.ValidateUpdate(controllersSubCategory.Update)))))
 
 	router.DELETE("/sub-categories/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersSubCategory.Delete)))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersSubCategory.Delete))))
 
 	router.POST("/sub-categories-import",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersSubCategory.Import)))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersSubCategory.Import))))
 
 	router.GET("/sub-categories-export",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersSubCategory.Export)))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersSubCategory.Export))))
 
 	// Mother Brand routes (protected)
 	router.POST("/mother-brands",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(
-				motherBrandMiddleware.ValidateCreate(controllersMotherBrand.Create))))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+				motherBrandMiddleware.ValidateCreate(controllersMotherBrand.Create)))))
 
 	router.GET("/mother-brands",
 		loggingMiddleware.Log(
@@ -314,26 +315,26 @@ func NewRouter(
 
 	router.PUT("/mother-brands/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(
-				motherBrandMiddleware.ValidateUpdate(controllersMotherBrand.Update))))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+				motherBrandMiddleware.ValidateUpdate(controllersMotherBrand.Update)))))
 
 	router.DELETE("/mother-brands/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersMotherBrand.Delete)))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersMotherBrand.Delete))))
 
 	router.POST("/mother-brands-import",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersMotherBrand.Import)))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersMotherBrand.Import))))
 
 	router.GET("/mother-brands-export",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersMotherBrand.Export)))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersMotherBrand.Export))))
 
 	// Branch routes (protected)
 	router.POST("/branches",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(
-				branchMiddleware.ValidateCreate(controllersBranch.Create))))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+				branchMiddleware.ValidateCreate(controllersBranch.Create)))))
 
 	router.GET("/branches",
 		loggingMiddleware.Log(
@@ -349,20 +350,20 @@ func NewRouter(
 
 	router.PUT("/branches/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(
-				branchMiddleware.ValidateUpdate(controllersBranch.Update))))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+				branchMiddleware.ValidateUpdate(controllersBranch.Update)))))
 
 	router.DELETE("/branches/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersBranch.Delete)))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersBranch.Delete))))
 
 	router.POST("/branches-import",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersBranch.Import)))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersBranch.Import))))
 
 	router.GET("/branches-export",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersBranch.Export)))
+			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersBranch.Export))))
 
 	router.GET("/dashboard/building-lcd-presence",
 		loggingMiddleware.Log(

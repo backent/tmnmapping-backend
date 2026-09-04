@@ -49,6 +49,14 @@ func RouterPanicHandler(w http.ResponseWriter, r *http.Request, i interface{}) {
 			Status: "Unauthorized",
 			Data:   err.Error,
 		}
+	} else if err, ok := i.(ForbiddenError); ok {
+		requestFields["status_code"] = http.StatusForbidden
+		logger.WithFields(requestFields).WithField("error", err.Error).Warn("Forbidden error")
+		response = web.WebResponse{
+			Code:   http.StatusForbidden,
+			Status: "FORBIDDEN",
+			Data:   err.Error,
+		}
 	} else if err, ok := i.(NotFoundError); ok {
 		requestFields["status_code"] = http.StatusNotFound
 		logger.WithFields(requestFields).WithField("error", err.Error).Warn("Not found error")

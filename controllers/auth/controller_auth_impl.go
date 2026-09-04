@@ -8,6 +8,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/malikabdulaziz/tmn-backend/helpers"
+	"github.com/malikabdulaziz/tmn-backend/models"
 	repositoriesUser "github.com/malikabdulaziz/tmn-backend/repositories/user"
 	servicesAuth "github.com/malikabdulaziz/tmn-backend/services/auth"
 	"github.com/malikabdulaziz/tmn-backend/web"
@@ -105,11 +106,13 @@ func (implementation *ControllerAuthImpl) CurrentUser(w http.ResponseWriter, r *
 
 	// Return user response
 	response := webAuth.UserResponse{
-		Id:        user.Id,
-		Username:  user.Username,
-		Name:      user.Name,
-		Role:      user.Role,
-		LastLogin: lastLogin,
+		Id:                  user.Id,
+		Username:            user.Username,
+		Name:                user.Name,
+		Role:                models.NormalizeRole(user.Role),
+		CanCreateQuotations: user.CanCreateQuotations,
+		SalesGroup:          user.SalesGroup,
+		LastLogin:           lastLogin,
 	}
 
 	webResponse := web.WebResponse{
@@ -120,4 +123,3 @@ func (implementation *ControllerAuthImpl) CurrentUser(w http.ResponseWriter, r *
 
 	helpers.ReturnReponseJSON(w, webResponse)
 }
-

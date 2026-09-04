@@ -9,6 +9,7 @@ import (
 
 	"github.com/malikabdulaziz/tmn-backend/exceptions"
 	"github.com/malikabdulaziz/tmn-backend/helpers"
+	"github.com/malikabdulaziz/tmn-backend/models"
 	repositoriesAuth "github.com/malikabdulaziz/tmn-backend/repositories/auth"
 	repositoriesUser "github.com/malikabdulaziz/tmn-backend/repositories/user"
 	webAuth "github.com/malikabdulaziz/tmn-backend/web/auth"
@@ -67,11 +68,12 @@ func (implementation *ServiceAuthImpl) Login(ctx context.Context, username, pass
 
 	return webAuth.LoginResponse{
 		User: webAuth.UserResponse{
-			Id:       user.Id,
-			Username: user.Username,
-			Name:     user.Name,
-			Role:     user.Role,
+			Id:                  user.Id,
+			Username:            user.Username,
+			Name:                user.Name,
+			Role:                models.NormalizeRole(user.Role),
+			CanCreateQuotations: user.CanCreateQuotations,
+			SalesGroup:          user.SalesGroup,
 		},
 	}, token, int(duration.Seconds())
 }
-

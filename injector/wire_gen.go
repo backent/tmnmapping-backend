@@ -56,8 +56,9 @@ import (
 func InitializeRouter() *httprouter.Router {
 	validate := libs.NewValidator()
 	repositoryAuthInterface := auth.NewRepositoryAuthJWTImpl()
-	authMiddleware := middlewares.NewAuthMiddleware(validate, repositoryAuthInterface)
 	db := libs.NewDatabase()
+	repositoryUserInterface := user.NewRepositoryUserImpl()
+	authMiddleware := middlewares.NewAuthMiddleware(validate, db, repositoryAuthInterface, repositoryUserInterface)
 	repositoryBuildingInterface := building.NewRepositoryBuildingImpl()
 	buildingMiddleware := middlewares.NewBuildingMiddleware(validate, db, repositoryBuildingInterface)
 	repositoryPOIInterface := poi.NewRepositoryPOIImpl()
@@ -77,7 +78,6 @@ func InitializeRouter() *httprouter.Router {
 	motherBrandMiddleware := middlewares.NewMotherBrandMiddleware(validate, db, repositoryMotherBrandInterface)
 	repositoryBranchInterface := branch.NewRepositoryBranchImpl()
 	branchMiddleware := middlewares.NewBranchMiddleware(validate, db, repositoryBranchInterface)
-	repositoryUserInterface := user.NewRepositoryUserImpl()
 	serviceAuthInterface := auth2.NewServiceAuthImpl(db, repositoryAuthInterface, repositoryUserInterface)
 	controllerAuthInterface := auth3.NewControllerAuthImpl(db, serviceAuthInterface, repositoryUserInterface)
 	erpClient := libs.ProvideERPClient()
