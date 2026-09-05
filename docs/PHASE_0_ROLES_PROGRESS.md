@@ -300,13 +300,62 @@ All green as of the last run.
 - Nothing mechanically checks that the permission keys named in `routes.ts` exist in
   `models/permission.go`. `routerGuards.test.ts` keeps a hand-maintained mirror of the
   backend list; it will catch a typo, but only if that list is kept current.
-- Migration 015 is not exercised by a test; there is no migration test harness in the repo.
+- Migration 015 is not exercised by a test; there is no migration test harness in the
+  repo. It has been applied by hand locally and verified (§6b, §7).
+- The e2e suite covers authorization only. It does not test the frontend, and it does
+  not assert that a given route carries the *right* permission — only that the routes
+  it names behave correctly.
+
+---
+
+## 6b. End-to-end verification (local)
+
+`e2e/authorization_e2e_test.go` drives the **real** router, middleware and database.
+It is behind a build tag, so `go test ./...` skips it:
+
+```bash
+go test -tags e2e ./e2e/... -v
+```
+
+It calls `injector.InitializeRouter()` rather than `main()`. That matters: `main.go`
+starts four ERP sync schedulers that **sync immediately on startup**, so booting the
+binary to test authorization would write live ERP data into whatever database it is
+pointed at.
+
+It seeds its own `e2e_`-prefixed users and removes them in cleanup. No existing row
+is read or written.
+
+**Result — 7 tests, all passing against the local `postgres-postgis` container:**
+
+| Test | Confirms |
+|---|---|
+| `TestLoginReturnsPermissionsForRole` | Login returns the resolved permission list; admin holds the manage keys, sales holds reads plus `saved-polygons.manage` and none of the admin screens |
+| `TestCurrentUserReturnsPermissions` | `/current-user` carries the same list, so a page refresh restores authorization |
+| `TestUnauthenticatedIsRejected` | No cookie → 401 |
+| `TestSalesIsDeniedWrites` | 7 endpoints return **403**, including `DELETE /pois/:id` and the export routes — the hole Phase 0 closed. 403 not 404, because authorization runs before the handler, so a non-existent id never reaches the service |
+| `TestSalesIsAllowedReads` | 9 endpoints return 200, including the master-data dropdowns the mapping page depends on — confirming the deliberate decision to leave those reads open |
+| `TestAdminIsAllowedUserManagement` | Admin reaches `/users` |
+| `TestUserManagementLifecycleAndGuards` | Create → the password hash is absent from the response → the new user can log in → duplicate username is a 400 → **editing without a password leaves the login working** → self role change 400 → self delete 400 → deleting someone else 200 |
+
+The password-preservation case is the one worth having: it is the guard most likely
+to regress silently, and a unit test with a mocked repository can only prove
+`UpdatePassword` was not *called*, not that the stored hash still works.
 
 ---
 
 ## 7. Before deploying
 
-1. **Run migration 015** against staging first and check the backfill:
+1. **Run migration 015** against staging first and check the backfill.
+   Already applied locally — `schema_migrations` reads version 15, not dirty, and
+   all 13 existing users backfilled to `admin` exactly as designed. The local
+   command, for reference:
+
+   ```bash
+   docker run -v $(pwd)/database/migrations:/migrations --network host migrate/migrate \
+     -path=/migrations/ \
+     -database "postgres://USER:PASS@127.0.0.1:5432/tmn_backend?sslmode=disable" up
+   ```
+
    ```sql
    SELECT role, count(*), count(*) FILTER (WHERE can_create_quotations) AS can_quote
    FROM users GROUP BY role ORDER BY 2 DESC;
