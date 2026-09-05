@@ -3,10 +3,10 @@ package models
 import "database/sql"
 
 type UserLoginLog struct {
-	Id          int
-	UserId      int
-	LoggedInAt  string
-	IPAddress   string
+	Id         int
+	UserId     int
+	LoggedInAt string
+	IPAddress  string
 }
 
 type NullAbleUserLoginLog struct {

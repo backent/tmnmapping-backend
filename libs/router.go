@@ -76,342 +76,337 @@ func NewRouter(
 	// Building routes (protected)
 	router.GET("/buildings",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersBuilding.FindAll)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionBuildingsView)(controllersBuilding.FindAll))))
 
 	router.GET("/buildings/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersBuilding.FindById)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionBuildingsView)(controllersBuilding.FindById))))
 
 	router.PUT("/buildings/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionBuildingsManage)(
 				buildingMiddleware.ValidateUpdate(controllersBuilding.Update)))))
 
 	router.POST("/buildings/sync",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersBuilding.SyncManual))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionBuildingsManage)(controllersBuilding.SyncManual))))
 
 	router.GET("/building-filter-options",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersBuilding.GetFilterOptions)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMappingView)(controllersBuilding.GetFilterOptions))))
 
 	router.GET("/building-dropdown",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersBuilding.GetDropdownOptions)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMappingView)(controllersBuilding.GetDropdownOptions))))
 
 	router.POST("/mapping-buildings",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersBuilding.FindAllForMapping)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMappingView)(controllersBuilding.FindAllForMapping))))
 
 	router.POST("/admin/mapping-building/export",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersBuilding.ExportMappingBuildings))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionBuildingsManage)(controllersBuilding.ExportMappingBuildings))))
 
 	// Image proxy route (protected)
 	router.GET("/erp-images/*filepath",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersImage.ProxyImage)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMappingView)(controllersImage.ProxyImage))))
 
 	// POI routes (protected)
 	router.POST("/pois-import",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersPOI.Import))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionPOIsManage)(controllersPOI.Import))))
 
 	router.GET("/pois-export",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersPOI.Export))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionPOIsManage)(controllersPOI.Export))))
 
 	router.POST("/pois",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionPOIsManage)(
 				poiMiddleware.ValidateCreate(controllersPOI.Create)))))
 
 	router.GET("/pois",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersPOI.FindAll)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionPOIsView)(controllersPOI.FindAll))))
 
 	router.GET("/pois/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersPOI.FindById)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionPOIsView)(controllersPOI.FindById))))
 
 	router.PUT("/pois/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionPOIsManage)(
 				poiMiddleware.ValidateUpdate(controllersPOI.Update)))))
 
 	router.DELETE("/pois/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersPOI.Delete))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionPOIsManage)(controllersPOI.Delete))))
 
 	// Sales package routes (protected)
 	router.POST("/sales-packages",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionSalesPackagesManage)(
 				salesPackageMiddleware.ValidateCreate(controllersSalesPackage.Create)))))
 
 	router.GET("/sales-packages",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersSalesPackage.FindAll)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionSalesPackagesView)(controllersSalesPackage.FindAll))))
 
 	router.GET("/sales-packages/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersSalesPackage.FindById)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionSalesPackagesView)(controllersSalesPackage.FindById))))
 
 	router.PUT("/sales-packages/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionSalesPackagesManage)(
 				salesPackageMiddleware.ValidateUpdate(controllersSalesPackage.Update)))))
 
 	router.DELETE("/sales-packages/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersSalesPackage.Delete))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionSalesPackagesManage)(controllersSalesPackage.Delete))))
 
 	router.POST("/sales-packages-import",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersSalesPackage.Import))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionSalesPackagesManage)(controllersSalesPackage.Import))))
 
 	router.GET("/sales-packages-export",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersSalesPackage.Export))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionSalesPackagesManage)(controllersSalesPackage.Export))))
 
 	// Building restriction routes (protected)
 	router.POST("/building-restrictions",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionBuildingRestrictionsManage)(
 				buildingRestrictionMiddleware.ValidateCreate(controllersBuildingRestriction.Create)))))
 
 	router.GET("/building-restrictions",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersBuildingRestriction.FindAll)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionBuildingRestrictionsView)(controllersBuildingRestriction.FindAll))))
 
 	router.GET("/building-restrictions/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersBuildingRestriction.FindById)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionBuildingRestrictionsView)(controllersBuildingRestriction.FindById))))
 
 	router.PUT("/building-restrictions/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionBuildingRestrictionsManage)(
 				buildingRestrictionMiddleware.ValidateUpdate(controllersBuildingRestriction.Update)))))
 
 	router.DELETE("/building-restrictions/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersBuildingRestriction.Delete))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionBuildingRestrictionsManage)(controllersBuildingRestriction.Delete))))
 
 	router.POST("/building-restrictions-import",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersBuildingRestriction.Import))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionBuildingRestrictionsManage)(controllersBuildingRestriction.Import))))
 
 	router.GET("/building-restrictions-export",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersBuildingRestriction.Export))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionBuildingRestrictionsManage)(controllersBuildingRestriction.Export))))
 
 	// Saved polygon routes (protected)
 	router.POST("/saved-polygons",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(
-				savedPolygonMiddleware.ValidateCreate(controllersSavedPolygon.Create))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionSavedPolygonsManage)(
+				savedPolygonMiddleware.ValidateCreate(controllersSavedPolygon.Create)))))
 
 	router.GET("/saved-polygons",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersSavedPolygon.FindAll)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionSavedPolygonsView)(controllersSavedPolygon.FindAll))))
 
 	router.GET("/saved-polygons/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersSavedPolygon.FindById)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionSavedPolygonsView)(controllersSavedPolygon.FindById))))
 
 	router.PUT("/saved-polygons/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(
-				savedPolygonMiddleware.ValidateUpdate(controllersSavedPolygon.Update))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionSavedPolygonsManage)(
+				savedPolygonMiddleware.ValidateUpdate(controllersSavedPolygon.Update)))))
 
 	router.DELETE("/saved-polygons/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersSavedPolygon.Delete)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionSavedPolygonsManage)(controllersSavedPolygon.Delete))))
 
 	// Category routes (protected)
 	router.POST("/categories",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataManage)(
 				categoryMiddleware.ValidateCreate(controllersCategory.Create)))))
 
 	router.GET("/categories",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersCategory.FindAll)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataView)(controllersCategory.FindAll))))
 
 	router.GET("/categories-dropdown",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersCategory.FindAllDropdown)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataView)(controllersCategory.FindAllDropdown))))
 
 	router.GET("/categories/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersCategory.FindById)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataView)(controllersCategory.FindById))))
 
 	router.PUT("/categories/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataManage)(
 				categoryMiddleware.ValidateUpdate(controllersCategory.Update)))))
 
 	router.DELETE("/categories/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersCategory.Delete))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataManage)(controllersCategory.Delete))))
 
 	router.POST("/categories-import",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersCategory.Import))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataManage)(controllersCategory.Import))))
 
 	router.GET("/categories-export",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersCategory.Export))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataManage)(controllersCategory.Export))))
 
 	// Sub-Category routes (protected)
 	router.POST("/sub-categories",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataManage)(
 				subCategoryMiddleware.ValidateCreate(controllersSubCategory.Create)))))
 
 	router.GET("/sub-categories",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersSubCategory.FindAll)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataView)(controllersSubCategory.FindAll))))
 
 	router.GET("/sub-categories-dropdown",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersSubCategory.FindAllDropdown)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataView)(controllersSubCategory.FindAllDropdown))))
 
 	router.GET("/sub-categories/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersSubCategory.FindById)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataView)(controllersSubCategory.FindById))))
 
 	router.PUT("/sub-categories/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataManage)(
 				subCategoryMiddleware.ValidateUpdate(controllersSubCategory.Update)))))
 
 	router.DELETE("/sub-categories/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersSubCategory.Delete))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataManage)(controllersSubCategory.Delete))))
 
 	router.POST("/sub-categories-import",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersSubCategory.Import))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataManage)(controllersSubCategory.Import))))
 
 	router.GET("/sub-categories-export",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersSubCategory.Export))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataManage)(controllersSubCategory.Export))))
 
 	// Mother Brand routes (protected)
 	router.POST("/mother-brands",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataManage)(
 				motherBrandMiddleware.ValidateCreate(controllersMotherBrand.Create)))))
 
 	router.GET("/mother-brands",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersMotherBrand.FindAll)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataView)(controllersMotherBrand.FindAll))))
 
 	router.GET("/mother-brands-dropdown",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersMotherBrand.FindAllDropdown)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataView)(controllersMotherBrand.FindAllDropdown))))
 
 	router.GET("/mother-brands/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersMotherBrand.FindById)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataView)(controllersMotherBrand.FindById))))
 
 	router.PUT("/mother-brands/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataManage)(
 				motherBrandMiddleware.ValidateUpdate(controllersMotherBrand.Update)))))
 
 	router.DELETE("/mother-brands/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersMotherBrand.Delete))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataManage)(controllersMotherBrand.Delete))))
 
 	router.POST("/mother-brands-import",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersMotherBrand.Import))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataManage)(controllersMotherBrand.Import))))
 
 	router.GET("/mother-brands-export",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersMotherBrand.Export))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataManage)(controllersMotherBrand.Export))))
 
 	// Branch routes (protected)
 	router.POST("/branches",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataManage)(
 				branchMiddleware.ValidateCreate(controllersBranch.Create)))))
 
 	router.GET("/branches",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersBranch.FindAll)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataView)(controllersBranch.FindAll))))
 
 	router.GET("/branches-dropdown",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersBranch.FindAllDropdown)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataView)(controllersBranch.FindAllDropdown))))
 
 	router.GET("/branches/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersBranch.FindById)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataView)(controllersBranch.FindById))))
 
 	router.PUT("/branches/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataManage)(
 				branchMiddleware.ValidateUpdate(controllersBranch.Update)))))
 
 	router.DELETE("/branches/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersBranch.Delete))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataManage)(controllersBranch.Delete))))
 
 	router.POST("/branches-import",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersBranch.Import))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataManage)(controllersBranch.Import))))
 
 	router.GET("/branches-export",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequireRole(models.RoleAdmin)(controllersBranch.Export))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMasterDataManage)(controllersBranch.Export))))
 
 	// User management routes (admin only — these change who can do what)
 	router.GET("/users",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(
-				authMiddleware.RequireRole(models.RoleAdmin)(controllersUser.FindAll))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionUsersView)(controllersUser.FindAll))))
 
 	router.GET("/users/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(
-				authMiddleware.RequireRole(models.RoleAdmin)(controllersUser.FindById))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionUsersView)(controllersUser.FindById))))
 
 	router.POST("/users",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(
-				authMiddleware.RequireRole(models.RoleAdmin)(
-					userMiddleware.ValidateCreate(controllersUser.Create)))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionUsersManage)(
+				userMiddleware.ValidateCreate(controllersUser.Create)))))
 
 	router.PUT("/users/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(
-				authMiddleware.RequireRole(models.RoleAdmin)(
-					userMiddleware.ValidateUpdate(controllersUser.Update)))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionUsersManage)(
+				userMiddleware.ValidateUpdate(controllersUser.Update)))))
 
 	router.DELETE("/users/:id",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(
-				authMiddleware.RequireRole(models.RoleAdmin)(controllersUser.Delete))))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionUsersManage)(controllersUser.Delete))))
 
 	router.GET("/dashboard/building-lcd-presence",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersBuilding.GetLCDPresenceSummary)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionDashboardView)(controllersBuilding.GetLCDPresenceSummary))))
 
 	// Dashboard report routes (protected)
 	router.GET("/dashboard/acquisition",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersDashboard.GetAcquisitionReport)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionDashboardView)(controllersDashboard.GetAcquisitionReport))))
 
 	router.GET("/dashboard/building-proposal",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersDashboard.GetBuildingProposalReport)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionDashboardView)(controllersDashboard.GetBuildingProposalReport))))
 
 	router.GET("/dashboard/loi",
 		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(controllersDashboard.GetLOIReport)))
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionDashboardView)(controllersDashboard.GetLOIReport))))
 
 	return router
 }

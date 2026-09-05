@@ -20,7 +20,7 @@ import (
 const ContextKeyUserId = helpers.ContextKey("userId")
 
 // ContextKeyUserRole holds the authenticated user's normalized role.
-// Always set by RequireAuth; RequireRole reads it.
+// Always set by RequireAuth; RequirePermission reads it.
 const ContextKeyUserRole = helpers.ContextKey("userRole")
 
 type AuthMiddleware struct {
@@ -98,21 +98,32 @@ func (m *AuthMiddleware) RequireAuth(next httprouter.Handle) httprouter.Handle {
 	}
 }
 
-// RequireRole rejects a request whose caller does not hold one of the allowed roles.
+// RequirePermission rejects a request whose caller does not hold the permission.
 // It must be composed inside RequireAuth, which is what puts the role on the context:
 //
 //	authMiddleware.RequireAuth(
-//	    authMiddleware.RequireRole(models.RoleAdmin)(controller.Delete))
-func (m *AuthMiddleware) RequireRole(allowed ...string) func(httprouter.Handle) httprouter.Handle {
+//	    authMiddleware.RequirePermission(models.PermissionPOIsManage)(controller.Delete))
+//
+// Routes name an action; models.Permissions decides which roles may perform it.
+// Changing that policy is an edit to the map, not to any route.
+//
+// An unknown permission key panics here rather than at request time. Routes are
+// wired in NewRouter during startup, so a typo crashes the process immediately
+// instead of quietly returning 403 for every call to that endpoint.
+func (m *AuthMiddleware) RequirePermission(permission string) func(httprouter.Handle) httprouter.Handle {
+	if !models.IsValidPermission(permission) {
+		panic("middlewares: unknown permission " + permission)
+	}
+
 	return func(next httprouter.Handle) httprouter.Handle {
 		return func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 			role, ok := r.Context().Value(ContextKeyUserRole).(string)
 			if !ok {
-				// RequireRole was wired without RequireAuth in front of it.
+				// RequirePermission was wired without RequireAuth in front of it.
 				panic(exceptions.NewUnAuthorized("authorization required"))
 			}
 
-			if !models.HasRole(role, allowed...) {
+			if !models.RoleCan(role, permission) {
 				panic(exceptions.NewForbidden("insufficient permission for this action"))
 			}
 

@@ -18,19 +18,16 @@ const (
 )
 
 // Roles is every role the application recognises, in ascending order of authority.
+//
+// This file describes the org chart and nothing more. What a given feature does
+// with these roles belongs to that feature — quotation approval bands, for one,
+// live in services/quotation.
 var Roles = []string{
 	RoleSales,
 	RoleHeadOfSales,
 	RoleHeadOfBusinessControl,
 	RoleCEO,
 	RoleAdmin,
-}
-
-// ApproverRoles are the roles that can act on a quotation approval queue.
-var ApproverRoles = []string{
-	RoleHeadOfSales,
-	RoleHeadOfBusinessControl,
-	RoleCEO,
 }
 
 // legacyRoleAliases maps the pre-Phase-0 vocabulary onto the current one.
@@ -67,11 +64,6 @@ func IsValidRole(role string) bool {
 	}
 
 	return false
-}
-
-// IsApproverRole reports whether role can approve or return quotations.
-func IsApproverRole(role string) bool {
-	return HasRole(role, ApproverRoles...)
 }
 
 // HasRole reports whether role is one of allowed. An empty role never matches,

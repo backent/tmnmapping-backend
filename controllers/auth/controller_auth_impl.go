@@ -112,6 +112,7 @@ func (implementation *ControllerAuthImpl) CurrentUser(w http.ResponseWriter, r *
 		Role:                models.NormalizeRole(user.Role),
 		CanCreateQuotations: user.CanCreateQuotations,
 		SalesGroup:          user.SalesGroup,
+		Permissions:         models.PermissionsForRole(models.NormalizeRole(user.Role)),
 		LastLogin:           lastLogin,
 	}
 

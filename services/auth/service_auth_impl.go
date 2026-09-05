@@ -74,6 +74,7 @@ func (implementation *ServiceAuthImpl) Login(ctx context.Context, username, pass
 			Role:                models.NormalizeRole(user.Role),
 			CanCreateQuotations: user.CanCreateQuotations,
 			SalesGroup:          user.SalesGroup,
+			Permissions:         models.PermissionsForRole(models.NormalizeRole(user.Role)),
 		},
 	}, token, int(duration.Seconds())
 }

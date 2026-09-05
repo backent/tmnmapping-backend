@@ -11,5 +11,10 @@ type UserResponse struct {
 	Role                string `json:"role"`
 	CanCreateQuotations bool   `json:"can_create_quotations"`
 	SalesGroup          string `json:"sales_group"`
-	LastLogin           string `json:"last_login"`
+
+	// Permissions is everything this caller's role holds, resolved from
+	// models.Permissions. The frontend uses it to hide what the API would reject,
+	// so there is only ever one copy of the policy.
+	Permissions []string `json:"permissions"`
+	LastLogin   string   `json:"last_login"`
 }

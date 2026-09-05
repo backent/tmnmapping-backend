@@ -27,9 +27,9 @@ type BuildingRef struct {
 
 // SalesPackageBuilding is a junction row (sales_package_buildings table)
 type SalesPackageBuilding struct {
-	Id              int `json:"id"`
-	SalesPackageId  int `json:"sales_package_id"`
-	BuildingId      int `json:"building_id"`
+	Id             int `json:"id"`
+	SalesPackageId int `json:"sales_package_id"`
+	BuildingId     int `json:"building_id"`
 }
 
 type NullAbleSalesPackage struct {

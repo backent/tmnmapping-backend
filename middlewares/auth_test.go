@@ -174,16 +174,16 @@ func TestRequireAuth_AcceptsAuthorizationHeader(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// RequireRole
+// RequirePermission
 // ---------------------------------------------------------------------------
 
-func TestRequireRole_AllowsMatchingRole(t *testing.T) {
+func TestRequirePermission_AllowsRoleThatHoldsIt(t *testing.T) {
 	f := newAuthFixture(t)
 	f.expectUser(1, models.RoleAdmin)
 
 	var userId, role string
 	handle := f.middleware.RequireAuth(
-		f.middleware.RequireRole(models.RoleAdmin)(okHandler(&userId, &role)))
+		f.middleware.RequirePermission(models.PermissionPOIsManage)(okHandler(&userId, &role)))
 
 	res := f.serve(t, handle, true)
 
@@ -191,13 +191,13 @@ func TestRequireRole_AllowsMatchingRole(t *testing.T) {
 	assert.Equal(t, models.RoleAdmin, role)
 }
 
-func TestRequireRole_DeniesOtherRoleWith403(t *testing.T) {
+func TestRequirePermission_DeniesRoleThatDoesNotWith403(t *testing.T) {
 	f := newAuthFixture(t)
 	f.expectUser(1, models.RoleSales)
 
 	var userId, role string
 	handle := f.middleware.RequireAuth(
-		f.middleware.RequireRole(models.RoleAdmin)(okHandler(&userId, &role)))
+		f.middleware.RequirePermission(models.PermissionPOIsManage)(okHandler(&userId, &role)))
 
 	res := f.serve(t, handle, true)
 
@@ -207,15 +207,16 @@ func TestRequireRole_DeniesOtherRoleWith403(t *testing.T) {
 	assert.Empty(t, userId, "handler must not run")
 }
 
-func TestRequireRole_AllowsAnyOfSeveralRoles(t *testing.T) {
-	for _, role := range models.ApproverRoles {
+// A read permission is held by every role, so the same route works for all of them.
+func TestRequirePermission_SharedReadAllowsEveryRole(t *testing.T) {
+	for _, role := range models.Roles {
 		t.Run(role, func(t *testing.T) {
 			f := newAuthFixture(t)
 			f.expectUser(1, role)
 
 			var seenUserId, seenRole string
 			handle := f.middleware.RequireAuth(
-				f.middleware.RequireRole(models.ApproverRoles...)(okHandler(&seenUserId, &seenRole)))
+				f.middleware.RequirePermission(models.PermissionBuildingsView)(okHandler(&seenUserId, &seenRole)))
 
 			assert.Equal(t, http.StatusOK, f.serve(t, handle, true).Code)
 		})
@@ -223,25 +224,35 @@ func TestRequireRole_AllowsAnyOfSeveralRoles(t *testing.T) {
 }
 
 // A role the app does not recognise must deny, not fall back to a default.
-func TestRequireRole_DeniesUnknownStoredRole(t *testing.T) {
+func TestRequirePermission_DeniesUnknownStoredRole(t *testing.T) {
 	f := newAuthFixture(t)
 	f.expectUser(1, "wizard")
 
 	var userId, role string
 	handle := f.middleware.RequireAuth(
-		f.middleware.RequireRole(models.RoleAdmin)(okHandler(&userId, &role)))
+		f.middleware.RequirePermission(models.PermissionBuildingsView)(okHandler(&userId, &role)))
 
 	assert.Equal(t, http.StatusForbidden, f.serve(t, handle, true).Code)
 }
 
-// Wiring RequireRole without RequireAuth in front of it is a programming error.
-// It must fail closed rather than let the request through.
-func TestRequireRole_WithoutRequireAuthDenies(t *testing.T) {
+// Wiring RequirePermission without RequireAuth in front of it is a programming
+// error. It must fail closed rather than let the request through.
+func TestRequirePermission_WithoutRequireAuthDenies(t *testing.T) {
 	f := newAuthFixture(t)
 
 	var userId, role string
-	handle := f.middleware.RequireRole(models.RoleAdmin)(okHandler(&userId, &role))
+	handle := f.middleware.RequirePermission(models.PermissionBuildingsView)(okHandler(&userId, &role))
 
 	assert.Equal(t, http.StatusUnauthorized, f.serve(t, handle, true).Code)
 	assert.Empty(t, userId)
+}
+
+// Routes are wired during startup, so a typo'd permission key must crash the
+// process immediately rather than quietly 403 every request to that endpoint.
+func TestRequirePermission_PanicsAtWiringTimeOnUnknownKey(t *testing.T) {
+	f := newAuthFixture(t)
+
+	assert.PanicsWithValue(t, "middlewares: unknown permission buildings.destroy", func() {
+		f.middleware.RequirePermission("buildings.destroy")
+	})
 }

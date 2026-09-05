@@ -9,7 +9,7 @@ type SavedPolygon struct {
 	Name      string              `json:"name"`
 	Points    []SavedPolygonPoint `json:"points"`
 	CreatedAt string              `json:"created_at"`
-	UpdatedAt string             `json:"updated_at"`
+	UpdatedAt string              `json:"updated_at"`
 }
 
 type SavedPolygonPoint struct {

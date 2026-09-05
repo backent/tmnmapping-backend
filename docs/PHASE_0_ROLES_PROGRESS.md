@@ -4,8 +4,8 @@ Tracking doc for the first phase of the sales quotation feature.
 Source analysis: `docs/QUOTATION_FEATURE_ANALYSIS.md` in the `tmn-mapping` project root (§5, §8).
 
 **Status:** ✅ Complete — backend and frontend, tests green, not yet deployed.
-**Branches:** `feat/phase-0-roles-authorization`, then `feat/user-management` (both `backend/` and `frontend/`)
-**Started / finished:** 2026-09-04
+**Branches:** `feat/phase-0-roles-authorization` → `feat/user-management` → `feat/permission-layer` (both `backend/` and `frontend/`)
+**Started / finished:** 2026-09-04 – 2026-09-05
 
 ---
 
@@ -177,6 +177,97 @@ feature, so an allow-list editor for it would be speculative now.
 
 ---
 
+## 5c. Permission layer (refactor, same phase)
+
+The first cut authorized on roles directly: all 43 gated routes read
+`RequireRole(models.RoleAdmin)`. That works, but it puts the policy *inside* the
+routes — a rule change means editing routes, and "what can a Head of Sales do?" can
+only be answered by reading all of them. It also left the frontend keeping a second,
+unchecked copy of the same policy in `config/roles.ts`.
+
+Reworked on `feat/permission-layer` so that **routes name an action and one map
+decides who may perform it.**
+
+### The shape
+
+```go
+// models/permission.go
+var Permissions = map[string][]string{
+    PermissionPOIsView:   Roles,        // every authenticated role
+    PermissionPOIsManage: {RoleAdmin},
+}
+```
+
+```go
+// libs/router.go
+router.DELETE("/pois/:id",
+    loggingMiddleware.Log(
+        authMiddleware.RequireAuth(
+            authMiddleware.RequirePermission(models.PermissionPOIsManage)(controllersPOI.Delete))))
+```
+
+Adding a feature means adding keys to that map. The role vocabulary and every
+existing route stay untouched.
+
+**76 routes** now carry a permission — up from 43, because reads are explicit too
+rather than being implied by "`RequireAuth` and nothing else". Behaviour is
+unchanged: read permissions map to `models.Roles`, which is every role.
+
+Four routes deliberately carry none: `/health`, `/login`, `/logout` are public, and
+`/current-user` is open to any authenticated caller.
+
+`RequireRole` is gone. Two ways to express the same rule would have drifted.
+
+### Fail fast on a typo
+
+`RequirePermission` panics if the key is not in the map. Routes are wired in
+`NewRouter` during startup, so a typo crashes the process on boot rather than
+silently returning 403 for every request to that endpoint.
+
+### One copy of the policy, not two
+
+`/current-user` and the login response now return the caller's permissions:
+
+```json
+{ "role": "sales", "permissions": ["buildings.view", "mapping.view", ...] }
+```
+
+The frontend's `PERMISSIONS` map and `roleCan()` are **deleted**. `authStore.can()`
+is now a membership check against the server's list. The UI therefore cannot
+disagree with what the API enforces — the drift risk flagged in the first cut is
+closed by construction rather than by discipline.
+
+Two permission keys end in `.screen` (`master-data.screen`,
+`building-restrictions.screen`). No route enforces them; they gate navigation only.
+They live in the backend map anyway so that the whole policy is readable in one
+file. This is what §5's "honest note on the frontend gate" was describing, now made
+explicit in the key name instead of a comment.
+
+### `ApproverRoles` moved out
+
+`models/role.go` is shared by every module, and it contained a list commented
+"roles that can act on a quotation approval queue" — a quotation concept in a
+generic file. Moved to `services/quotation/roles.go`, which is where Phase 3's
+pricing and routing will live. It was unused, so the move cost nothing; it would
+have cost more every phase it stayed.
+
+`models/role.go` now describes the org chart and nothing else.
+
+### Deliberately not done
+
+The permission map is **code, not data**. An admin cannot re-map permissions to
+roles from a UI; that needs a deploy. A `permissions` / `role_permissions` table
+plus a checkbox screen would allow it, at the cost of a migration, seeding on
+deploy, caching, and the risk of an admin revoking `users.manage` from themselves
+with no way back.
+
+Worth knowing: **that decision is cheap to revisit.** Routes name a permission key
+either way, so switching to a table changes only the lookup inside
+`RequirePermission` and `PermissionsForRole` — not any route. Revisit if the map
+starts changing often.
+
+---
+
 ## 6. Tests
 
 All green as of the last run.
@@ -186,23 +277,29 @@ All green as of the last run.
 | File | Covers |
 |---|---|
 | `models/role_test.go` (**new**, 5 tests) | Canonical pass-through, all four legacy aliases, unknown/empty/wrong-case → no role, `admin` is not an approver, `HasRole` never matches an empty role. |
-| `middlewares/auth_test.go` (**new**, 11 tests) | Runs through a real `httprouter` with the real panic handler, so it asserts on the HTTP status a client receives: no token → 401, invalid token → 401, deleted account → 401, context carries id + role, legacy role normalised, `Authorization` header fallback, matching role → 200, wrong role → **403** with the handler not running, any-of-several-roles, unknown stored role → 403, `RequireRole` wired without `RequireAuth` → 401 (fails closed). |
+| `middlewares/auth_test.go` (**new**, 12 tests) | Runs through a real `httprouter` with the real panic handler, so it asserts on the HTTP status a client receives: no token → 401, invalid token → 401, deleted account → 401, context carries id + role, legacy role normalised, `Authorization` header fallback, permission held → 200, permission not held → **403** with the handler not running, a shared read permission works for all five roles, unknown stored role → 403, `RequirePermission` without `RequireAuth` → 401 (fails closed), and an unknown permission key panics at wiring time. |
+| `models/permission_test.go` (**new**, 8 tests) | Every entry grants at least one valid role; keys follow the `.view`/`.manage`/`.screen` convention; every `.manage` is admin-only except the documented saved-polygons exception; `RoleCan` across roles, unknown roles and unknown permissions; `PermissionsForRole` is sorted, complete for admin, and empty for an unrecognised role. |
+| `services/quotation/roles_test.go` (**new**, 2 tests) | `admin` is not an approver; the three bands stay in ascending order, which Phase 3's routing will walk. |
 | `services/user/service_user_impl_test.go` (**new**, 14 tests) | Password is bcrypt-hashed on create and never returned; duplicate username rejected on create and on update; blank password leaves the hash alone; a supplied password is hashed; self role change refused; editing your own profile without touching the role allowed; last admin cannot be demoted or deleted; demotion allowed when other admins remain; self-deletion refused; legacy roles normalised in list responses; not-found paths. |
 
-**Frontend** — `npm test` (`vue-tsc --noEmit && vitest run`) → **303 passed, 16 files**
+**Frontend** — `npm test` (`vue-tsc --noEmit && vitest run`) → **301 passed, 16 files**
 
 | File | Covers |
 |---|---|
-| `src/__tests__/config/roles.test.ts` (**new**, 34 tests) | Normalisation, validity, `APPROVER_ROLES` excludes admin, and a sweep asserting *every* `.manage` permission is admin-only and every `.view` shared permission is open to all roles. |
-| `src/__tests__/plugins/routerGuards.test.ts` (**new**, 31 tests) | Login redirects, session restore, restore failure → `/login`, permitted/denied routes, unknown role denied, `/not-authorized` reachable by any role but still requires a session. Plus a route-table sweep: every `new`/`edit` form route is gated, and `/dashboard`, `/mapping`, `/buildings`, `/pois`, `/sales-packages` stay open. |
+| `src/__tests__/config/roles.test.ts` (**new**, 30 tests) | Normalisation, validity, `APPROVER_ROLES` excludes admin. The permission-map sweeps moved to `models/permission_test.go` when the frontend stopped keeping its own copy. |
+| `src/__tests__/plugins/routerGuards.test.ts` (**new**, 34 tests) | Login redirects, session restore, restore failure → `/login`, permitted/denied routes, unknown role denied, `/not-authorized` reachable by any role but still requires a session. Plus a route-table sweep: every `new`/`edit` form route is gated, and `/dashboard`, `/mapping`, `/buildings`, `/pois`, `/sales-packages` stay open. |
 | `src/__tests__/stores/auth.test.ts` (**rewritten getters block**) | Fixtures moved to the new vocabulary; the dead-getter assertions are replaced with `role`, `isAdmin`, `isSales`, `isApprover`, `can`, `hasAnyRole`, `canCreateQuotations`. |
 | `src/__tests__/stores/user.test.ts` (**new**, 11 tests) | Pagination derived from `extras` and the fallback path, loading flag cleared on failure, create appends, update replaces in-list and refreshes `currentItem` only when it matches, delete removes and clears, failed delete leaves the list intact. |
 
 ### Not covered
 
-- No test asserts the `libs/router.go` policy table itself — the middleware tests cover
-  the mechanism, not which routes it is attached to. A wiring mistake on a single route
-  would not be caught. Worth an integration test when the quotation routes land.
+- No test asserts the `libs/router.go` wiring itself — that a given route carries the
+  *right* permission. The startup panic catches an invalid key, and the map is tested,
+  but attaching `pois.view` where `pois.manage` was meant would still slip through.
+  Worth an integration test when the quotation routes land.
+- Nothing mechanically checks that the permission keys named in `routes.ts` exist in
+  `models/permission.go`. `routerGuards.test.ts` keeps a hand-maintained mirror of the
+  backend list; it will catch a typo, but only if that list is kept current.
 - Migration 015 is not exercised by a test; there is no migration test harness in the repo.
 
 ---
@@ -238,7 +335,8 @@ All green as of the last run.
 | **Proxy-entry allow-list UI** | `user_proxy_sales` is modelled but has no editor. Phase 3, when proxy entry exists. |
 | **Capability enforcement** | `can_create_quotations`, `sales_group` and `user_proxy_sales` are stored and returned but nothing checks them yet. Phase 3. |
 | **Approval directory** | Which concrete user holds each approver role must come from configuration or user data, never hardcoded names. Not yet built — Phase 4. |
-| **Route policy test** | See §6. |
+| **Route wiring test** | See §6. |
+| **Permission map as data** | The map is code. Moving it to a table with an admin UI is a contained change — routes name a key either way. See §5c. |
 | **`docs/QUOTATION_FEATURE_ANALYSIS.md` is not version controlled.** | It lives in `tmn-mapping/docs/`, which is outside both git repos. It is the source of truth for phases 1–6 and currently exists only on one machine. |
 
 ---
@@ -249,6 +347,7 @@ All green as of the last run.
 |---|---|---|
 | **0. Roles & authorization** | `RequireRole`, role model + capabilities, frontend guards, retrofit existing routes | ✅ **Done** |
 | **0b. User management** | Admin CRUD for accounts, roles and capabilities | ✅ **Done** |
+| **0c. Permission layer** | `RequirePermission`, one policy map, frontend consumes it from the API | ✅ **Done** |
 | 1. Customer / Brand / Assignment | Migrations 016–017, CRUD + import/export, admin pages | Not started |
 | 2. Rate card | Migrations 018–019, upload → validate → publish, versioning | Not started |
 | 3. Quotation core | Migration 020, `services/quotation` pricing + routing, wizard | Not started |

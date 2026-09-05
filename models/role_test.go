@@ -49,18 +49,6 @@ func TestIsValidRole(t *testing.T) {
 	assert.False(t, models.IsValidRole("approver"))
 }
 
-// TestIsApproverRole documents that admin is deliberately not an approver:
-// approval authority follows the sales hierarchy, not system administration.
-func TestIsApproverRole(t *testing.T) {
-	assert.True(t, models.IsApproverRole(models.RoleHeadOfSales))
-	assert.True(t, models.IsApproverRole(models.RoleHeadOfBusinessControl))
-	assert.True(t, models.IsApproverRole(models.RoleCEO))
-
-	assert.False(t, models.IsApproverRole(models.RoleAdmin))
-	assert.False(t, models.IsApproverRole(models.RoleSales))
-	assert.False(t, models.IsApproverRole(""))
-}
-
 func TestHasRole(t *testing.T) {
 	assert.True(t, models.HasRole(models.RoleAdmin, models.RoleAdmin))
 	assert.True(t, models.HasRole(models.RoleCEO, models.RoleSales, models.RoleCEO))
