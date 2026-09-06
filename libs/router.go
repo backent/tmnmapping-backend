@@ -6,13 +6,16 @@ import (
 	"github.com/julienschmidt/httprouter"
 	controllersAuth "github.com/malikabdulaziz/tmn-backend/controllers/auth"
 	controllersBranch "github.com/malikabdulaziz/tmn-backend/controllers/branch"
+	controllersBrand "github.com/malikabdulaziz/tmn-backend/controllers/brand"
 	controllersBuilding "github.com/malikabdulaziz/tmn-backend/controllers/building"
 	controllersBuildingRestriction "github.com/malikabdulaziz/tmn-backend/controllers/buildingrestriction"
 	controllersCategory "github.com/malikabdulaziz/tmn-backend/controllers/category"
+	controllersCustomer "github.com/malikabdulaziz/tmn-backend/controllers/customer"
 	controllersDashboard "github.com/malikabdulaziz/tmn-backend/controllers/dashboard"
 	controllersImage "github.com/malikabdulaziz/tmn-backend/controllers/image"
 	controllersMotherBrand "github.com/malikabdulaziz/tmn-backend/controllers/motherbrand"
 	controllersPOI "github.com/malikabdulaziz/tmn-backend/controllers/poi"
+	controllersSalesAssignment "github.com/malikabdulaziz/tmn-backend/controllers/salesassignment"
 	controllersSalesPackage "github.com/malikabdulaziz/tmn-backend/controllers/salespackage"
 	controllersSavedPolygon "github.com/malikabdulaziz/tmn-backend/controllers/savedpolygon"
 	controllersSubCategory "github.com/malikabdulaziz/tmn-backend/controllers/subcategory"
@@ -35,6 +38,9 @@ func NewRouter(
 	motherBrandMiddleware *middlewares.MotherBrandMiddleware,
 	branchMiddleware *middlewares.BranchMiddleware,
 	userMiddleware *middlewares.UserMiddleware,
+	customerMiddleware *middlewares.CustomerMiddleware,
+	brandMiddleware *middlewares.BrandMiddleware,
+	salesAssignmentMiddleware *middlewares.SalesAssignmentMiddleware,
 	controllersAuth controllersAuth.ControllerAuthInterface,
 	controllersBuilding controllersBuilding.ControllerBuildingInterface,
 	controllersImage controllersImage.ControllerImageInterface,
@@ -48,6 +54,9 @@ func NewRouter(
 	controllersMotherBrand controllersMotherBrand.ControllerMotherBrandInterface,
 	controllersBranch controllersBranch.ControllerBranchInterface,
 	controllersUser controllersUser.ControllerUserInterface,
+	controllersCustomer controllersCustomer.ControllerCustomerInterface,
+	controllersBrand controllersBrand.ControllerBrandInterface,
+	controllersSalesAssignment controllersSalesAssignment.ControllerSalesAssignmentInterface,
 ) *httprouter.Router {
 	router := httprouter.New()
 
@@ -390,6 +399,138 @@ func NewRouter(
 	router.DELETE("/users/:id",
 		loggingMiddleware.Log(
 			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionUsersManage)(controllersUser.Delete))))
+
+	// Customer routes
+	router.GET("/customers",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionCustomersView)(controllersCustomer.FindAll))))
+
+	router.GET("/customers/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionCustomersView)(controllersCustomer.FindById))))
+
+	router.POST("/customers",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionCustomersManage)(
+					customerMiddleware.ValidateCreate(controllersCustomer.Create)))))
+
+	router.PUT("/customers/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionCustomersManage)(
+					customerMiddleware.ValidateUpdate(controllersCustomer.Update)))))
+
+	router.DELETE("/customers/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionCustomersManage)(controllersCustomer.Delete))))
+
+	router.POST("/customers-import",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionCustomersManage)(controllersCustomer.Import))))
+
+	router.GET("/customers-export",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionCustomersView)(controllersCustomer.Export))))
+
+	// The blank template is a read: anyone who may see the data may see its shape.
+	router.GET("/customers-template",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionCustomersView)(controllersCustomer.Template))))
+
+	// Brand routes
+	router.GET("/brands",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBrandsView)(controllersBrand.FindAll))))
+
+	router.GET("/brands/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBrandsView)(controllersBrand.FindById))))
+
+	router.POST("/brands",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBrandsManage)(
+					brandMiddleware.ValidateCreate(controllersBrand.Create)))))
+
+	router.PUT("/brands/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBrandsManage)(
+					brandMiddleware.ValidateUpdate(controllersBrand.Update)))))
+
+	router.DELETE("/brands/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBrandsManage)(controllersBrand.Delete))))
+
+	router.POST("/brands-import",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBrandsManage)(controllersBrand.Import))))
+
+	router.GET("/brands-export",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBrandsView)(controllersBrand.Export))))
+
+	// The blank template is a read: anyone who may see the data may see its shape.
+	router.GET("/brands-template",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBrandsView)(controllersBrand.Template))))
+
+	// Sales assignment routes
+	router.GET("/sales-assignments",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionSalesAssignmentsView)(controllersSalesAssignment.FindAll))))
+
+	router.GET("/sales-assignments/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionSalesAssignmentsView)(controllersSalesAssignment.FindById))))
+
+	router.POST("/sales-assignments",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionSalesAssignmentsManage)(
+					salesAssignmentMiddleware.ValidateCreate(controllersSalesAssignment.Create)))))
+
+	router.PUT("/sales-assignments/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionSalesAssignmentsManage)(
+					salesAssignmentMiddleware.ValidateUpdate(controllersSalesAssignment.Update)))))
+
+	router.DELETE("/sales-assignments/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionSalesAssignmentsManage)(controllersSalesAssignment.Delete))))
+
+	router.POST("/sales-assignments-import",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionSalesAssignmentsManage)(controllersSalesAssignment.Import))))
+
+	router.GET("/sales-assignments-export",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionSalesAssignmentsView)(controllersSalesAssignment.Export))))
+
+	// The blank template is a read: anyone who may see the data may see its shape.
+	router.GET("/sales-assignments-template",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionSalesAssignmentsView)(controllersSalesAssignment.Template))))
 
 	router.GET("/dashboard/building-lcd-presence",
 		loggingMiddleware.Log(

@@ -54,7 +54,13 @@ func (m *MockRepositoryBuilding) UpdateFromSync(ctx context.Context, tx *sql.Tx,
 	return args.Get(0).(models.Building), args.Error(1)
 }
 
-func (m *MockRepositoryBuilding) FindAllForMapping(ctx context.Context, tx *sql.Tx, buildingType string, buildingGrade string, year string, subdistrict string, progress string, sellable string, connectivity string, lcdPresence string, salesPackageIds string, buildingRestrictionIds string, lat *float64, lng *float64, radius *int, poiPoints []struct{ Lat float64; Lng float64 }, polygonPoints []struct{ Lat float64; Lng float64 }, minLat *float64, maxLat *float64, minLng *float64, maxLng *float64) ([]models.Building, error) {
+func (m *MockRepositoryBuilding) FindAllForMapping(ctx context.Context, tx *sql.Tx, buildingType string, buildingGrade string, year string, subdistrict string, progress string, sellable string, connectivity string, lcdPresence string, salesPackageIds string, buildingRestrictionIds string, lat *float64, lng *float64, radius *int, poiPoints []struct {
+	Lat float64
+	Lng float64
+}, polygonPoints []struct {
+	Lat float64
+	Lng float64
+}, minLat *float64, maxLat *float64, minLng *float64, maxLng *float64) ([]models.Building, error) {
 	args := m.Called(ctx, tx, buildingType, buildingGrade, year, subdistrict, progress, sellable, connectivity, lcdPresence, salesPackageIds, buildingRestrictionIds, lat, lng, radius, poiPoints, polygonPoints, minLat, maxLat, minLng, maxLng)
 	return args.Get(0).([]models.Building), args.Error(1)
 }

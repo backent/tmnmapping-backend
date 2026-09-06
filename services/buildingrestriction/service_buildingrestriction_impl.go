@@ -19,9 +19,9 @@ import (
 )
 
 type ServiceBuildingRestrictionImpl struct {
-	DB                                    *sql.DB
+	DB                                     *sql.DB
 	RepositoryBuildingRestrictionInterface repositoriesBuildingRestriction.RepositoryBuildingRestrictionInterface
-	RepositoryBuildingInterface           repositoriesBuilding.RepositoryBuildingInterface
+	RepositoryBuildingInterface            repositoriesBuilding.RepositoryBuildingInterface
 }
 
 func NewServiceBuildingRestrictionImpl(
@@ -30,9 +30,9 @@ func NewServiceBuildingRestrictionImpl(
 	repoBuilding repositoriesBuilding.RepositoryBuildingInterface,
 ) ServiceBuildingRestrictionInterface {
 	return &ServiceBuildingRestrictionImpl{
-		DB:                                    db,
+		DB:                                     db,
 		RepositoryBuildingRestrictionInterface: repoBuildingRestriction,
-		RepositoryBuildingInterface:           repoBuilding,
+		RepositoryBuildingInterface:            repoBuilding,
 	}
 }
 

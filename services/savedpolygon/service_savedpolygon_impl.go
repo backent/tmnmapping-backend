@@ -13,7 +13,7 @@ import (
 )
 
 type ServiceSavedPolygonImpl struct {
-	DB                            *sql.DB
+	DB                              *sql.DB
 	RepositorySavedPolygonInterface repositoriesSavedPolygon.RepositorySavedPolygonInterface
 }
 
@@ -22,7 +22,7 @@ func NewServiceSavedPolygonImpl(
 	repositorySavedPolygon repositoriesSavedPolygon.RepositorySavedPolygonInterface,
 ) ServiceSavedPolygonInterface {
 	return &ServiceSavedPolygonImpl{
-		DB:                            db,
+		DB:                              db,
 		RepositorySavedPolygonInterface: repositorySavedPolygon,
 	}
 }

@@ -10,12 +10,12 @@ type SavedPolygonPointRequest struct {
 }
 
 type CreateSavedPolygonRequest struct {
-	Name   string                    `json:"name" validate:"required"`
+	Name   string                     `json:"name" validate:"required"`
 	Points []SavedPolygonPointRequest `json:"points" validate:"required,min=3,dive"`
 }
 
 type UpdateSavedPolygonRequest struct {
-	Name   string                    `json:"name" validate:"required"`
+	Name   string                     `json:"name" validate:"required"`
 	Points []SavedPolygonPointRequest `json:"points" validate:"required,min=3,dive"`
 }
 

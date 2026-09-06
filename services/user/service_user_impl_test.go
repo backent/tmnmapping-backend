@@ -17,27 +17,31 @@ import (
 )
 
 func commitExpected(t *testing.T) (serviceUser.ServiceUserInterface, *mocks.MockRepositoryUser, func()) {
-	t.Helper()
-
-	db, sqlMock := testutil.NewMockDB(t)
-	repoUser := &mocks.MockRepositoryUser{}
-	sqlMock.ExpectBegin()
-	sqlMock.ExpectCommit()
-
-	return serviceUser.NewServiceUserImpl(db, repoUser), repoUser, func() {
-		assert.NoError(t, sqlMock.ExpectationsWereMet())
-	}
+	svc, repoUser, _, assertMock := newService(t, true)
+	return svc, repoUser, assertMock
 }
 
 func rollbackExpected(t *testing.T) (serviceUser.ServiceUserInterface, *mocks.MockRepositoryUser, func()) {
+	svc, repoUser, _, assertMock := newService(t, false)
+	return svc, repoUser, assertMock
+}
+
+// newService wires the service with both repositories it now depends on.
+func newService(t *testing.T, commits bool) (serviceUser.ServiceUserInterface, *mocks.MockRepositoryUser, *mocks.MockRepositorySalesAssignment, func()) {
 	t.Helper()
 
 	db, sqlMock := testutil.NewMockDB(t)
 	repoUser := &mocks.MockRepositoryUser{}
-	sqlMock.ExpectBegin()
-	sqlMock.ExpectRollback()
+	repoAssignment := &mocks.MockRepositorySalesAssignment{}
 
-	return serviceUser.NewServiceUserImpl(db, repoUser), repoUser, func() {
+	sqlMock.ExpectBegin()
+	if commits {
+		sqlMock.ExpectCommit()
+	} else {
+		sqlMock.ExpectRollback()
+	}
+
+	return serviceUser.NewServiceUserImpl(db, repoUser, repoAssignment), repoUser, repoAssignment, func() {
 		assert.NoError(t, sqlMock.ExpectationsWereMet())
 	}
 }
@@ -290,15 +294,34 @@ func TestDelete_RefusesToRemoveTheLastAdmin(t *testing.T) {
 }
 
 func TestDelete_HappyPath(t *testing.T) {
-	svc, repoUser, assertMock := commitExpected(t)
+	svc, repoUser, repoAssignment, assertMock := newService(t, true)
 	existing := testutil.NewUser(8, "somesales", "secret123", models.RoleSales)
 
 	repoUser.On("FindById", mock.Anything, mock.AnythingOfType("*sql.Tx"), 8).Return(existing, nil)
+	repoAssignment.On("CountBySalesUser", mock.Anything, mock.AnythingOfType("*sql.Tx"), 8).Return(0, nil)
 	repoUser.On("Delete", mock.Anything, mock.AnythingOfType("*sql.Tx"), 8).Return(nil)
 
 	svc.Delete(context.Background(), 8, 1)
 
 	repoUser.AssertExpectations(t)
+	repoAssignment.AssertExpectations(t)
+	assertMock()
+}
+
+// sales_assignments.sales_user_id is ON DELETE RESTRICT, so the service checks first
+// rather than letting a foreign-key violation surface as a 500.
+func TestDelete_RefusesWhileUserHoldsAssignments(t *testing.T) {
+	svc, repoUser, repoAssignment, assertMock := newService(t, false)
+	existing := testutil.NewUser(8, "somesales", "secret123", models.RoleSales)
+
+	repoUser.On("FindById", mock.Anything, mock.AnythingOfType("*sql.Tx"), 8).Return(existing, nil)
+	repoAssignment.On("CountBySalesUser", mock.Anything, mock.AnythingOfType("*sql.Tx"), 8).Return(3, nil)
+
+	assert.PanicsWithValue(t,
+		exceptions.NewBadRequestError("this user is the sales PIC for 3 customer/brand assignment(s); reassign them first"),
+		func() { svc.Delete(context.Background(), 8, 1) })
+
+	repoUser.AssertNotCalled(t, "Delete", mock.Anything, mock.Anything, mock.Anything)
 	assertMock()
 }
 

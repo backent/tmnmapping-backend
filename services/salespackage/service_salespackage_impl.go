@@ -19,7 +19,7 @@ import (
 )
 
 type ServiceSalesPackageImpl struct {
-	DB                            *sql.DB
+	DB                              *sql.DB
 	RepositorySalesPackageInterface repositoriesSalesPackage.RepositorySalesPackageInterface
 	RepositoryBuildingInterface     repositoriesBuilding.RepositoryBuildingInterface
 }
@@ -30,7 +30,7 @@ func NewServiceSalesPackageImpl(
 	repoBuilding repositoriesBuilding.RepositoryBuildingInterface,
 ) ServiceSalesPackageInterface {
 	return &ServiceSalesPackageImpl{
-		DB:                            db,
+		DB:                              db,
 		RepositorySalesPackageInterface: repoSalesPackage,
 		RepositoryBuildingInterface:     repoBuilding,
 	}

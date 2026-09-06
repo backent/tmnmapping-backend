@@ -16,23 +16,23 @@ type UpdateBuildingRequest struct {
 }
 
 type BuildingRequestFindAll struct {
-	take              int
-	skip              int
-	orderBy           string
-	orderDirection    string
-	search            string
-	buildingStatus    string
-	sellable          string
-	connectivity      string
-	resourceType      string
+	take               int
+	skip               int
+	orderBy            string
+	orderDirection     string
+	search             string
+	buildingStatus     string
+	sellable           string
+	connectivity       string
+	resourceType       string
 	competitorLocation *bool
-	cbdArea           string
-	subdistrict       string
-	citytown        string
-	province        string
-	gradeResource   string
-	buildingType    string
-	excludeIds      string
+	cbdArea            string
+	subdistrict        string
+	citytown           string
+	province           string
+	gradeResource      string
+	buildingType       string
+	excludeIds         string
 }
 
 func (r *BuildingRequestFindAll) SetSkip(skip int) {
@@ -196,21 +196,21 @@ type ExportMappingByFilterRequest struct {
 
 // ExportMappingFilters mirrors frontend MappingFilters for export
 type ExportMappingFilters struct {
-	DistrictSubdistrict   []string `json:"district_subdistrict"`
-	BuildingType          []string `json:"building_type"`
-	BuildingGrade         []string `json:"building_grade"`
-	Progress              []string `json:"progress"`
-	LcdPresence           []string `json:"lcd_presence"`
-	Sellable              []string `json:"sellable"`
-	Connectivity          []string `json:"connectivity"`
-	Year                  [2]int   `json:"year"` // [min, max]
-	SalesPackageIds       []int    `json:"sales_package_ids"`
-	BuildingRestrictionIds []int   `json:"building_restriction_ids"`
-	Lat                   *float64 `json:"lat"`
-	Lng                   *float64 `json:"lng"`
-	Radius                *float64 `json:"radius"` // km; backend expects meters
-	PoiIDs                []int    `json:"poi_ids"` // POI category ids; multi-select (matches frontend MappingFilters.poi_ids)
-	Polygon []struct {
+	DistrictSubdistrict    []string `json:"district_subdistrict"`
+	BuildingType           []string `json:"building_type"`
+	BuildingGrade          []string `json:"building_grade"`
+	Progress               []string `json:"progress"`
+	LcdPresence            []string `json:"lcd_presence"`
+	Sellable               []string `json:"sellable"`
+	Connectivity           []string `json:"connectivity"`
+	Year                   [2]int   `json:"year"` // [min, max]
+	SalesPackageIds        []int    `json:"sales_package_ids"`
+	BuildingRestrictionIds []int    `json:"building_restriction_ids"`
+	Lat                    *float64 `json:"lat"`
+	Lng                    *float64 `json:"lng"`
+	Radius                 *float64 `json:"radius"`  // km; backend expects meters
+	PoiIDs                 []int    `json:"poi_ids"` // POI category ids; multi-select (matches frontend MappingFilters.poi_ids)
+	Polygon                []struct {
 		Lat float64 `json:"lat"`
 		Lng float64 `json:"lng"`
 	} `json:"polygon"`
@@ -325,4 +325,3 @@ func intSliceToComma(ids []int) string {
 
 var _ web.RequestPagination = (*BuildingRequestFindAll)(nil)
 var _ web.RequestOrder = (*BuildingRequestFindAll)(nil)
-

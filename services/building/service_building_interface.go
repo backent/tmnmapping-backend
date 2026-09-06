@@ -18,4 +18,3 @@ type ServiceBuildingInterface interface {
 	GetLCDPresenceSummary(ctx context.Context) webBuilding.LCDPresenceSummaryResponse
 	FindAllDropdown(ctx context.Context) []webBuilding.BuildingDropdownResponse
 }
-

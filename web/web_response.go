@@ -12,4 +12,3 @@ type Pagination struct {
 	Skip  int `json:"skip"`
 	Total int `json:"total"`
 }
-

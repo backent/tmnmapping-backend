@@ -8,13 +8,16 @@ import (
 	"github.com/julienschmidt/httprouter"
 	controllersAuth "github.com/malikabdulaziz/tmn-backend/controllers/auth"
 	controllersBranch "github.com/malikabdulaziz/tmn-backend/controllers/branch"
+	controllersBrandAdv "github.com/malikabdulaziz/tmn-backend/controllers/brand"
 	controllersBuilding "github.com/malikabdulaziz/tmn-backend/controllers/building"
 	controllersBuildingRestriction "github.com/malikabdulaziz/tmn-backend/controllers/buildingrestriction"
 	controllersCategory "github.com/malikabdulaziz/tmn-backend/controllers/category"
+	controllersCustomer "github.com/malikabdulaziz/tmn-backend/controllers/customer"
 	controllersDashboard "github.com/malikabdulaziz/tmn-backend/controllers/dashboard"
 	controllersImage "github.com/malikabdulaziz/tmn-backend/controllers/image"
 	controllersMotherBrand "github.com/malikabdulaziz/tmn-backend/controllers/motherbrand"
 	controllersPOI "github.com/malikabdulaziz/tmn-backend/controllers/poi"
+	controllersSalesAssignment "github.com/malikabdulaziz/tmn-backend/controllers/salesassignment"
 	controllersSalesPackage "github.com/malikabdulaziz/tmn-backend/controllers/salespackage"
 	controllersSavedPolygon "github.com/malikabdulaziz/tmn-backend/controllers/savedpolygon"
 	controllersSubCategory "github.com/malikabdulaziz/tmn-backend/controllers/subcategory"
@@ -23,12 +26,15 @@ import (
 	"github.com/malikabdulaziz/tmn-backend/middlewares"
 	repositoriesAuth "github.com/malikabdulaziz/tmn-backend/repositories/auth"
 	repositoriesBranch "github.com/malikabdulaziz/tmn-backend/repositories/branch"
+	repositoriesBrandAdv "github.com/malikabdulaziz/tmn-backend/repositories/brand"
 	repositoriesBuilding "github.com/malikabdulaziz/tmn-backend/repositories/building"
 	repositoriesBuildingRestriction "github.com/malikabdulaziz/tmn-backend/repositories/buildingrestriction"
 	repositoriesCategory "github.com/malikabdulaziz/tmn-backend/repositories/category"
+	repositoriesCustomer "github.com/malikabdulaziz/tmn-backend/repositories/customer"
 	repositoriesDashboard "github.com/malikabdulaziz/tmn-backend/repositories/dashboard"
 	repositoriesMotherBrand "github.com/malikabdulaziz/tmn-backend/repositories/motherbrand"
 	repositoriesPOI "github.com/malikabdulaziz/tmn-backend/repositories/poi"
+	repositoriesSalesAssignment "github.com/malikabdulaziz/tmn-backend/repositories/salesassignment"
 	repositoriesSalesPackage "github.com/malikabdulaziz/tmn-backend/repositories/salespackage"
 	repositoriesSavedPolygon "github.com/malikabdulaziz/tmn-backend/repositories/savedpolygon"
 	repositoriesSubCategory "github.com/malikabdulaziz/tmn-backend/repositories/subcategory"
@@ -36,14 +42,17 @@ import (
 	servicesAcquisition "github.com/malikabdulaziz/tmn-backend/services/acquisition"
 	servicesAuth "github.com/malikabdulaziz/tmn-backend/services/auth"
 	servicesBranch "github.com/malikabdulaziz/tmn-backend/services/branch"
+	servicesBrandAdv "github.com/malikabdulaziz/tmn-backend/services/brand"
 	servicesBuilding "github.com/malikabdulaziz/tmn-backend/services/building"
 	servicesBuildingProposal "github.com/malikabdulaziz/tmn-backend/services/buildingproposal"
 	servicesBuildingRestriction "github.com/malikabdulaziz/tmn-backend/services/buildingrestriction"
 	servicesCategory "github.com/malikabdulaziz/tmn-backend/services/category"
+	servicesCustomer "github.com/malikabdulaziz/tmn-backend/services/customer"
 	servicesDashboard "github.com/malikabdulaziz/tmn-backend/services/dashboard"
 	servicesLOI "github.com/malikabdulaziz/tmn-backend/services/loi"
 	servicesMotherBrand "github.com/malikabdulaziz/tmn-backend/services/motherbrand"
 	servicesPOI "github.com/malikabdulaziz/tmn-backend/services/poi"
+	servicesSalesAssignment "github.com/malikabdulaziz/tmn-backend/services/salesassignment"
 	servicesSalesPackage "github.com/malikabdulaziz/tmn-backend/services/salespackage"
 	servicesSavedPolygon "github.com/malikabdulaziz/tmn-backend/services/savedpolygon"
 	servicesSubCategory "github.com/malikabdulaziz/tmn-backend/services/subcategory"
@@ -89,6 +98,18 @@ var branchSet = wire.NewSet(
 	repositoriesBranch.NewRepositoryBranchImpl,
 	servicesBranch.NewServiceBranchImpl,
 	controllersBranch.NewControllerBranchImpl,
+)
+
+var advertiserSet = wire.NewSet(
+	repositoriesCustomer.NewRepositoryCustomerImpl,
+	repositoriesBrandAdv.NewRepositoryBrandImpl,
+	repositoriesSalesAssignment.NewRepositorySalesAssignmentImpl,
+	servicesCustomer.NewServiceCustomerImpl,
+	servicesBrandAdv.NewServiceBrandImpl,
+	servicesSalesAssignment.NewServiceSalesAssignmentImpl,
+	controllersCustomer.NewControllerCustomerImpl,
+	controllersBrandAdv.NewControllerBrandImpl,
+	controllersSalesAssignment.NewControllerSalesAssignmentImpl,
 )
 
 var userSet = wire.NewSet(
@@ -139,6 +160,9 @@ var middlewareSet = wire.NewSet(
 	middlewares.NewMotherBrandMiddleware,
 	middlewares.NewBranchMiddleware,
 	middlewares.NewUserMiddleware,
+	middlewares.NewCustomerMiddleware,
+	middlewares.NewBrandMiddleware,
+	middlewares.NewSalesAssignmentMiddleware,
 )
 
 func InitializeRouter() *httprouter.Router {
@@ -155,6 +179,7 @@ func InitializeRouter() *httprouter.Router {
 		motherBrandSet,
 		branchSet,
 		userSet,
+		advertiserSet,
 		poiSet,
 		salespackageSet,
 		buildingrestrictionSet,

@@ -26,9 +26,9 @@ func NewBuildingMiddleware(
 	repositoriesBuilding repositoriesBuilding.RepositoryBuildingInterface,
 ) *BuildingMiddleware {
 	return &BuildingMiddleware{
-		Validate:                        validate,
-		DB:                              db,
-		RepositoryBuildingInterface:     repositoriesBuilding,
+		Validate:                    validate,
+		DB:                          db,
+		RepositoryBuildingInterface: repositoriesBuilding,
 	}
 }
 
@@ -66,4 +66,3 @@ func (m *BuildingMiddleware) ValidateUpdate(next httprouter.Handle) httprouter.H
 		next(w, r, p)
 	}
 }
-

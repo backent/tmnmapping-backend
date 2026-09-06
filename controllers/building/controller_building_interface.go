@@ -17,4 +17,3 @@ type ControllerBuildingInterface interface {
 	GetLCDPresenceSummary(w http.ResponseWriter, r *http.Request, p httprouter.Params)
 	GetDropdownOptions(w http.ResponseWriter, r *http.Request, p httprouter.Params)
 }
-

@@ -15,5 +15,5 @@ type SalesPackageResponse struct {
 	Name      string                `json:"name"`
 	Buildings []BuildingRefResponse `json:"buildings"`
 	CreatedAt string                `json:"created_at"`
-	UpdatedAt string               `json:"updated_at"`
+	UpdatedAt string                `json:"updated_at"`
 }

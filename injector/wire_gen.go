@@ -11,13 +11,16 @@ import (
 	"github.com/julienschmidt/httprouter"
 	auth3 "github.com/malikabdulaziz/tmn-backend/controllers/auth"
 	branch3 "github.com/malikabdulaziz/tmn-backend/controllers/branch"
+	brandAdv3 "github.com/malikabdulaziz/tmn-backend/controllers/brand"
 	building3 "github.com/malikabdulaziz/tmn-backend/controllers/building"
 	buildingrestriction3 "github.com/malikabdulaziz/tmn-backend/controllers/buildingrestriction"
 	category3 "github.com/malikabdulaziz/tmn-backend/controllers/category"
+	customer3 "github.com/malikabdulaziz/tmn-backend/controllers/customer"
 	dashboard3 "github.com/malikabdulaziz/tmn-backend/controllers/dashboard"
 	"github.com/malikabdulaziz/tmn-backend/controllers/image"
 	motherbrand3 "github.com/malikabdulaziz/tmn-backend/controllers/motherbrand"
 	poi3 "github.com/malikabdulaziz/tmn-backend/controllers/poi"
+	salesassignment3 "github.com/malikabdulaziz/tmn-backend/controllers/salesassignment"
 	salespackage3 "github.com/malikabdulaziz/tmn-backend/controllers/salespackage"
 	savedpolygon3 "github.com/malikabdulaziz/tmn-backend/controllers/savedpolygon"
 	subcategory3 "github.com/malikabdulaziz/tmn-backend/controllers/subcategory"
@@ -26,12 +29,15 @@ import (
 	"github.com/malikabdulaziz/tmn-backend/middlewares"
 	"github.com/malikabdulaziz/tmn-backend/repositories/auth"
 	"github.com/malikabdulaziz/tmn-backend/repositories/branch"
+	brandAdv "github.com/malikabdulaziz/tmn-backend/repositories/brand"
 	"github.com/malikabdulaziz/tmn-backend/repositories/building"
 	"github.com/malikabdulaziz/tmn-backend/repositories/buildingrestriction"
 	"github.com/malikabdulaziz/tmn-backend/repositories/category"
+	customerRepo "github.com/malikabdulaziz/tmn-backend/repositories/customer"
 	"github.com/malikabdulaziz/tmn-backend/repositories/dashboard"
 	"github.com/malikabdulaziz/tmn-backend/repositories/motherbrand"
 	"github.com/malikabdulaziz/tmn-backend/repositories/poi"
+	salesassignmentRepo "github.com/malikabdulaziz/tmn-backend/repositories/salesassignment"
 	"github.com/malikabdulaziz/tmn-backend/repositories/salespackage"
 	"github.com/malikabdulaziz/tmn-backend/repositories/savedpolygon"
 	"github.com/malikabdulaziz/tmn-backend/repositories/subcategory"
@@ -39,14 +45,17 @@ import (
 	"github.com/malikabdulaziz/tmn-backend/services/acquisition"
 	auth2 "github.com/malikabdulaziz/tmn-backend/services/auth"
 	branch2 "github.com/malikabdulaziz/tmn-backend/services/branch"
+	brandAdv2 "github.com/malikabdulaziz/tmn-backend/services/brand"
 	building2 "github.com/malikabdulaziz/tmn-backend/services/building"
 	"github.com/malikabdulaziz/tmn-backend/services/buildingproposal"
 	buildingrestriction2 "github.com/malikabdulaziz/tmn-backend/services/buildingrestriction"
 	category2 "github.com/malikabdulaziz/tmn-backend/services/category"
+	customer2 "github.com/malikabdulaziz/tmn-backend/services/customer"
 	dashboard2 "github.com/malikabdulaziz/tmn-backend/services/dashboard"
 	"github.com/malikabdulaziz/tmn-backend/services/loi"
 	motherbrand2 "github.com/malikabdulaziz/tmn-backend/services/motherbrand"
 	poi2 "github.com/malikabdulaziz/tmn-backend/services/poi"
+	salesassignment2 "github.com/malikabdulaziz/tmn-backend/services/salesassignment"
 	salespackage2 "github.com/malikabdulaziz/tmn-backend/services/salespackage"
 	savedpolygon2 "github.com/malikabdulaziz/tmn-backend/services/savedpolygon"
 	subcategory2 "github.com/malikabdulaziz/tmn-backend/services/subcategory"
@@ -81,6 +90,12 @@ func InitializeRouter() *httprouter.Router {
 	repositoryBranchInterface := branch.NewRepositoryBranchImpl()
 	branchMiddleware := middlewares.NewBranchMiddleware(validate, db, repositoryBranchInterface)
 	userMiddleware := middlewares.NewUserMiddleware(validate, db, repositoryUserInterface)
+	repositoryCustomerInterface := customerRepo.NewRepositoryCustomerImpl()
+	repositoryBrandAdvInterface := brandAdv.NewRepositoryBrandImpl()
+	repositorySalesAssignmentInterface := salesassignmentRepo.NewRepositorySalesAssignmentImpl()
+	customerMiddleware := middlewares.NewCustomerMiddleware(validate, db, repositoryCustomerInterface)
+	brandAdvMiddleware := middlewares.NewBrandMiddleware(validate, db, repositoryBrandAdvInterface)
+	salesAssignmentMiddleware := middlewares.NewSalesAssignmentMiddleware(validate, db, repositorySalesAssignmentInterface)
 	serviceAuthInterface := auth2.NewServiceAuthImpl(db, repositoryAuthInterface, repositoryUserInterface)
 	controllerAuthInterface := auth3.NewControllerAuthImpl(db, serviceAuthInterface, repositoryUserInterface)
 	erpClient := libs.ProvideERPClient()
@@ -107,9 +122,15 @@ func InitializeRouter() *httprouter.Router {
 	controllerMotherBrandInterface := motherbrand3.NewControllerMotherBrandImpl(serviceMotherBrandInterface)
 	serviceBranchInterface := branch2.NewServiceBranchImpl(db, repositoryBranchInterface)
 	controllerBranchInterface := branch3.NewControllerBranchImpl(serviceBranchInterface)
-	serviceUserInterface := user3.NewServiceUserImpl(db, repositoryUserInterface)
+	serviceUserInterface := user3.NewServiceUserImpl(db, repositoryUserInterface, repositorySalesAssignmentInterface)
 	controllerUserInterface := user2.NewControllerUserImpl(serviceUserInterface)
-	router := libs.NewRouter(authMiddleware, buildingMiddleware, poiMiddleware, salesPackageMiddleware, buildingRestrictionMiddleware, savedPolygonMiddleware, loggingMiddleware, categoryMiddleware, subCategoryMiddleware, motherBrandMiddleware, branchMiddleware, userMiddleware, controllerAuthInterface, controllerBuildingInterface, controllerImageInterface, controllerPOIInterface, controllerSalesPackageInterface, controllerBuildingRestrictionInterface, controllerSavedPolygonInterface, controllerDashboardInterface, controllerCategoryInterface, controllerSubCategoryInterface, controllerMotherBrandInterface, controllerBranchInterface, controllerUserInterface)
+	serviceCustomerInterface := customer2.NewServiceCustomerImpl(db, repositoryCustomerInterface)
+	controllerCustomerInterface := customer3.NewControllerCustomerImpl(serviceCustomerInterface)
+	serviceBrandAdvInterface := brandAdv2.NewServiceBrandImpl(db, repositoryBrandAdvInterface, repositoryCustomerInterface)
+	controllerBrandAdvInterface := brandAdv3.NewControllerBrandImpl(serviceBrandAdvInterface)
+	serviceSalesAssignmentInterface := salesassignment2.NewServiceSalesAssignmentImpl(db, repositorySalesAssignmentInterface, repositoryCustomerInterface, repositoryBrandAdvInterface, repositoryUserInterface)
+	controllerSalesAssignmentInterface := salesassignment3.NewControllerSalesAssignmentImpl(serviceSalesAssignmentInterface)
+	router := libs.NewRouter(authMiddleware, buildingMiddleware, poiMiddleware, salesPackageMiddleware, buildingRestrictionMiddleware, savedPolygonMiddleware, loggingMiddleware, categoryMiddleware, subCategoryMiddleware, motherBrandMiddleware, branchMiddleware, userMiddleware, customerMiddleware, brandAdvMiddleware, salesAssignmentMiddleware, controllerAuthInterface, controllerBuildingInterface, controllerImageInterface, controllerPOIInterface, controllerSalesPackageInterface, controllerBuildingRestrictionInterface, controllerSavedPolygonInterface, controllerDashboardInterface, controllerCategoryInterface, controllerSubCategoryInterface, controllerMotherBrandInterface, controllerBranchInterface, controllerUserInterface, controllerCustomerInterface, controllerBrandAdvInterface, controllerSalesAssignmentInterface)
 	return router
 }
 

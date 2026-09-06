@@ -3,10 +3,12 @@ package user
 import (
 	"context"
 	"database/sql"
+	"strconv"
 
 	"github.com/malikabdulaziz/tmn-backend/exceptions"
 	"github.com/malikabdulaziz/tmn-backend/helpers"
 	"github.com/malikabdulaziz/tmn-backend/models"
+	repositoriesSalesAssignment "github.com/malikabdulaziz/tmn-backend/repositories/salesassignment"
 	repositoriesUser "github.com/malikabdulaziz/tmn-backend/repositories/user"
 	webUser "github.com/malikabdulaziz/tmn-backend/web/user"
 )
@@ -14,15 +16,18 @@ import (
 type ServiceUserImpl struct {
 	DB *sql.DB
 	repositoriesUser.RepositoryUserInterface
+	RepositorySalesAssignment repositoriesSalesAssignment.RepositorySalesAssignmentInterface
 }
 
 func NewServiceUserImpl(
 	db *sql.DB,
 	repoUser repositoriesUser.RepositoryUserInterface,
+	repoSalesAssignment repositoriesSalesAssignment.RepositorySalesAssignmentInterface,
 ) ServiceUserInterface {
 	return &ServiceUserImpl{
-		DB:                      db,
-		RepositoryUserInterface: repoUser,
+		DB:                        db,
+		RepositoryUserInterface:   repoUser,
+		RepositorySalesAssignment: repoSalesAssignment,
 	}
 }
 
@@ -159,6 +164,16 @@ func (s *ServiceUserImpl) Delete(ctx context.Context, id int, actorId int) {
 
 	// Deleting the last admin would leave nobody able to manage users or master data.
 	s.guardLastAdmin(ctx, tx, existing, "")
+
+	// sales_assignments.sales_user_id is ON DELETE RESTRICT, so without this check
+	// the operator would see a foreign-key violation surface as a 500.
+	assignments, err := s.RepositorySalesAssignment.CountBySalesUser(ctx, tx, id)
+	helpers.PanicIfError(err)
+	if assignments > 0 {
+		panic(exceptions.NewBadRequestError(
+			"this user is the sales PIC for " + strconv.Itoa(assignments) +
+				" customer/brand assignment(s); reassign them first"))
+	}
 
 	helpers.PanicIfError(s.RepositoryUserInterface.Delete(ctx, tx, id))
 }

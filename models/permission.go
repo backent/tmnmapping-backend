@@ -35,6 +35,17 @@ const (
 	PermissionUsersView   = "users.view"
 	PermissionUsersManage = "users.manage"
 
+	// Phase 1 advertiser master data. Sales need to read customers and brands to
+	// raise a quotation; only admin maintains them.
+	PermissionCustomersView   = "customers.view"
+	PermissionCustomersManage = "customers.manage"
+
+	PermissionBrandsView   = "brands.view"
+	PermissionBrandsManage = "brands.manage"
+
+	PermissionSalesAssignmentsView   = "sales-assignments.view"
+	PermissionSalesAssignmentsManage = "sales-assignments.manage"
+
 	// Navigation-only permissions. No route enforces these; they decide which
 	// sections the frontend shows. They live here so that the whole policy is
 	// readable in one file, and so the frontend does not need a second copy of it.
@@ -45,6 +56,7 @@ const (
 	// while the management screens stay hidden.
 	PermissionMasterDataScreen           = "master-data.screen"
 	PermissionBuildingRestrictionsScreen = "building-restrictions.screen"
+	PermissionAdvertiserScreen           = "advertiser.screen"
 )
 
 // Permissions maps each permission to the roles that hold it.
@@ -82,8 +94,18 @@ var Permissions = map[string][]string{
 	PermissionUsersView:   {RoleAdmin},
 	PermissionUsersManage: {RoleAdmin},
 
+	PermissionCustomersView:   Roles,
+	PermissionCustomersManage: {RoleAdmin},
+
+	PermissionBrandsView:   Roles,
+	PermissionBrandsManage: {RoleAdmin},
+
+	PermissionSalesAssignmentsView:   Roles,
+	PermissionSalesAssignmentsManage: {RoleAdmin},
+
 	PermissionMasterDataScreen:           {RoleAdmin},
 	PermissionBuildingRestrictionsScreen: {RoleAdmin},
+	PermissionAdvertiserScreen:           {RoleAdmin},
 }
 
 // RoleCan reports whether role holds permission.
