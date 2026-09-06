@@ -1,7 +1,7 @@
 package models
 
 // Role vocabulary for the sales quotation workflow.
-// See docs/QUOTATION_FEATURE_ANALYSIS.md §5.3 (in the tmn-mapping root).
+// See docs/QUOTATION_FEATURE_ANALYSIS.md §5.3.
 const (
 	RoleAdmin                 = "admin"
 	RoleSales                 = "sales"

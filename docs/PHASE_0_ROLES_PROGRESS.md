@@ -1,7 +1,7 @@
 # Phase 0 — Roles & Authorization
 
 Tracking doc for the first phase of the sales quotation feature.
-Source analysis: `docs/QUOTATION_FEATURE_ANALYSIS.md` in the `tmn-mapping` project root (§5, §8).
+Source analysis: [`QUOTATION_FEATURE_ANALYSIS.md`](QUOTATION_FEATURE_ANALYSIS.md) (§5, §8).
 
 **Status:** ✅ Complete — backend and frontend, tests green, not yet deployed.
 **Branches:** `feat/phase-0-roles-authorization` → `feat/user-management` → `feat/permission-layer` (both `backend/` and `frontend/`)
@@ -386,7 +386,6 @@ to regress silently, and a unit test with a mocked repository can only prove
 | **Approval directory** | Which concrete user holds each approver role must come from configuration or user data, never hardcoded names. Not yet built — Phase 4. |
 | **Route wiring test** | See §6. |
 | **Permission map as data** | The map is code. Moving it to a table with an admin UI is a contained change — routes name a key either way. See §5c. |
-| **`docs/QUOTATION_FEATURE_ANALYSIS.md` is not version controlled.** | It lives in `tmn-mapping/docs/`, which is outside both git repos. It is the source of truth for phases 1–6 and currently exists only on one machine. |
 
 ---
 
