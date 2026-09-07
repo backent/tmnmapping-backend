@@ -25,7 +25,9 @@ func TestPermissions_EveryEntryGrantsSomething(t *testing.T) {
 // TestPermissions_NamingConvention keeps the keys parseable and consistent, since
 // the frontend receives them as opaque strings.
 func TestPermissions_NamingConvention(t *testing.T) {
-	allowedSuffixes := []string{".view", ".manage", ".screen"}
+	// .publish exists because publishing a rate card is a different act from editing
+	// one: it changes what every future quotation is priced against.
+	allowedSuffixes := []string{".view", ".manage", ".screen", ".publish"}
 
 	for permission := range models.Permissions {
 		matched := false
@@ -41,14 +43,15 @@ func TestPermissions_NamingConvention(t *testing.T) {
 
 // Writes are admin-only across the board today. If that ever stops being true this
 // test should be updated deliberately, not deleted.
-func TestPermissions_ManageIsAdminOnly(t *testing.T) {
+func TestPermissions_WritesAreAdminOnly(t *testing.T) {
 	exceptions := map[string]bool{
 		// Saved polygons are a map working tool, not master data.
 		models.PermissionSavedPolygonsManage: true,
 	}
 
 	for permission, roles := range models.Permissions {
-		if !strings.HasSuffix(permission, ".manage") || exceptions[permission] {
+		isWrite := strings.HasSuffix(permission, ".manage") || strings.HasSuffix(permission, ".publish")
+		if !isWrite || exceptions[permission] {
 			continue
 		}
 

@@ -15,6 +15,7 @@ import (
 	controllersImage "github.com/malikabdulaziz/tmn-backend/controllers/image"
 	controllersMotherBrand "github.com/malikabdulaziz/tmn-backend/controllers/motherbrand"
 	controllersPOI "github.com/malikabdulaziz/tmn-backend/controllers/poi"
+	controllersRateCard "github.com/malikabdulaziz/tmn-backend/controllers/ratecard"
 	controllersSalesAssignment "github.com/malikabdulaziz/tmn-backend/controllers/salesassignment"
 	controllersSalesPackage "github.com/malikabdulaziz/tmn-backend/controllers/salespackage"
 	controllersSavedPolygon "github.com/malikabdulaziz/tmn-backend/controllers/savedpolygon"
@@ -41,6 +42,7 @@ func NewRouter(
 	customerMiddleware *middlewares.CustomerMiddleware,
 	brandMiddleware *middlewares.BrandMiddleware,
 	salesAssignmentMiddleware *middlewares.SalesAssignmentMiddleware,
+	rateCardMiddleware *middlewares.RateCardMiddleware,
 	controllersAuth controllersAuth.ControllerAuthInterface,
 	controllersBuilding controllersBuilding.ControllerBuildingInterface,
 	controllersImage controllersImage.ControllerImageInterface,
@@ -57,6 +59,7 @@ func NewRouter(
 	controllersCustomer controllersCustomer.ControllerCustomerInterface,
 	controllersBrand controllersBrand.ControllerBrandInterface,
 	controllersSalesAssignment controllersSalesAssignment.ControllerSalesAssignmentInterface,
+	controllersRateCard controllersRateCard.ControllerRateCardInterface,
 ) *httprouter.Router {
 	router := httprouter.New()
 
@@ -531,6 +534,113 @@ func NewRouter(
 		loggingMiddleware.Log(
 			authMiddleware.RequireAuth(
 				authMiddleware.RequirePermission(models.PermissionSalesAssignmentsView)(controllersSalesAssignment.Template))))
+
+	// Rate card routes.
+	//
+	// Prices are readable by every role -- a quotation cannot be priced otherwise.
+	// Editing a draft is admin-only, and publishing is separate again because it
+	// changes what every future quotation is priced against.
+	router.GET("/rate-cards",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionRateCardsView)(controllersRateCard.FindAllVersions))))
+
+	router.GET("/rate-cards/current",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionRateCardsView)(controllersRateCard.FindCurrentVersion))))
+
+	router.GET("/rate-cards/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionRateCardsView)(controllersRateCard.FindVersionById))))
+
+	router.POST("/rate-cards",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionRateCardsManage)(
+					rateCardMiddleware.ValidateCreateVersion(controllersRateCard.CreateVersion)))))
+
+	router.PUT("/rate-cards/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionRateCardsManage)(
+					rateCardMiddleware.ValidateUpdateVersion(controllersRateCard.UpdateVersion)))))
+
+	router.DELETE("/rate-cards/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionRateCardsManage)(controllersRateCard.DeleteVersion))))
+
+	router.POST("/rate-cards/:id/publish",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionRateCardsPublish)(controllersRateCard.PublishVersion))))
+
+	// Building prices within a version
+	router.GET("/rate-cards/:id/building-prices",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionRateCardsView)(controllersRateCard.FindBuildingPrices))))
+
+	router.PUT("/rate-cards/:id/building-prices",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionRateCardsManage)(
+					rateCardMiddleware.ValidateUpsertBuildingPrice(controllersRateCard.UpsertBuildingPrice)))))
+
+	router.DELETE("/rate-cards/:id/building-prices/:buildingId",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionRateCardsManage)(controllersRateCard.DeleteBuildingPrice))))
+
+	router.POST("/rate-cards/:id/building-prices-import",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionRateCardsManage)(controllersRateCard.ImportBuildingPrices))))
+
+	router.GET("/rate-cards/:id/building-prices-export",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionRateCardsView)(controllersRateCard.ExportBuildingPrices))))
+
+	// Package prices within a version
+	router.GET("/rate-cards/:id/package-prices",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionRateCardsView)(controllersRateCard.FindPackagePrices))))
+
+	router.PUT("/rate-cards/:id/package-prices",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionRateCardsManage)(
+					rateCardMiddleware.ValidateUpsertPackagePrice(controllersRateCard.UpsertPackagePrice)))))
+
+	router.DELETE("/rate-cards/:id/package-prices/:packageId",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionRateCardsManage)(controllersRateCard.DeletePackagePrice))))
+
+	router.POST("/rate-cards/:id/package-prices-import",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionRateCardsManage)(controllersRateCard.ImportPackagePrices))))
+
+	router.GET("/rate-cards/:id/package-prices-export",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionRateCardsView)(controllersRateCard.ExportPackagePrices))))
+
+	// Blank templates are reads: anyone who may see the prices may see their shape.
+	router.GET("/rate-card-building-prices-template",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionRateCardsView)(controllersRateCard.BuildingPriceTemplate))))
+
+	router.GET("/rate-card-package-prices-template",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionRateCardsView)(controllersRateCard.PackagePriceTemplate))))
 
 	router.GET("/dashboard/building-lcd-presence",
 		loggingMiddleware.Log(

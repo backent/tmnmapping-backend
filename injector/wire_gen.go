@@ -20,6 +20,7 @@ import (
 	"github.com/malikabdulaziz/tmn-backend/controllers/image"
 	motherbrand3 "github.com/malikabdulaziz/tmn-backend/controllers/motherbrand"
 	poi3 "github.com/malikabdulaziz/tmn-backend/controllers/poi"
+	ratecard3 "github.com/malikabdulaziz/tmn-backend/controllers/ratecard"
 	salesassignment3 "github.com/malikabdulaziz/tmn-backend/controllers/salesassignment"
 	salespackage3 "github.com/malikabdulaziz/tmn-backend/controllers/salespackage"
 	savedpolygon3 "github.com/malikabdulaziz/tmn-backend/controllers/savedpolygon"
@@ -37,6 +38,7 @@ import (
 	"github.com/malikabdulaziz/tmn-backend/repositories/dashboard"
 	"github.com/malikabdulaziz/tmn-backend/repositories/motherbrand"
 	"github.com/malikabdulaziz/tmn-backend/repositories/poi"
+	ratecardRepo "github.com/malikabdulaziz/tmn-backend/repositories/ratecard"
 	salesassignmentRepo "github.com/malikabdulaziz/tmn-backend/repositories/salesassignment"
 	"github.com/malikabdulaziz/tmn-backend/repositories/salespackage"
 	"github.com/malikabdulaziz/tmn-backend/repositories/savedpolygon"
@@ -55,6 +57,7 @@ import (
 	"github.com/malikabdulaziz/tmn-backend/services/loi"
 	motherbrand2 "github.com/malikabdulaziz/tmn-backend/services/motherbrand"
 	poi2 "github.com/malikabdulaziz/tmn-backend/services/poi"
+	ratecard2 "github.com/malikabdulaziz/tmn-backend/services/ratecard"
 	salesassignment2 "github.com/malikabdulaziz/tmn-backend/services/salesassignment"
 	salespackage2 "github.com/malikabdulaziz/tmn-backend/services/salespackage"
 	savedpolygon2 "github.com/malikabdulaziz/tmn-backend/services/savedpolygon"
@@ -96,6 +99,8 @@ func InitializeRouter() *httprouter.Router {
 	customerMiddleware := middlewares.NewCustomerMiddleware(validate, db, repositoryCustomerInterface)
 	brandAdvMiddleware := middlewares.NewBrandMiddleware(validate, db, repositoryBrandAdvInterface)
 	salesAssignmentMiddleware := middlewares.NewSalesAssignmentMiddleware(validate, db, repositorySalesAssignmentInterface)
+	repositoryRateCardInterface := ratecardRepo.NewRepositoryRateCardImpl()
+	rateCardMiddleware := middlewares.NewRateCardMiddleware(validate, db, repositoryRateCardInterface)
 	serviceAuthInterface := auth2.NewServiceAuthImpl(db, repositoryAuthInterface, repositoryUserInterface)
 	controllerAuthInterface := auth3.NewControllerAuthImpl(db, serviceAuthInterface, repositoryUserInterface)
 	erpClient := libs.ProvideERPClient()
@@ -130,7 +135,9 @@ func InitializeRouter() *httprouter.Router {
 	controllerBrandAdvInterface := brandAdv3.NewControllerBrandImpl(serviceBrandAdvInterface)
 	serviceSalesAssignmentInterface := salesassignment2.NewServiceSalesAssignmentImpl(db, repositorySalesAssignmentInterface, repositoryCustomerInterface, repositoryBrandAdvInterface, repositoryUserInterface)
 	controllerSalesAssignmentInterface := salesassignment3.NewControllerSalesAssignmentImpl(serviceSalesAssignmentInterface)
-	router := libs.NewRouter(authMiddleware, buildingMiddleware, poiMiddleware, salesPackageMiddleware, buildingRestrictionMiddleware, savedPolygonMiddleware, loggingMiddleware, categoryMiddleware, subCategoryMiddleware, motherBrandMiddleware, branchMiddleware, userMiddleware, customerMiddleware, brandAdvMiddleware, salesAssignmentMiddleware, controllerAuthInterface, controllerBuildingInterface, controllerImageInterface, controllerPOIInterface, controllerSalesPackageInterface, controllerBuildingRestrictionInterface, controllerSavedPolygonInterface, controllerDashboardInterface, controllerCategoryInterface, controllerSubCategoryInterface, controllerMotherBrandInterface, controllerBranchInterface, controllerUserInterface, controllerCustomerInterface, controllerBrandAdvInterface, controllerSalesAssignmentInterface)
+	serviceRateCardInterface := ratecard2.NewServiceRateCardImpl(db, repositoryRateCardInterface, repositoryBuildingInterface, repositorySalesPackageInterface)
+	controllerRateCardInterface := ratecard3.NewControllerRateCardImpl(serviceRateCardInterface)
+	router := libs.NewRouter(authMiddleware, buildingMiddleware, poiMiddleware, salesPackageMiddleware, buildingRestrictionMiddleware, savedPolygonMiddleware, loggingMiddleware, categoryMiddleware, subCategoryMiddleware, motherBrandMiddleware, branchMiddleware, userMiddleware, customerMiddleware, brandAdvMiddleware, salesAssignmentMiddleware, rateCardMiddleware, controllerAuthInterface, controllerBuildingInterface, controllerImageInterface, controllerPOIInterface, controllerSalesPackageInterface, controllerBuildingRestrictionInterface, controllerSavedPolygonInterface, controllerDashboardInterface, controllerCategoryInterface, controllerSubCategoryInterface, controllerMotherBrandInterface, controllerBranchInterface, controllerUserInterface, controllerCustomerInterface, controllerBrandAdvInterface, controllerSalesAssignmentInterface, controllerRateCardInterface)
 	return router
 }
 

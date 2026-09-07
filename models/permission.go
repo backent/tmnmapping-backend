@@ -46,6 +46,13 @@ const (
 	PermissionSalesAssignmentsView   = "sales-assignments.view"
 	PermissionSalesAssignmentsManage = "sales-assignments.manage"
 
+	// The rate card. Everyone reads it -- a quotation cannot be priced otherwise --
+	// but only admin edits a draft, and publishing is its own permission because it
+	// changes what every future quotation is priced against.
+	PermissionRateCardsView    = "rate-cards.view"
+	PermissionRateCardsManage  = "rate-cards.manage"
+	PermissionRateCardsPublish = "rate-cards.publish"
+
 	// Navigation-only permissions. No route enforces these; they decide which
 	// sections the frontend shows. They live here so that the whole policy is
 	// readable in one file, and so the frontend does not need a second copy of it.
@@ -102,6 +109,10 @@ var Permissions = map[string][]string{
 
 	PermissionSalesAssignmentsView:   Roles,
 	PermissionSalesAssignmentsManage: {RoleAdmin},
+
+	PermissionRateCardsView:    Roles,
+	PermissionRateCardsManage:  {RoleAdmin},
+	PermissionRateCardsPublish: {RoleAdmin},
 
 	PermissionMasterDataScreen:           {RoleAdmin},
 	PermissionBuildingRestrictionsScreen: {RoleAdmin},
