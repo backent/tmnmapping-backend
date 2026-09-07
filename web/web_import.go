@@ -7,9 +7,15 @@ package web
 // A half-applied master-data import is worse than a rejected one — it leaves the
 // operator unsure which half landed.
 type ImportResult struct {
-	Rows     int           `json:"rows"`
-	Created  int           `json:"created"`
-	Updated  int           `json:"updated"`
+	Rows    int `json:"rows"`
+	Created int `json:"created"`
+	Updated int `json:"updated"`
+
+	// Skipped counts rows that were read, were valid, and were deliberately not
+	// applied -- a rate card row priced 0 for a building with no screens installed,
+	// for example. Reported so the operator can reconcile the row count rather than
+	// wondering where the difference went.
+	Skipped  int           `json:"skipped"`
 	Imported bool          `json:"imported"`
 	Errors   []ImportError `json:"errors"`
 }

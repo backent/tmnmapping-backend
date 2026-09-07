@@ -231,7 +231,7 @@ func (s *ServiceRateCardImpl) UpsertBuildingPrice(ctx context.Context, versionId
 	helpers.PanicIfError(s.RepositoryRateCardInterface.UpsertBuildingPrice(ctx, tx, models.RateCardBuildingPrice{
 		RateCardVersionId: versionId,
 		BuildingId:        request.BuildingId,
-		PriceIdrPer4Weeks: request.PriceIdrPer4Weeks,
+		PriceIdrPerWeek:   request.PriceIdrPerWeek,
 	}))
 
 	prices, err := s.RepositoryRateCardInterface.FindBuildingPrices(ctx, tx, versionId, 1, 0, "")
@@ -245,7 +245,7 @@ func (s *ServiceRateCardImpl) UpsertBuildingPrice(ctx context.Context, versionId
 	return webRateCard.BuildingPriceResponse{
 		RateCardVersionId: versionId,
 		BuildingId:        request.BuildingId,
-		PriceIdrPer4Weeks: request.PriceIdrPer4Weeks,
+		PriceIdrPerWeek:   request.PriceIdrPerWeek,
 	}
 }
 
@@ -277,14 +277,9 @@ func (s *ServiceRateCardImpl) ExportBuildingPrices(ctx context.Context, versionI
 	headers := headersOf(BuildingPriceColumns)
 	rows := make([][]interface{}, len(list))
 	for i, item := range list {
-		// The export carries External Building ID so the file can be edited and
-		// uploaded straight back; iris_code is shown for readability only.
-		building, err := s.RepositoryBuilding.FindById(ctx, tx, item.BuildingId)
-		externalId := ""
-		if err == nil {
-			externalId = building.ExternalBuildingId
-		}
-		rows[i] = []interface{}{externalId, item.BuildingName, item.PriceIdrPer4Weeks}
+		// Emits the same key the importer reads, so an exported file can be edited
+		// and uploaded straight back.
+		rows[i] = []interface{}{item.BuildingIrisCode, item.BuildingName, item.PriceIdrPerWeek}
 	}
 
 	return spreadsheets.BuildExport("Building Prices", headers, rows)
@@ -312,35 +307,49 @@ func (s *ServiceRateCardImpl) ImportBuildingPrices(ctx context.Context, versionI
 	for i, row := range rows[1:] {
 		rowNumber := i + 2
 
-		externalId := spreadsheets.ColValue(row, colMap, "external_building_id")
+		irisCode := spreadsheets.ColValue(row, colMap, "iris_building_id")
 		rawPrice := spreadsheets.ColValue(row, colMap, "price")
 
-		if externalId == "" && rawPrice == "" {
+		if irisCode == "" && rawPrice == "" {
 			continue
 		}
+
+		// The source spreadsheet repeats its header row as a section break, so a
+		// row whose key literally reads like the header is layout, not data.
+		if strings.EqualFold(irisCode, "IRIS Building ID") {
+			continue
+		}
+
 		result.Rows++
 
-		if externalId == "" {
-			result.AddError(rowNumber, "External Building ID", "", "External Building ID is required")
+		if irisCode == "" {
+			result.AddError(rowNumber, "IRIS Building ID", "", "IRIS Building ID is required")
 			continue
 		}
-		if firstRow, duplicate := seen[externalId]; duplicate {
-			result.AddError(rowNumber, "External Building ID", externalId,
+		if firstRow, duplicate := seen[irisCode]; duplicate {
+			result.AddError(rowNumber, "IRIS Building ID", irisCode,
 				"This building is priced twice in this file (also on row "+strconv.Itoa(firstRow)+")")
 			continue
 		}
-		seen[externalId] = rowNumber
+		seen[irisCode] = rowNumber
 
 		price, err := parsePrice(rawPrice)
 		if err != nil {
-			result.AddError(rowNumber, "Price per 4 Weeks (IDR)", rawPrice, err.Error())
+			result.AddError(rowNumber, "Price per Week (IDR)", rawPrice, err.Error())
 			continue
 		}
 
-		building, err := s.RepositoryBuilding.FindByExternalId(ctx, tx, externalId)
+		// A zero price means the building has no screens installed yet. Importing it
+		// would publish a rate card entry offering that building for nothing.
+		if price == 0 {
+			result.Skipped++
+			continue
+		}
+
+		building, err := s.RepositoryBuilding.FindByIrisCode(ctx, tx, irisCode)
 		if err == sql.ErrNoRows {
-			result.AddError(rowNumber, "External Building ID", externalId,
-				"No building with this ID. Export the current list to get valid values.")
+			result.AddError(rowNumber, "IRIS Building ID", irisCode,
+				"No building with this IRIS code. Export the current list to get valid values.")
 			continue
 		}
 		helpers.PanicIfError(err)
@@ -359,7 +368,7 @@ func (s *ServiceRateCardImpl) ImportBuildingPrices(ctx context.Context, versionI
 		helpers.PanicIfError(s.RepositoryRateCardInterface.UpsertBuildingPrice(ctx, tx, models.RateCardBuildingPrice{
 			RateCardVersionId: versionId,
 			BuildingId:        item.buildingId,
-			PriceIdrPer4Weeks: item.price,
+			PriceIdrPerWeek:   item.price,
 		}))
 	}
 
@@ -415,7 +424,7 @@ func (s *ServiceRateCardImpl) UpsertPackagePrice(ctx context.Context, versionId 
 	helpers.PanicIfError(s.RepositoryRateCardInterface.UpsertPackagePrice(ctx, tx, models.RateCardPackagePrice{
 		RateCardVersionId: versionId,
 		SalesPackageId:    request.SalesPackageId,
-		PriceIdrPer4Weeks: request.PriceIdrPer4Weeks,
+		PriceIdrPerWeek:   request.PriceIdrPerWeek,
 	}))
 
 	prices, err := s.RepositoryRateCardInterface.FindPackagePrices(ctx, tx, versionId, 100000, 0, "")
@@ -429,7 +438,7 @@ func (s *ServiceRateCardImpl) UpsertPackagePrice(ctx context.Context, versionId 
 	return webRateCard.PackagePriceResponse{
 		RateCardVersionId: versionId,
 		SalesPackageId:    request.SalesPackageId,
-		PriceIdrPer4Weeks: request.PriceIdrPer4Weeks,
+		PriceIdrPerWeek:   request.PriceIdrPerWeek,
 	}
 }
 
@@ -460,7 +469,7 @@ func (s *ServiceRateCardImpl) ExportPackagePrices(ctx context.Context, versionId
 
 	rows := make([][]interface{}, len(list))
 	for i, item := range list {
-		rows[i] = []interface{}{item.SalesPackageName, item.PriceIdrPer4Weeks}
+		rows[i] = []interface{}{item.SalesPackageName, item.PriceIdrPerWeek}
 	}
 
 	return spreadsheets.BuildExport("Package Prices", headersOf(PackagePriceColumns), rows)
@@ -509,7 +518,7 @@ func (s *ServiceRateCardImpl) ImportPackagePrices(ctx context.Context, versionId
 
 		price, err := parsePrice(rawPrice)
 		if err != nil {
-			result.AddError(rowNumber, "Price per 4 Weeks (IDR)", rawPrice, err.Error())
+			result.AddError(rowNumber, "Price per Week (IDR)", rawPrice, err.Error())
 			continue
 		}
 
@@ -534,7 +543,7 @@ func (s *ServiceRateCardImpl) ImportPackagePrices(ctx context.Context, versionId
 		helpers.PanicIfError(s.RepositoryRateCardInterface.UpsertPackagePrice(ctx, tx, models.RateCardPackagePrice{
 			RateCardVersionId: versionId,
 			SalesPackageId:    item.packageId,
-			PriceIdrPer4Weeks: item.price,
+			PriceIdrPerWeek:   item.price,
 		}))
 	}
 
@@ -664,14 +673,14 @@ func buildingPriceToResponse(p models.RateCardBuildingPrice) webRateCard.Buildin
 		Id: p.Id, RateCardVersionId: p.RateCardVersionId, BuildingId: p.BuildingId,
 		BuildingName: p.BuildingName, BuildingIrisCode: p.BuildingIrisCode,
 		BuildingType: p.BuildingType, Citytown: p.Citytown,
-		PriceIdrPer4Weeks: p.PriceIdrPer4Weeks, CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt,
+		PriceIdrPerWeek: p.PriceIdrPerWeek, CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt,
 	}
 }
 
 func packagePriceToResponse(p models.RateCardPackagePrice) webRateCard.PackagePriceResponse {
 	return webRateCard.PackagePriceResponse{
 		Id: p.Id, RateCardVersionId: p.RateCardVersionId, SalesPackageId: p.SalesPackageId,
-		SalesPackageName: p.SalesPackageName, PriceIdrPer4Weeks: p.PriceIdrPer4Weeks,
+		SalesPackageName: p.SalesPackageName, PriceIdrPerWeek: p.PriceIdrPerWeek,
 		BuildingCount: p.BuildingCount, CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt,
 	}
 }

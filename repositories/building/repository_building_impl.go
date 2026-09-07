@@ -240,6 +240,67 @@ func (repository *RepositoryBuildingImpl) FindByExternalId(ctx context.Context, 
 	return models.Building{}, sql.ErrNoRows
 }
 
+// FindByIrisCode retrieves a building by its IRIS code.
+//
+// This is the key the rate card spreadsheet uses ("IRIS Building ID", e.g. B000006).
+// external_building_id is a different identifier entirely (BLDG-2025-09-02547) and
+// matches none of them.
+//
+// iris_code is not unique in the schema, so this returns the first match by id. A
+// caller that needs to detect ambiguity should count separately.
+func (repository *RepositoryBuildingImpl) FindByIrisCode(ctx context.Context, tx *sql.Tx, irisCode string) (models.Building, error) {
+	SQL := `SELECT id, external_building_id, iris_code, name, project_name, audience, 
+		impression, cbd_area, building_status, competitor_location, competitor_exclusive, competitor_presence, sellable, connectivity, 
+		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, latitude, longitude, images, lcd_presence_status, synced_at, created_at, updated_at 
+		FROM ` + models.BuildingTable + ` WHERE iris_code = $1 ORDER BY id LIMIT 1`
+
+	rows, err := tx.QueryContext(ctx, SQL, irisCode)
+	if err != nil {
+		return models.Building{}, err
+	}
+	defer rows.Close()
+
+	building := models.NullAbleBuilding{}
+	if rows.Next() {
+		err := rows.Scan(
+			&building.Id,
+			&building.ExternalBuildingId,
+			&building.IrisCode,
+			&building.Name,
+			&building.ProjectName,
+			&building.Audience,
+			&building.Impression,
+			&building.CbdArea,
+			&building.BuildingStatus,
+			&building.CompetitorLocation,
+			&building.CompetitorExclusive,
+			&building.CompetitorPresence,
+			&building.Sellable,
+			&building.Connectivity,
+			&building.ResourceType,
+			&building.Subdistrict,
+			&building.Citytown,
+			&building.Province,
+			&building.GradeResource,
+			&building.BuildingType,
+			&building.CompletionYear,
+			&building.Latitude,
+			&building.Longitude,
+			&building.Images,
+			&building.LcdPresenceStatus,
+			&building.SyncedAt,
+			&building.CreatedAt,
+			&building.UpdatedAt,
+		)
+		if err != nil {
+			return models.Building{}, err
+		}
+		return models.NullAbleBuildingToBuilding(building), nil
+	}
+
+	return models.Building{}, sql.ErrNoRows
+}
+
 // FindAll retrieves all buildings with pagination, sorting, search, and filters
 func (repository *RepositoryBuildingImpl) FindAll(ctx context.Context, tx *sql.Tx, take int, skip int, orderBy string, orderDirection string, search string, buildingStatus string, sellable string, connectivity string, resourceType string, competitorLocation *bool, cbdArea string, subdistrict string, citytown string, province string, gradeResource string, buildingType string, excludeIds string) ([]models.Building, error) {
 	SQL := `SELECT id, external_building_id, iris_code, name, project_name, audience, 
@@ -585,7 +646,13 @@ func (repository *RepositoryBuildingImpl) GetDistinctValues(ctx context.Context,
 }
 
 // FindAllForMapping retrieves all buildings for mapping with filters (no pagination)
-func (repository *RepositoryBuildingImpl) FindAllForMapping(ctx context.Context, tx *sql.Tx, buildingType string, buildingGrade string, year string, subdistrict string, progress string, sellable string, connectivity string, lcdPresence string, salesPackageIds string, buildingRestrictionIds string, lat *float64, lng *float64, radius *int, poiPoints []struct{ Lat float64; Lng float64 }, polygonPoints []struct{ Lat float64; Lng float64 }, minLat *float64, maxLat *float64, minLng *float64, maxLng *float64) ([]models.Building, error) {
+func (repository *RepositoryBuildingImpl) FindAllForMapping(ctx context.Context, tx *sql.Tx, buildingType string, buildingGrade string, year string, subdistrict string, progress string, sellable string, connectivity string, lcdPresence string, salesPackageIds string, buildingRestrictionIds string, lat *float64, lng *float64, radius *int, poiPoints []struct {
+	Lat float64
+	Lng float64
+}, polygonPoints []struct {
+	Lat float64
+	Lng float64
+}, minLat *float64, maxLat *float64, minLng *float64, maxLng *float64) ([]models.Building, error) {
 	SQL := `SELECT DISTINCT b.id, b.external_building_id, b.iris_code, b.name, b.project_name, b.audience, 
 		b.impression, b.cbd_area, b.building_status, b.competitor_location, b.competitor_exclusive, b.competitor_presence, b.sellable, b.connectivity, 
 		b.resource_type, b.subdistrict, b.citytown, b.province, b.grade_resource, b.building_type, b.completion_year, b.latitude, b.longitude, b.images, b.lcd_presence_status, b.synced_at, b.created_at, b.updated_at 

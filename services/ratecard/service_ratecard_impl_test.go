@@ -78,7 +78,7 @@ func TestWritesAreRefusedOnAPublishedVersion(t *testing.T) {
 					" and can no longer be changed; create a new draft instead"),
 				func() {
 					svc.UpsertBuildingPrice(context.Background(), 1,
-						webRateCard.UpsertBuildingPriceRequest{BuildingId: 5, PriceIdrPer4Weeks: 1000})
+						webRateCard.UpsertBuildingPriceRequest{BuildingId: 5, PriceIdrPerWeek: 1000})
 				})
 
 			d.rateCard.AssertNotCalled(t, "UpsertBuildingPrice", mock.Anything, mock.Anything, mock.Anything)
@@ -240,7 +240,7 @@ func TestImportBuildingPrices_HappyPath(t *testing.T) {
 	svc, d, assertMock := newService(t, true)
 
 	d.rateCard.On("FindVersionById", mock.Anything, mock.Anything, 1).Return(draft(1), nil)
-	d.building.On("FindByExternalId", mock.Anything, mock.Anything, "BLDG-001").
+	d.building.On("FindByIrisCode", mock.Anything, mock.Anything, "B000006").
 		Return(models.Building{Id: 11}, nil)
 	d.rateCard.On("CountBuildingPrices", mock.Anything, mock.Anything, 1, "").Return(0, nil).Once()
 
@@ -251,13 +251,13 @@ func TestImportBuildingPrices_HappyPath(t *testing.T) {
 	d.rateCard.On("CountBuildingPrices", mock.Anything, mock.Anything, 1, "").Return(1, nil).Once()
 
 	result := svc.ImportBuildingPrices(context.Background(), 1, csv(
-		"External Building ID,Building Name,Price per 4 Weeks (IDR)",
-		"BLDG-001,Menara BCA,92000000",
+		"IRIS Building ID,Building Name,Price per Week (IDR)",
+		"B000006,Menara BCA,92000000",
 	), "csv")
 
 	assert.True(t, result.Imported)
 	assert.Equal(t, 1, result.Created)
-	assert.Equal(t, int64(92000000), captured.PriceIdrPer4Weeks)
+	assert.Equal(t, int64(92000000), captured.PriceIdrPerWeek)
 	assertMock()
 }
 
@@ -266,7 +266,7 @@ func TestImportBuildingPrices_AcceptsFormattedNumbers(t *testing.T) {
 	svc, d, assertMock := newService(t, true)
 
 	d.rateCard.On("FindVersionById", mock.Anything, mock.Anything, 1).Return(draft(1), nil)
-	d.building.On("FindByExternalId", mock.Anything, mock.Anything, "BLDG-001").
+	d.building.On("FindByIrisCode", mock.Anything, mock.Anything, "B000006").
 		Return(models.Building{Id: 11}, nil)
 	d.rateCard.On("CountBuildingPrices", mock.Anything, mock.Anything, 1, "").Return(0, nil).Once()
 
@@ -277,12 +277,12 @@ func TestImportBuildingPrices_AcceptsFormattedNumbers(t *testing.T) {
 	d.rateCard.On("CountBuildingPrices", mock.Anything, mock.Anything, 1, "").Return(1, nil).Once()
 
 	result := svc.ImportBuildingPrices(context.Background(), 1, csv(
-		"External Building ID,Price per 4 Weeks (IDR)",
-		"BLDG-001,\"92,000,000.00\"",
+		"IRIS Building ID,Price per Week (IDR)",
+		"B000006,\"92,000,000.00\"",
 	), "csv")
 
 	assert.True(t, result.Imported)
-	assert.Equal(t, int64(92000000), captured.PriceIdrPer4Weeks)
+	assert.Equal(t, int64(92000000), captured.PriceIdrPerWeek)
 	assertMock()
 }
 
@@ -294,8 +294,8 @@ func TestImportBuildingPrices_RejectsFractionalRupiah(t *testing.T) {
 	d.rateCard.On("FindVersionById", mock.Anything, mock.Anything, 1).Return(draft(1), nil)
 
 	result := svc.ImportBuildingPrices(context.Background(), 1, csv(
-		"External Building ID,Price per 4 Weeks (IDR)",
-		"BLDG-001,92000000.55",
+		"IRIS Building ID,Price per Week (IDR)",
+		"B000006,92000000.55",
 	), "csv")
 
 	assert.False(t, result.Imported)
@@ -309,17 +309,17 @@ func TestImportBuildingPrices_RejectsUnknownBuilding(t *testing.T) {
 	svc, d, assertMock := newService(t, true)
 
 	d.rateCard.On("FindVersionById", mock.Anything, mock.Anything, 1).Return(draft(1), nil)
-	d.building.On("FindByExternalId", mock.Anything, mock.Anything, "BLDG-999").
+	d.building.On("FindByIrisCode", mock.Anything, mock.Anything, "B999999").
 		Return(models.Building{}, sql.ErrNoRows)
 
 	result := svc.ImportBuildingPrices(context.Background(), 1, csv(
-		"External Building ID,Price per 4 Weeks (IDR)",
-		"BLDG-999,1000",
+		"IRIS Building ID,Price per Week (IDR)",
+		"B999999,1000",
 	), "csv")
 
 	assert.False(t, result.Imported)
 	require.Len(t, result.Errors, 1)
-	assert.Contains(t, result.Errors[0].Message, "No building with this ID")
+	assert.Contains(t, result.Errors[0].Message, "No building with this IRIS code")
 	assertMock()
 }
 
@@ -327,13 +327,13 @@ func TestImportBuildingPrices_RejectsTheSameBuildingTwice(t *testing.T) {
 	svc, d, assertMock := newService(t, true)
 
 	d.rateCard.On("FindVersionById", mock.Anything, mock.Anything, 1).Return(draft(1), nil)
-	d.building.On("FindByExternalId", mock.Anything, mock.Anything, "BLDG-001").
+	d.building.On("FindByIrisCode", mock.Anything, mock.Anything, "B000006").
 		Return(models.Building{Id: 11}, nil)
 
 	result := svc.ImportBuildingPrices(context.Background(), 1, csv(
-		"External Building ID,Price per 4 Weeks (IDR)",
-		"BLDG-001,1000",
-		"BLDG-001,2000",
+		"IRIS Building ID,Price per Week (IDR)",
+		"B000006,1000",
+		"B000006,2000",
 	), "csv")
 
 	assert.False(t, result.Imported)
@@ -350,7 +350,7 @@ func TestImportPackagePrices_RejectsUnknownPackage(t *testing.T) {
 		Return([]models.SalesPackage{}, nil)
 
 	result := svc.ImportPackagePrices(context.Background(), 1, csv(
-		"Sales Package,Price per 4 Weeks (IDR)",
+		"Sales Package,Price per Week (IDR)",
 		"Nope,1000",
 	), "csv")
 
@@ -370,11 +370,67 @@ func TestImportBuildingPrices_RefusedOnAPublishedVersion(t *testing.T) {
 
 	assert.Panics(t, func() {
 		svc.ImportBuildingPrices(context.Background(), 1, csv(
-			"External Building ID,Price per 4 Weeks (IDR)",
-			"BLDG-001,1000",
+			"IRIS Building ID,Price per Week (IDR)",
+			"B000006,1000",
 		), "csv")
 	})
 
 	d.rateCard.AssertNotCalled(t, "UpsertBuildingPrice", mock.Anything, mock.Anything, mock.Anything)
+	assertMock()
+}
+
+// The source spreadsheet prices a building at 0 when it has no screens installed
+// yet. Importing that would publish a rate card offering the building for nothing,
+// so those rows are skipped -- and counted, so the operator can reconcile the total.
+func TestImportBuildingPrices_SkipsZeroPricedRowsWithoutFailing(t *testing.T) {
+	svc, d, assertMock := newService(t, true)
+
+	d.rateCard.On("FindVersionById", mock.Anything, mock.Anything, 1).Return(draft(1), nil)
+	d.building.On("FindByIrisCode", mock.Anything, mock.Anything, "B000006").
+		Return(models.Building{Id: 11}, nil)
+	d.rateCard.On("CountBuildingPrices", mock.Anything, mock.Anything, 1, "").Return(0, nil).Once()
+	d.rateCard.On("UpsertBuildingPrice", mock.Anything, mock.Anything, mock.AnythingOfType("models.RateCardBuildingPrice")).
+		Return(nil)
+	d.rateCard.On("CountBuildingPrices", mock.Anything, mock.Anything, 1, "").Return(1, nil).Once()
+
+	result := svc.ImportBuildingPrices(context.Background(), 1, csv(
+		"IRIS Building ID,Price per Week (IDR)",
+		"B000006,1100000",
+		"B000999,0",
+	), "csv")
+
+	assert.True(t, result.Imported)
+	assert.Equal(t, 2, result.Rows)
+	assert.Equal(t, 1, result.Created)
+	assert.Equal(t, 1, result.Skipped)
+	assert.Empty(t, result.Errors)
+
+	// The zero row must never reach a lookup or a write.
+	d.building.AssertNotCalled(t, "FindByIrisCode", mock.Anything, mock.Anything, "B000999")
+	assertMock()
+}
+
+// The source file repeats its header row as a section break between building types.
+func TestImportBuildingPrices_IgnoresRepeatedHeaderRows(t *testing.T) {
+	svc, d, assertMock := newService(t, true)
+
+	d.rateCard.On("FindVersionById", mock.Anything, mock.Anything, 1).Return(draft(1), nil)
+	d.building.On("FindByIrisCode", mock.Anything, mock.Anything, "B000006").
+		Return(models.Building{Id: 11}, nil)
+	d.rateCard.On("CountBuildingPrices", mock.Anything, mock.Anything, 1, "").Return(0, nil).Once()
+	d.rateCard.On("UpsertBuildingPrice", mock.Anything, mock.Anything, mock.AnythingOfType("models.RateCardBuildingPrice")).
+		Return(nil)
+	d.rateCard.On("CountBuildingPrices", mock.Anything, mock.Anything, 1, "").Return(1, nil).Once()
+
+	result := svc.ImportBuildingPrices(context.Background(), 1, csv(
+		"IRIS Building ID,Price per Week (IDR)",
+		"IRIS Building ID,Price per Week (IDR)",
+		"B000006,1100000",
+	), "csv")
+
+	assert.True(t, result.Imported)
+	assert.Equal(t, 1, result.Rows, "the repeated header is layout, not a row")
+	assert.Equal(t, 1, result.Created)
+	assert.Empty(t, result.Errors)
 	assertMock()
 }

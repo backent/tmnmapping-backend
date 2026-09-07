@@ -19,13 +19,13 @@ type UpdateVersionRequest struct {
 }
 
 type UpsertBuildingPriceRequest struct {
-	BuildingId        int   `json:"building_id" validate:"required,gt=0"`
-	PriceIdrPer4Weeks int64 `json:"price_idr_per_4_weeks" validate:"gte=0"`
+	BuildingId      int   `json:"building_id" validate:"required,gt=0"`
+	PriceIdrPerWeek int64 `json:"price_idr_per_week" validate:"gte=0"`
 }
 
 type UpsertPackagePriceRequest struct {
-	SalesPackageId    int   `json:"sales_package_id" validate:"required,gt=0"`
-	PriceIdrPer4Weeks int64 `json:"price_idr_per_4_weeks" validate:"gte=0"`
+	SalesPackageId  int   `json:"sales_package_id" validate:"required,gt=0"`
+	PriceIdrPerWeek int64 `json:"price_idr_per_week" validate:"gte=0"`
 }
 
 type VersionResponse struct {
@@ -52,7 +52,7 @@ type BuildingPriceResponse struct {
 	BuildingIrisCode  string `json:"building_iris_code"`
 	BuildingType      string `json:"building_type"`
 	Citytown          string `json:"citytown"`
-	PriceIdrPer4Weeks int64  `json:"price_idr_per_4_weeks"`
+	PriceIdrPerWeek   int64  `json:"price_idr_per_week"`
 	CreatedAt         string `json:"created_at"`
 	UpdatedAt         string `json:"updated_at"`
 }
@@ -62,7 +62,7 @@ type PackagePriceResponse struct {
 	RateCardVersionId int    `json:"rate_card_version_id"`
 	SalesPackageId    int    `json:"sales_package_id"`
 	SalesPackageName  string `json:"sales_package_name"`
-	PriceIdrPer4Weeks int64  `json:"price_idr_per_4_weeks"`
+	PriceIdrPerWeek   int64  `json:"price_idr_per_week"`
 	BuildingCount     int    `json:"building_count"`
 	CreatedAt         string `json:"created_at"`
 	UpdatedAt         string `json:"updated_at"`

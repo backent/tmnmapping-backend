@@ -80,7 +80,7 @@ func NullAbleRateCardVersionToRateCardVersion(n NullAbleRateCardVersion) RateCar
 	}
 }
 
-// RateCardBuildingPrice is the four-week rate an advertiser pays for one building.
+// RateCardBuildingPrice is the weekly rate an advertiser pays for one building.
 type RateCardBuildingPrice struct {
 	Id                int    `json:"id"`
 	RateCardVersionId int    `json:"rate_card_version_id"`
@@ -89,7 +89,7 @@ type RateCardBuildingPrice struct {
 	BuildingIrisCode  string `json:"building_iris_code"`
 	BuildingType      string `json:"building_type"`
 	Citytown          string `json:"citytown"`
-	PriceIdrPer4Weeks int64  `json:"price_idr_per_4_weeks"`
+	PriceIdrPerWeek   int64  `json:"price_idr_per_week"`
 	CreatedAt         string `json:"created_at"`
 	UpdatedAt         string `json:"updated_at"`
 }
@@ -102,7 +102,7 @@ type NullAbleRateCardBuildingPrice struct {
 	BuildingIrisCode  sql.NullString
 	BuildingType      sql.NullString
 	Citytown          sql.NullString
-	PriceIdrPer4Weeks sql.NullInt64
+	PriceIdrPerWeek   sql.NullInt64
 	CreatedAt         sql.NullString
 	UpdatedAt         sql.NullString
 }
@@ -118,19 +118,19 @@ func NullAbleRateCardBuildingPriceToRateCardBuildingPrice(n NullAbleRateCardBuil
 		BuildingIrisCode:  n.BuildingIrisCode.String,
 		BuildingType:      n.BuildingType.String,
 		Citytown:          n.Citytown.String,
-		PriceIdrPer4Weeks: n.PriceIdrPer4Weeks.Int64,
+		PriceIdrPerWeek:   n.PriceIdrPerWeek.Int64,
 		CreatedAt:         n.CreatedAt.String,
 		UpdatedAt:         n.UpdatedAt.String,
 	}
 }
 
-// RateCardPackagePrice is the four-week rate for a whole sales package.
+// RateCardPackagePrice is the weekly rate for a whole sales package.
 type RateCardPackagePrice struct {
 	Id                int    `json:"id"`
 	RateCardVersionId int    `json:"rate_card_version_id"`
 	SalesPackageId    int    `json:"sales_package_id"`
 	SalesPackageName  string `json:"sales_package_name"`
-	PriceIdrPer4Weeks int64  `json:"price_idr_per_4_weeks"`
+	PriceIdrPerWeek   int64  `json:"price_idr_per_week"`
 	BuildingCount     int    `json:"building_count"`
 	CreatedAt         string `json:"created_at"`
 	UpdatedAt         string `json:"updated_at"`
@@ -141,7 +141,7 @@ type NullAbleRateCardPackagePrice struct {
 	RateCardVersionId sql.NullInt64
 	SalesPackageId    sql.NullInt64
 	SalesPackageName  sql.NullString
-	PriceIdrPer4Weeks sql.NullInt64
+	PriceIdrPerWeek   sql.NullInt64
 	BuildingCount     sql.NullInt64
 	CreatedAt         sql.NullString
 	UpdatedAt         sql.NullString
@@ -157,7 +157,7 @@ func NullAbleRateCardPackagePriceToRateCardPackagePrice(n NullAbleRateCardPackag
 		RateCardVersionId: int(n.RateCardVersionId.Int64),
 		SalesPackageId:    int(n.SalesPackageId.Int64),
 		SalesPackageName:  n.SalesPackageName.String,
-		PriceIdrPer4Weeks: n.PriceIdrPer4Weeks.Int64,
+		PriceIdrPerWeek:   n.PriceIdrPerWeek.Int64,
 		BuildingCount:     int(n.BuildingCount.Int64),
 		CreatedAt:         n.CreatedAt.String,
 		UpdatedAt:         n.UpdatedAt.String,

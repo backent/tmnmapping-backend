@@ -183,14 +183,14 @@ func (r *RepositoryRateCardImpl) DemoteCurrentVersion(ctx context.Context, tx *s
 // ---------------------------------------------------------------------------
 
 var buildingPriceSelect = `SELECT p.id, p.rate_card_version_id, p.building_id, b.name,
-	b.iris_code, b.building_type, b.citytown, p.price_idr_per_4_weeks, p.created_at, p.updated_at
+	b.iris_code, b.building_type, b.citytown, p.price_idr_per_week, p.created_at, p.updated_at
 	FROM ` + models.RateCardBuildingPriceTable + ` p
 	JOIN ` + models.BuildingTable + ` b ON b.id = p.building_id`
 
 func scanBuildingPrice(rows *sql.Rows) (models.RateCardBuildingPrice, error) {
 	var n models.NullAbleRateCardBuildingPrice
 	err := rows.Scan(&n.Id, &n.RateCardVersionId, &n.BuildingId, &n.BuildingName,
-		&n.BuildingIrisCode, &n.BuildingType, &n.Citytown, &n.PriceIdrPer4Weeks,
+		&n.BuildingIrisCode, &n.BuildingType, &n.Citytown, &n.PriceIdrPerWeek,
 		&n.CreatedAt, &n.UpdatedAt)
 	if err != nil {
 		return models.RateCardBuildingPrice{}, err
@@ -251,10 +251,10 @@ func (r *RepositoryRateCardImpl) CountBuildingPrices(ctx context.Context, tx *sq
 // building already in the draft updates it rather than failing on the unique key.
 func (r *RepositoryRateCardImpl) UpsertBuildingPrice(ctx context.Context, tx *sql.Tx, p models.RateCardBuildingPrice) error {
 	SQL := "INSERT INTO " + models.RateCardBuildingPriceTable +
-		" (rate_card_version_id, building_id, price_idr_per_4_weeks) VALUES ($1, $2, $3)" +
+		" (rate_card_version_id, building_id, price_idr_per_week) VALUES ($1, $2, $3)" +
 		" ON CONFLICT (rate_card_version_id, building_id)" +
-		" DO UPDATE SET price_idr_per_4_weeks = EXCLUDED.price_idr_per_4_weeks, updated_at = CURRENT_TIMESTAMP"
-	_, err := tx.ExecContext(ctx, SQL, p.RateCardVersionId, p.BuildingId, p.PriceIdrPer4Weeks)
+		" DO UPDATE SET price_idr_per_week = EXCLUDED.price_idr_per_week, updated_at = CURRENT_TIMESTAMP"
+	_, err := tx.ExecContext(ctx, SQL, p.RateCardVersionId, p.BuildingId, p.PriceIdrPerWeek)
 
 	return err
 }
@@ -271,7 +271,7 @@ func (r *RepositoryRateCardImpl) DeleteBuildingPrice(ctx context.Context, tx *sq
 // ---------------------------------------------------------------------------
 
 var packagePriceSelect = `SELECT p.id, p.rate_card_version_id, p.sales_package_id, sp.name,
-	p.price_idr_per_4_weeks,
+	p.price_idr_per_week,
 	(SELECT COUNT(*) FROM ` + models.RateCardPackageBuildingTable + ` pb
 	  WHERE pb.rate_card_version_id = p.rate_card_version_id AND pb.sales_package_id = p.sales_package_id),
 	p.created_at, p.updated_at
@@ -281,7 +281,7 @@ var packagePriceSelect = `SELECT p.id, p.rate_card_version_id, p.sales_package_i
 func scanPackagePrice(rows *sql.Rows) (models.RateCardPackagePrice, error) {
 	var n models.NullAbleRateCardPackagePrice
 	err := rows.Scan(&n.Id, &n.RateCardVersionId, &n.SalesPackageId, &n.SalesPackageName,
-		&n.PriceIdrPer4Weeks, &n.BuildingCount, &n.CreatedAt, &n.UpdatedAt)
+		&n.PriceIdrPerWeek, &n.BuildingCount, &n.CreatedAt, &n.UpdatedAt)
 	if err != nil {
 		return models.RateCardPackagePrice{}, err
 	}
@@ -336,10 +336,10 @@ func (r *RepositoryRateCardImpl) CountPackagePrices(ctx context.Context, tx *sql
 
 func (r *RepositoryRateCardImpl) UpsertPackagePrice(ctx context.Context, tx *sql.Tx, p models.RateCardPackagePrice) error {
 	SQL := "INSERT INTO " + models.RateCardPackagePriceTable +
-		" (rate_card_version_id, sales_package_id, price_idr_per_4_weeks) VALUES ($1, $2, $3)" +
+		" (rate_card_version_id, sales_package_id, price_idr_per_week) VALUES ($1, $2, $3)" +
 		" ON CONFLICT (rate_card_version_id, sales_package_id)" +
-		" DO UPDATE SET price_idr_per_4_weeks = EXCLUDED.price_idr_per_4_weeks, updated_at = CURRENT_TIMESTAMP"
-	_, err := tx.ExecContext(ctx, SQL, p.RateCardVersionId, p.SalesPackageId, p.PriceIdrPer4Weeks)
+		" DO UPDATE SET price_idr_per_week = EXCLUDED.price_idr_per_week, updated_at = CURRENT_TIMESTAMP"
+	_, err := tx.ExecContext(ctx, SQL, p.RateCardVersionId, p.SalesPackageId, p.PriceIdrPerWeek)
 
 	return err
 }
@@ -404,12 +404,12 @@ func (r *RepositoryRateCardImpl) FindPackageBuildings(ctx context.Context, tx *s
 func (r *RepositoryRateCardImpl) CopyPrices(ctx context.Context, tx *sql.Tx, fromVersionId int, toVersionId int) error {
 	statements := []string{
 		"INSERT INTO " + models.RateCardBuildingPriceTable +
-			" (rate_card_version_id, building_id, price_idr_per_4_weeks)" +
-			" SELECT $1, building_id, price_idr_per_4_weeks FROM " + models.RateCardBuildingPriceTable +
+			" (rate_card_version_id, building_id, price_idr_per_week)" +
+			" SELECT $1, building_id, price_idr_per_week FROM " + models.RateCardBuildingPriceTable +
 			" WHERE rate_card_version_id = $2",
 		"INSERT INTO " + models.RateCardPackagePriceTable +
-			" (rate_card_version_id, sales_package_id, price_idr_per_4_weeks)" +
-			" SELECT $1, sales_package_id, price_idr_per_4_weeks FROM " + models.RateCardPackagePriceTable +
+			" (rate_card_version_id, sales_package_id, price_idr_per_week)" +
+			" SELECT $1, sales_package_id, price_idr_per_week FROM " + models.RateCardPackagePriceTable +
 			" WHERE rate_card_version_id = $2",
 		"INSERT INTO " + models.RateCardPackageBuildingTable +
 			" (rate_card_version_id, sales_package_id, building_id)" +

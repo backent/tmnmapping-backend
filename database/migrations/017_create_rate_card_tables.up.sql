@@ -4,9 +4,12 @@
 -- Prices here are what an ADVERTISER PAYS TMN. They are unrelated to the landlord
 -- rent in the building contract workbook, which is money flowing the other way.
 --
--- Every price is a FOUR-WEEK rate. The quotation computes
---     gross = price_idr_per_4_weeks * weeks / 4
--- so the column name says so explicitly rather than leaving it to a comment.
+-- Every price is a PER-WEEK rate, matching the rate card source spreadsheet, whose
+-- own arithmetic derives a weekly figure (Total Cost / Month / 4). The quotation
+-- computes
+--     gross = price_idr_per_week * weeks
+-- Storing the same period the source uses means a number in the app can be checked
+-- against the spreadsheet directly, with no factor of four in between.
 
 CREATE TABLE IF NOT EXISTS rate_card_versions (
     id BIGSERIAL PRIMARY KEY,
@@ -39,7 +42,7 @@ CREATE TABLE IF NOT EXISTS rate_card_building_prices (
     id BIGSERIAL PRIMARY KEY,
     rate_card_version_id BIGINT NOT NULL,
     building_id BIGINT NOT NULL,
-    price_idr_per_4_weeks NUMERIC(18,0) NOT NULL,
+    price_idr_per_week NUMERIC(18,0) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -48,7 +51,7 @@ CREATE TABLE IF NOT EXISTS rate_card_building_prices (
     -- sync only creates and updates buildings, so this never blocks it.
     FOREIGN KEY (building_id) REFERENCES buildings(id) ON DELETE RESTRICT,
     CONSTRAINT unique_rate_card_building UNIQUE (rate_card_version_id, building_id),
-    CONSTRAINT rate_card_building_price_non_negative CHECK (price_idr_per_4_weeks >= 0)
+    CONSTRAINT rate_card_building_price_non_negative CHECK (price_idr_per_week >= 0)
 );
 
 CREATE INDEX IF NOT EXISTS idx_rate_card_building_prices_version
@@ -58,14 +61,14 @@ CREATE TABLE IF NOT EXISTS rate_card_package_prices (
     id BIGSERIAL PRIMARY KEY,
     rate_card_version_id BIGINT NOT NULL,
     sales_package_id BIGINT NOT NULL,
-    price_idr_per_4_weeks NUMERIC(18,0) NOT NULL,
+    price_idr_per_week NUMERIC(18,0) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     FOREIGN KEY (rate_card_version_id) REFERENCES rate_card_versions(id) ON DELETE CASCADE,
     FOREIGN KEY (sales_package_id) REFERENCES sales_packages(id) ON DELETE RESTRICT,
     CONSTRAINT unique_rate_card_package UNIQUE (rate_card_version_id, sales_package_id),
-    CONSTRAINT rate_card_package_price_non_negative CHECK (price_idr_per_4_weeks >= 0)
+    CONSTRAINT rate_card_package_price_non_negative CHECK (price_idr_per_week >= 0)
 );
 
 CREATE INDEX IF NOT EXISTS idx_rate_card_package_prices_version
