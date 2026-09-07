@@ -545,7 +545,10 @@ func NewRouter(
 			authMiddleware.RequireAuth(
 				authMiddleware.RequirePermission(models.PermissionRateCardsView)(controllersRateCard.FindAllVersions))))
 
-	router.GET("/rate-cards/current",
+	// Sibling path, not /rate-cards/current: httprouter refuses a static segment
+	// and a wildcard (:id) at the same position. Matches the existing convention
+	// used by /categories-dropdown and /pois-export.
+	router.GET("/rate-cards-current",
 		loggingMiddleware.Log(
 			authMiddleware.RequireAuth(
 				authMiddleware.RequirePermission(models.PermissionRateCardsView)(controllersRateCard.FindCurrentVersion))))
