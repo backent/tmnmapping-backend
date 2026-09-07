@@ -17,6 +17,7 @@ import (
 	controllersImage "github.com/malikabdulaziz/tmn-backend/controllers/image"
 	controllersMotherBrand "github.com/malikabdulaziz/tmn-backend/controllers/motherbrand"
 	controllersPOI "github.com/malikabdulaziz/tmn-backend/controllers/poi"
+	controllersQuotation "github.com/malikabdulaziz/tmn-backend/controllers/quotation"
 	controllersRateCard "github.com/malikabdulaziz/tmn-backend/controllers/ratecard"
 	controllersSalesAssignment "github.com/malikabdulaziz/tmn-backend/controllers/salesassignment"
 	controllersSalesPackage "github.com/malikabdulaziz/tmn-backend/controllers/salespackage"
@@ -35,6 +36,7 @@ import (
 	repositoriesDashboard "github.com/malikabdulaziz/tmn-backend/repositories/dashboard"
 	repositoriesMotherBrand "github.com/malikabdulaziz/tmn-backend/repositories/motherbrand"
 	repositoriesPOI "github.com/malikabdulaziz/tmn-backend/repositories/poi"
+	repositoriesQuotation "github.com/malikabdulaziz/tmn-backend/repositories/quotation"
 	repositoriesRateCard "github.com/malikabdulaziz/tmn-backend/repositories/ratecard"
 	repositoriesSalesAssignment "github.com/malikabdulaziz/tmn-backend/repositories/salesassignment"
 	repositoriesSalesPackage "github.com/malikabdulaziz/tmn-backend/repositories/salespackage"
@@ -54,6 +56,7 @@ import (
 	servicesLOI "github.com/malikabdulaziz/tmn-backend/services/loi"
 	servicesMotherBrand "github.com/malikabdulaziz/tmn-backend/services/motherbrand"
 	servicesPOI "github.com/malikabdulaziz/tmn-backend/services/poi"
+	servicesQuotation "github.com/malikabdulaziz/tmn-backend/services/quotation"
 	servicesRateCard "github.com/malikabdulaziz/tmn-backend/services/ratecard"
 	servicesSalesAssignment "github.com/malikabdulaziz/tmn-backend/services/salesassignment"
 	servicesSalesPackage "github.com/malikabdulaziz/tmn-backend/services/salespackage"
@@ -115,6 +118,12 @@ var advertiserSet = wire.NewSet(
 	controllersSalesAssignment.NewControllerSalesAssignmentImpl,
 )
 
+var quotationSet = wire.NewSet(
+	repositoriesQuotation.NewRepositoryQuotationImpl,
+	servicesQuotation.NewServiceQuotationImpl,
+	controllersQuotation.NewControllerQuotationImpl,
+)
+
 var rateCardSet = wire.NewSet(
 	repositoriesRateCard.NewRepositoryRateCardImpl,
 	servicesRateCard.NewServiceRateCardImpl,
@@ -173,6 +182,7 @@ var middlewareSet = wire.NewSet(
 	middlewares.NewBrandMiddleware,
 	middlewares.NewSalesAssignmentMiddleware,
 	middlewares.NewRateCardMiddleware,
+	middlewares.NewQuotationMiddleware,
 )
 
 func InitializeRouter() *httprouter.Router {
@@ -191,6 +201,7 @@ func InitializeRouter() *httprouter.Router {
 		userSet,
 		advertiserSet,
 		rateCardSet,
+		quotationSet,
 		poiSet,
 		salespackageSet,
 		buildingrestrictionSet,

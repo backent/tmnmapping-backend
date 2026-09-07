@@ -17,6 +17,8 @@ type RepositoryUserInterface interface {
 	UpdatePassword(ctx context.Context, tx *sql.Tx, id int, hashedPassword string) error
 	Delete(ctx context.Context, tx *sql.Tx, id int) error
 	CountByRole(ctx context.Context, tx *sql.Tx, role string) (int, error)
+	FindByRole(ctx context.Context, tx *sql.Tx, role string) ([]models.User, error)
+	CanCreateOnBehalfOf(ctx context.Context, tx *sql.Tx, actorUserId int, ownerUserId int) (bool, error)
 	CreateLoginLog(ctx context.Context, tx *sql.Tx, userId int, ipAddress string) error
 	FindLastLoginByUserId(ctx context.Context, tx *sql.Tx, userId int) (models.UserLoginLog, error)
 }

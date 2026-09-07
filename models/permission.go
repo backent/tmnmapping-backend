@@ -53,6 +53,16 @@ const (
 	PermissionRateCardsManage  = "rate-cards.manage"
 	PermissionRateCardsPublish = "rate-cards.publish"
 
+	// Quotations. Reading and writing are open to every role because the service
+	// scopes them per user: a salesperson only ever sees their own pipeline, and an
+	// approver only their queue. Restricting the endpoint by role instead would
+	// stop approvers reading the quotations they must decide on.
+	PermissionQuotationsView   = "quotations.view"
+	PermissionQuotationsManage = "quotations.manage"
+
+	// Acting on an approval is separate: only the three approver roles may.
+	PermissionQuotationsApprove = "quotations.approve"
+
 	// Navigation-only permissions. No route enforces these; they decide which
 	// sections the frontend shows. They live here so that the whole policy is
 	// readable in one file, and so the frontend does not need a second copy of it.
@@ -113,6 +123,13 @@ var Permissions = map[string][]string{
 	PermissionRateCardsView:    Roles,
 	PermissionRateCardsManage:  {RoleAdmin},
 	PermissionRateCardsPublish: {RoleAdmin},
+
+	PermissionQuotationsView:   Roles,
+	PermissionQuotationsManage: Roles,
+
+	// admin is deliberately absent: approval authority follows the sales
+	// hierarchy, not system administration.
+	PermissionQuotationsApprove: {RoleHeadOfSales, RoleHeadOfBusinessControl, RoleCEO},
 
 	PermissionMasterDataScreen:           {RoleAdmin},
 	PermissionBuildingRestrictionsScreen: {RoleAdmin},

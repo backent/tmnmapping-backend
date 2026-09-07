@@ -67,3 +67,13 @@ func (m *MockRepositoryUser) FindLastLoginByUserId(ctx context.Context, tx *sql.
 	args := m.Called(ctx, tx, userId)
 	return args.Get(0).(models.UserLoginLog), args.Error(1)
 }
+
+func (m *MockRepositoryUser) FindByRole(ctx context.Context, tx *sql.Tx, role string) ([]models.User, error) {
+	args := m.Called(ctx, tx, role)
+	return args.Get(0).([]models.User), args.Error(1)
+}
+
+func (m *MockRepositoryUser) CanCreateOnBehalfOf(ctx context.Context, tx *sql.Tx, actorUserId int, ownerUserId int) (bool, error) {
+	args := m.Called(ctx, tx, actorUserId, ownerUserId)
+	return args.Bool(0), args.Error(1)
+}

@@ -15,6 +15,7 @@ import (
 	controllersImage "github.com/malikabdulaziz/tmn-backend/controllers/image"
 	controllersMotherBrand "github.com/malikabdulaziz/tmn-backend/controllers/motherbrand"
 	controllersPOI "github.com/malikabdulaziz/tmn-backend/controllers/poi"
+	controllersQuotation "github.com/malikabdulaziz/tmn-backend/controllers/quotation"
 	controllersRateCard "github.com/malikabdulaziz/tmn-backend/controllers/ratecard"
 	controllersSalesAssignment "github.com/malikabdulaziz/tmn-backend/controllers/salesassignment"
 	controllersSalesPackage "github.com/malikabdulaziz/tmn-backend/controllers/salespackage"
@@ -43,6 +44,7 @@ func NewRouter(
 	brandMiddleware *middlewares.BrandMiddleware,
 	salesAssignmentMiddleware *middlewares.SalesAssignmentMiddleware,
 	rateCardMiddleware *middlewares.RateCardMiddleware,
+	quotationMiddleware *middlewares.QuotationMiddleware,
 	controllersAuth controllersAuth.ControllerAuthInterface,
 	controllersBuilding controllersBuilding.ControllerBuildingInterface,
 	controllersImage controllersImage.ControllerImageInterface,
@@ -60,6 +62,7 @@ func NewRouter(
 	controllersBrand controllersBrand.ControllerBrandInterface,
 	controllersSalesAssignment controllersSalesAssignment.ControllerSalesAssignmentInterface,
 	controllersRateCard controllersRateCard.ControllerRateCardInterface,
+	controllersQuotation controllersQuotation.ControllerQuotationInterface,
 ) *httprouter.Router {
 	router := httprouter.New()
 
@@ -644,6 +647,69 @@ func NewRouter(
 		loggingMiddleware.Log(
 			authMiddleware.RequireAuth(
 				authMiddleware.RequirePermission(models.PermissionRateCardsView)(controllersRateCard.PackagePriceTemplate))))
+
+	// Quotation routes.
+	//
+	// View and manage are open to every role: the service scopes them per user, so a
+	// salesperson sees only their own pipeline and an approver only their queue.
+	// Restricting by role here would stop approvers reading what they must decide on.
+	router.GET("/quotations",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionQuotationsView)(controllersQuotation.FindAll))))
+
+	router.GET("/quotations-dashboard",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionQuotationsView)(controllersQuotation.DashboardCounts))))
+
+	router.GET("/quotations/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionQuotationsView)(controllersQuotation.FindById))))
+
+	router.POST("/quotations",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionQuotationsManage)(
+					quotationMiddleware.ValidateCreate(controllersQuotation.Create)))))
+
+	router.PUT("/quotations/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionQuotationsManage)(
+					quotationMiddleware.ValidateUpdate(controllersQuotation.Update)))))
+
+	router.DELETE("/quotations/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionQuotationsManage)(controllersQuotation.Delete))))
+
+	router.POST("/quotations/:id/submit",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionQuotationsManage)(controllersQuotation.Submit))))
+
+	// Approving and returning are gated separately: only the approver roles, never
+	// admin. Which specific person may act is enforced by the service.
+	router.POST("/quotations/:id/approve",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionQuotationsApprove)(controllersQuotation.Approve))))
+
+	router.POST("/quotations/:id/return",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionQuotationsApprove)(
+					quotationMiddleware.ValidateReturn(controllersQuotation.Return)))))
+
+	// Live pricing for the wizard. Runs the same functions submit will, so the
+	// figure a seller sees is the figure they get.
+	router.POST("/quotations-pricing-preview",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionQuotationsView)(
+					quotationMiddleware.ValidatePricingPreview(controllersQuotation.PreviewPricing)))))
 
 	router.GET("/dashboard/building-lcd-presence",
 		loggingMiddleware.Log(

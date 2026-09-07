@@ -27,7 +27,9 @@ func TestPermissions_EveryEntryGrantsSomething(t *testing.T) {
 func TestPermissions_NamingConvention(t *testing.T) {
 	// .publish exists because publishing a rate card is a different act from editing
 	// one: it changes what every future quotation is priced against.
-	allowedSuffixes := []string{".view", ".manage", ".screen", ".publish"}
+	// .approve exists because acting on an approval is not editing: it is restricted
+	// to the approver roles and excludes admin.
+	allowedSuffixes := []string{".view", ".manage", ".screen", ".publish", ".approve"}
 
 	for permission := range models.Permissions {
 		matched := false
@@ -47,6 +49,12 @@ func TestPermissions_WritesAreAdminOnly(t *testing.T) {
 	exceptions := map[string]bool{
 		// Saved polygons are a map working tool, not master data.
 		models.PermissionSavedPolygonsManage: true,
+
+		// Quotations are open to every role because the SERVICE scopes them per
+		// user: a salesperson only ever sees and edits their own, and an approver
+		// only their queue. Gating the endpoint by role instead would stop
+		// approvers reading the quotations they have to decide on.
+		models.PermissionQuotationsManage: true,
 	}
 
 	for permission, roles := range models.Permissions {
@@ -102,10 +110,23 @@ func TestIsValidPermission(t *testing.T) {
 }
 
 func TestPermissionsForRole(t *testing.T) {
-	t.Run("admin holds everything", func(t *testing.T) {
+	// Admin holds everything except approval. Approval authority follows the sales
+	// hierarchy, not system administration -- the same reason admin is excluded from
+	// ApproverRoles.
+	t.Run("admin holds everything except approval", func(t *testing.T) {
 		held := models.PermissionsForRole(models.RoleAdmin)
 
-		assert.Len(t, held, len(models.Permissions))
+		assert.Len(t, held, len(models.Permissions)-1)
+		assert.NotContains(t, held, models.PermissionQuotationsApprove)
+	})
+
+	t.Run("only the approver roles may approve", func(t *testing.T) {
+		for _, role := range []string{models.RoleHeadOfSales, models.RoleHeadOfBusinessControl, models.RoleCEO} {
+			assert.True(t, models.RoleCan(role, models.PermissionQuotationsApprove), role)
+		}
+
+		assert.False(t, models.RoleCan(models.RoleAdmin, models.PermissionQuotationsApprove))
+		assert.False(t, models.RoleCan(models.RoleSales, models.PermissionQuotationsApprove))
 	})
 
 	t.Run("is sorted, so the API response is stable", func(t *testing.T) {

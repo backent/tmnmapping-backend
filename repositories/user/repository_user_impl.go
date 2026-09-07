@@ -216,3 +216,37 @@ func nullIfEmpty(value string) interface{} {
 
 	return value
 }
+
+// FindByRole lists everyone holding a role. Approval routing needs exactly one
+// holder; returning all of them lets the caller refuse an ambiguous directory rather
+// than silently picking the first.
+func (repository *RepositoryUserImpl) FindByRole(ctx context.Context, tx *sql.Tx, role string) ([]models.User, error) {
+	SQL := "SELECT " + userColumns + " FROM " + models.UserTable + " WHERE role = $1 ORDER BY id"
+	rows, err := tx.QueryContext(ctx, SQL, role)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []models.User
+	for rows.Next() {
+		user, err := scanUser(rows)
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, user)
+	}
+
+	return list, rows.Err()
+}
+
+// CanCreateOnBehalfOf reads the proxy-entry allow-list added in migration 015.
+// Proxy entry is explicit per spec 2026-07-23: holding a role is not enough.
+func (repository *RepositoryUserImpl) CanCreateOnBehalfOf(ctx context.Context, tx *sql.Tx, actorUserId int, ownerUserId int) (bool, error) {
+	var count int
+	SQL := "SELECT COUNT(*) FROM " + models.UserProxySalesTable +
+		" WHERE actor_user_id = $1 AND owner_user_id = $2"
+	err := tx.QueryRowContext(ctx, SQL, actorUserId, ownerUserId).Scan(&count)
+
+	return count > 0, err
+}
