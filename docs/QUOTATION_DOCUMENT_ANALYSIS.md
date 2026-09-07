@@ -100,28 +100,74 @@ distinguish the two readings.
 
 ---
 
-## 4. ⚠️ A placement may not be a list of buildings
+## 4. ✅ A placement is buildings OR one named package — settled
 
-The document describes the placement as **"Package A — 950 — Apartment"** and the
-bonus as **"Bonus — 70 — Retail & Hotel"**. That reads as *a screen count within a
-building category*, not a set of named buildings.
+**Resolved 2026-09-08** by reading the reference implementation. This section
+previously listed three possibilities; the prototype answers it outright.
 
-Our model (and the prototype's) offers placement as **either** individual buildings
-**or** one named sales package. Neither matches "950 screens in Apartments" directly.
+`lib/types.ts`:
 
-Three readings, and they lead to different wizards:
+```ts
+export type PlacementMode = "building" | "package";
+```
 
-1. **"Package A" is a named sales package**, 950 is its screen count, and Apartment is
-   a label. Then our model already fits and the number is derived.
-2. **The seller picks a category and a screen count**, and the system chooses
-   buildings. That is a different selection mode we have not built.
-3. **The seller picks buildings**, and the document summarises them as a count and a
-   dominant category. Then the summary is a rendering concern only.
+`lib/quotation.ts` selects the resource pool by mode, then prices **both the same
+way** — a package is not a special pricing rule, it is simply a resource that carries
+its own price:
 
-Reading 3 is most consistent with clause 7 (below), but this needs answering by the
-business, not inferred.
+```ts
+const resources = selection.mode === "building" ? references.buildings
+                : selection.mode === "package"  ? references.packages
+                : undefined;
 
----
+const expected = Math.round(
+  selected.reduce((sum, r) => sum + (r?.priceIdr ?? 0), 0) * (weeks / 4)
+);
+if (selection.grossPrice !== expected) errors[...] = basePriceMismatch;
+```
+
+So "category plus screen count" is **not** a selection mode. On the example document,
+`950` and `Apartment` are attributes of Package A shown for information — not values
+the seller entered.
+
+Three details that follow:
+
+1. **A package selection is exactly one package.** Enforced explicitly:
+   `(selection.mode === "package" && ids.length !== 1)` is a validation error.
+   Buildings are 1..n. A package cannot be combined with another package, or mixed
+   with loose buildings, inside one selection. Placement and Bonus are separate
+   selections, so each chooses its mode independently — which is exactly the shape of
+   the example document.
+2. **A package carries its own price, traffic and impressions**, set independently
+   rather than derived from its member buildings. This is why the example's per-screen
+   economics do not match the rate card sum, and why its two lines differ from each
+   other (400,000 vs 1,000,000 per screen per week).
+3. **A package stores `buildingIds`**, which is what feeds the separate Building List
+   attachment of clause 7, and matches the `rate_card_package_buildings` snapshot our
+   schema freezes at publish.
+
+Our data model already supports this: `rate_card_building_prices` and
+`rate_card_package_prices` are two pools of priced resources, and
+`quotation_selections.mode` chooses between them.
+
+### 4.1 What package pricing still needs
+
+Supporting the mode is not the same as being able to use it. Three gaps:
+
+| Need | Where | Status |
+|---|---|---|
+| Package prices | `rate_card_package_prices` | Table exists, **empty**. The rate card file priced only buildings. |
+| Package traffic + impressions | `sales_packages` | **Missing.** The prototype stores these per package, independent of member buildings. |
+| Package screen count | `sales_packages` | **Missing.** The example document displays it ("950"). |
+
+Plus the master-data fields already flagged in `QUOTATION_FEATURE_ANALYSIS.md` §3.2:
+`package_code`, `status`, `description`.
+
+So `sales_packages` needs a migration adding: `package_code` (unique), `status`,
+`description`, `screen_count`, `traffic`, `impressions`. That is a prerequisite for
+Phase 3's package mode, and it is small — but the **package prices themselves are a
+data gap only the business can close**, in the same way the building prices arrived
+as a spreadsheet.
 
 ## 5. Fields the document has that we do not model
 
@@ -191,6 +237,9 @@ placement/bonus mechanics, VAT on nett.
 - Tax rate constant 11%, applied to nett — decide fixed or configurable.
 - Pricing functions can be tested against this exact example as a fixture. It is a
   real, fully reconciled worked case, which is worth more than invented numbers.
+- Placement and Bonus each select **either** 1..n buildings **or** exactly one
+  package, priced identically by summing the selected resources. §4.
+- `sales_packages` needs the columns in §4.1 before package mode can work.
 
 **Feeds Phase 5 (document):** the field list in §5 and the terms in §6.2 are the
 template. Note the appendix is *not* part of it.
@@ -198,12 +247,14 @@ template. Note the appendix is *not* part of it.
 **Blocking questions raised by this document:**
 
 1. Does approval route on the **customer** discount (65%) or the **effective**
-   discount (70.44%)? §3.
-2. Is a placement a set of buildings, a named package, or a category plus a screen
-   count? §4.
+   discount (70.44%)? §3. *Still the one that changes code shape.*
+2. ~~Is a placement buildings, a package, or a category plus count?~~
+   ✅ **Answered — buildings or one named package.** §4.
 3. Are the per-quotation contact fields (Attention To, Job Title, Handphone, Email)
    required, and do they belong to the quotation or the customer?
 4. Is VAT fixed at 11% or configurable per quotation?
+5. **Where do package prices come from?** §4.1. Buildings arrived as a spreadsheet;
+   packages have no equivalent yet, and package mode cannot be used without them.
 
 ---
 

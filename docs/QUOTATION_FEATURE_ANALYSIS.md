@@ -153,6 +153,12 @@ FROM buildings;
 
 ### 3.2 `sales_packages` — needs real master-data fields
 
+> **Updated 2026-09-08.** The list below is necessary but not sufficient. A package is
+> a *priced resource in its own right*, carrying its own price, traffic, impressions
+> and screen count independent of its member buildings — see
+> [`QUOTATION_DOCUMENT_ANALYSIS.md`](QUOTATION_DOCUMENT_ANALYSIS.md) §4.1 for the full
+> column list and the outstanding data gap.
+
 Today it is only `id`, `name`, timestamps. The quotation flow needs:
 
 | Field | Why |
