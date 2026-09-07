@@ -11,9 +11,15 @@ type BuildingRefResponse struct {
 }
 
 type SalesPackageResponse struct {
-	Id        int                   `json:"id"`
-	Name      string                `json:"name"`
-	Buildings []BuildingRefResponse `json:"buildings"`
-	CreatedAt string                `json:"created_at"`
-	UpdatedAt string                `json:"updated_at"`
+	Id          int                   `json:"id"`
+	PackageCode string                `json:"package_code"`
+	Name        string                `json:"name"`
+	Description string                `json:"description"`
+	Status      string                `json:"status"`
+	ScreenCount int                   `json:"screen_count"`
+	Traffic     int                   `json:"traffic"`
+	Impressions int                   `json:"impressions"`
+	Buildings   []BuildingRefResponse `json:"buildings"`
+	CreatedAt   string                `json:"created_at"`
+	UpdatedAt   string                `json:"updated_at"`
 }
