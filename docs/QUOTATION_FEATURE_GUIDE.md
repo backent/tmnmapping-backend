@@ -4,8 +4,11 @@
 built the way it is — new developers, and the sales/finance people who own the
 process.
 **Status:** Phases 0–3 and the printed document are built and running on staging.
-Not in production. See §12 for what is still open.
+Not in production. See §13 for what is still open.
 **Last updated:** 2026-09-08
+
+> **Just want to use it?** §3 is the step-by-step walkthrough. The rest
+> explains why it behaves the way it does.
 
 Companion documents:
 
@@ -125,12 +128,134 @@ Reading the actor lines:
 - **Sales** — everything on the left: create, revise, resubmit, print. Sees only
   their own quotations.
 - **Approvers** — the three senior roles. They can also *create* quotations (they
-  sell too), which is exactly why the no-self-approval rule in §6 exists.
+  sell too), which is exactly why the no-self-approval rule in §7 exists.
 - **Admin** — master data and rate cards. Sees every quotation, approves none.
 
 ---
 
-## 3. The lifecycle
+## 3. How to use it — step by step
+
+This section is the walkthrough. Everything here is what the screens actually say.
+
+### 3.1 Before anyone can quote (admin, once)
+
+A quotation cannot be priced out of thin air. Four things must exist first:
+
+1. **Users with roles.** At minimum one `sales`, and **exactly one** user in each
+   approver role you intend to use. "Exactly one" is not a style preference — the
+   system refuses to submit if a role has zero or several holders (§7).
+2. **Customers and brands.** A quotation is always *for* a brand *of* a customer.
+3. **Sales assignments.** Which salesperson owns which customer.
+4. **A published rate card.** Draft prices do not price anything. Until a card is
+   published, the wizard has nothing to offer.
+
+Items 2 and 3 are fastest via spreadsheet — see §3.7.
+
+### 3.2 Creating a quotation (sales)
+
+**Quotations → New quotation.** Six steps, with the price panel visible the whole
+way and updating about 300ms after you stop typing.
+
+| Step | What you do |
+|---|---|
+| **1. Customer & brand** | Pick **Customer**, then **Brand**. Fill the client contact: **Attention to**, **Job title**, **Phone**, **Email**. These print on the document, and they live on the quotation rather than the customer — the same client may be quoted through different people |
+| **2. Placement** | Choose **Individual buildings** or **Sales package**. Buildings: search and tick them; their weekly rates add up. Package: choose one — it is priced as a single resource |
+| **3. Bonus** | Tick **Include a bonus selection** if you are giving inventory away. Same two modes. Bonus is **always free** — it shows its gross value on the document to prove what was given, and contributes nothing to the nett |
+| **4. Campaign** | **TVC duration (seconds)**, **Campaign duration (weeks)**, **Spots / day / screen** — set per selection, so placement and bonus can differ |
+| **5. Discount** | Drag the **Customer discount (%)** slider. The panel immediately shows the deduction and tells you **who will have to approve it**. **VAT rate** defaults to 11% |
+| **6. Review** | Everything in one place before committing |
+
+At the end you have two buttons: **Save draft** (come back later) and **Submit for
+approval**.
+
+> If a package you expect is missing in step 2, the hint says so directly: *"No
+> package has a price in the published rate card yet."* That is a rate card gap, not
+> a bug.
+
+### 3.3 Submitting
+
+**Submit for approval** does three things in one transaction:
+
+1. **Re-prices everything** against the published rate card. Whatever the browser
+   showed is discarded and recalculated server-side. A draft left for a month is
+   priced as of *today*.
+2. **Resolves the approver** from your discount and the no-self-approval rule (§7).
+3. **Snapshots the version** and writes the audit trail.
+
+The status changes from `draft` to one of the three `pending_*` states depending on
+who it went to.
+
+### 3.4 Approving or returning (approvers)
+
+Approvers see two tabs on the quotation list: **My quotations** and **Awaiting my
+approval**. The second is your queue.
+
+Open one and you get the full picture — figures, selections, and the history of what
+happened so far. Two actions:
+
+- **Approve** — final. There is no un-approve; a changed deal is a new quotation.
+- **Return** — sends it back to the salesperson. **A reason is mandatory.** Leaving
+  it blank is rejected, and it is rejected in two independent places: the service
+  and a database constraint. This is deliberate: "returned with no explanation" is
+  the failure mode the whole approval trail exists to prevent.
+
+You can only act on quotations **assigned to you**. Approving someone else's queue
+item returns 403 even if you hold an approver role.
+
+### 3.5 Revising after a return
+
+A returned quotation goes back to the owner, who edits and resubmits. On resubmit:
+
+- The version number increments — v1 is never overwritten.
+- Prices are recalculated again.
+- The approver is resolved again. **If the discount changed enough to cross a band,
+  it goes to a different person.**
+
+The audit trail keeps every version, every actor and every reason.
+
+### 3.6 Printing the document
+
+From the quotation detail, **Document** → then **Print / Save as PDF**.
+
+The page is A4 with 12mm margins, and the app's navigation is suppressed in print
+output. Use your browser's "Save as PDF" destination to produce a file to email.
+
+### 3.7 Master data by spreadsheet (admin)
+
+Customers, brands, sales assignments and rate card prices all have the same three
+buttons: **Template**, **Export**, **Import**.
+
+The normal flow is: **Template** → fill it in → **Import**. Use **Export** to pull
+current data down, edit, and push it back.
+
+**Imports are all-or-nothing.** If any row fails, nothing is written — you get the
+errors and the data is untouched. There is no partial import to clean up.
+
+### 3.8 Publishing a rate card (admin)
+
+Edit prices on a **draft** card freely; they affect nothing. When ready, open the
+card and press **Publish**.
+
+**Publishing cannot be undone.** From that moment every new quotation prices against
+it. Quotations already submitted keep the card they were priced against (§9) — their
+numbers do not move.
+
+### 3.9 When something is refused
+
+The system fails loudly rather than guessing. What the common refusals mean:
+
+| What you see | What it means | Fix |
+|---|---|---|
+| *No user holds the required approver role* | The role that should approve this discount has no user | Assign someone that role |
+| *More than one user holds the required approver role* | Two people hold it; the system will not pick | Leave exactly one |
+| Submit refused, owner is the CEO | Nobody outranks the CEO, so there is no valid approver | Someone else must own the quotation |
+| **403** on approve | You are not the assigned approver | Check whose queue it is in |
+| **400** on return | The reason was blank | Write why |
+| No packages offered | No package is priced in the published rate card | Price it, publish the card |
+
+---
+
+## 4. The lifecycle
 
 A quotation is always in exactly one of six states.
 
@@ -172,7 +297,7 @@ Rules that hold at every step:
 
 ---
 
-## 4. What goes into a quotation
+## 5. What goes into a quotation
 
 Every quotation has exactly **two selections**, mirroring the paper template:
 
@@ -206,7 +331,7 @@ rules always follow the *owner*, not the typist.
 
 ---
 
-## 5. How the money is calculated
+## 6. How the money is calculated
 
 One function, `CalculatePricing`, with no database access — which is why it can be
 tested directly against the real signed document.
@@ -250,7 +375,7 @@ the wrong approver. The effective rate exists for commercial-risk reporting only
 
 ---
 
-## 6. Who approves what
+## 7. Who approves what
 
 Two rules, applied in order at submit time.
 
@@ -286,7 +411,7 @@ users table, so a role change takes effect immediately.
 
 ---
 
-## 7. Who can see what
+## 8. Who can see what
 
 Visibility is scoped in the service, not by hiding buttons:
 
@@ -319,7 +444,7 @@ immediately rather than silently rejecting every request to that route forever.
 
 ---
 
-## 8. Rate cards — why quotations do not re-price themselves
+## 9. Rate cards — why quotations do not re-price themselves
 
 Prices live in **versioned rate cards**. A rate card is edited as a draft, then
 **published**; publishing is its own permission because it changes what every future
@@ -343,7 +468,7 @@ record, not a live query.**
 
 ---
 
-## 9. Data model
+## 10. Data model
 
 ```
 users ────────────┬─── sales_user_id ──────┐
@@ -388,7 +513,7 @@ Migrations: `015` roles, `016` customers/brands/assignments, `017` rate card,
 
 ---
 
-## 10. Screens and endpoints
+## 11. Screens and endpoints
 
 ### Screens
 
@@ -409,7 +534,7 @@ after you stop typing, always from the server.
 
 | Method | Path | Purpose |
 |---|---|---|
-| `GET` | `/quotations` | List, scoped per §7 |
+| `GET` | `/quotations` | List, scoped per §8 |
 | `GET` | `/quotations-dashboard` | Pipeline summary |
 | `GET` | `/quotations/:id` | Detail with selections, versions, approvals |
 | `POST` | `/quotations` | Create draft |
@@ -425,7 +550,7 @@ spreadsheet round-trips: download a template, fill it in, upload it.
 
 ---
 
-## 11. The printed document
+## 12. The printed document
 
 `/quotations/:id/document` renders the A4 page the client signs, laid out to match
 the 2026 template: letterhead and saving value, party blocks, the total discount with
@@ -445,7 +570,7 @@ Notes:
 
 ---
 
-## 12. What is not built yet
+## 13. What is not built yet
 
 | Gap | Impact |
 |---|---|
@@ -459,7 +584,7 @@ Notes:
 
 ---
 
-## 13. Where the code lives
+## 14. Where the code lives
 
 **Backend**
 
