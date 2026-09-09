@@ -51,11 +51,25 @@ trail shows that a v1 existed and was returned, but not **what v1 said**.
 Needs: a repository `FindVersions`, a service method, one endpoint, one panel on the
 detail page. Self-contained.
 
-### 3.2 The printed document does not match the template
+### 3.2 ✅ The printed document — rebuilt, three items left
 
-Content and arithmetic are right; the layout is not. The source is A4 **landscape**;
-ours is a portrait reflow. **Deferred by the user on 2026-09-09** — do not start it
-unprompted. Full twelve-item gap list: `QUOTATION_DOCUMENT_ANALYSIS.md` §9.
+Rebuilt in **A4 landscape** on 2026-09-10 to match the template: CHECKER panel,
+bordered party box, two tinted line-item tables sharing a colgroup so the TOTAL row
+lines up, IDR-prefixed money, and the blue totals box. Verified by rendering real
+PDFs of both a placement-only and a placement-plus-bonus quotation and comparing
+against the source.
+
+What remains, none of it a layout problem:
+
+| Item | Why it is open |
+|---|---|
+| **Logos** | The TMN, Focus Media Group and Sinarmas marks have **no asset files in this project** — `public/logo.png` is the admin template's mark and `tmn-logo-small.png` is a TapOn logo. The letterhead leaves their space. **Needs the files from the business.** |
+| First column | Prints a building count rather than a screen count, because screen count is still unverified — §4.2 of the analysis |
+| Sales team / phone, finance PIC | Print as labelled blanks. Not stored, and the source template prints them blank too |
+
+Also fixed while verifying: a **draft** printed a complete-looking document with
+IDR 0 everywhere, because pricing is computed on submit, not on save. Drafts now
+carry a red "NOT YET PRICED — do not send to a client" banner.
 
 ### 3.3 Data gaps that block features
 
