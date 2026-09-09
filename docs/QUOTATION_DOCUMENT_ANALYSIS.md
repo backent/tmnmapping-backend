@@ -155,11 +155,17 @@ Our data model already supports this: `rate_card_building_prices` and
 
 Supporting the mode is not the same as being able to use it. Three gaps:
 
-| Need | Where | Status |
+| Need | Where | Status (re-verified 2026-09-09) |
 |---|---|---|
-| Package prices | `rate_card_package_prices` | Table exists, **empty**. The rate card file priced only buildings. |
-| Package traffic + impressions | `sales_packages` | **Missing.** The prototype stores these per package, independent of member buildings. |
-| Package screen count | `sales_packages` | **Missing.** The example document displays it ("950"). |
+| Package prices | `rate_card_package_prices` | ⛔ Table exists, **still empty on every rate card version**. Import pipeline is built (template → import → export → edit → delete); only the data is missing, and only the business can supply it. |
+| Package traffic + impressions | `sales_packages` | ✅ Columns added by migration `018`. The quotation service reads them into the selection. **But every row is 0** — see below. |
+| Package screen count | `sales_packages` | ✅ Column added by migration `018`, read by the service. **Every row is 0** — see below. |
+| A way to enter those figures | `frontend/src/pages/sales-package-form.vue` | ⛔ **Missing.** The form exposes only `Name`. `package_code`, `status`, `description`, `screen_count`, `traffic` and `impressions` have no input, so they cannot be set at all through the UI. |
+
+⚠️ **Consequence:** the service copies `screen_count`, `traffic` and `impressions`
+from the package onto the quotation selection. All 10 packages on staging have zeros,
+so a package quotation would print **"0 screens"** and a zero audience even after the
+prices are loaded. Loading prices alone is not enough to make package mode usable.
 
 Plus the master-data fields already flagged in `QUOTATION_FEATURE_ANALYSIS.md` §3.2:
 `package_code`, `status`, `description`.

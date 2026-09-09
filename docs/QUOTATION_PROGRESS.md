@@ -62,6 +62,7 @@ unprompted. Full twelve-item gap list: `QUOTATION_DOCUMENT_ANALYSIS.md` §9.
 | Gap | Blocks |
 |---|---|
 | **No package prices in any rate card** (all three versions have 0) | Package mode is unusable in the wizard — it says "No package has a price in the published rate card yet" |
+| **The sales package form exposes only `Name`** | `screen_count`, `traffic`, `impressions`, `package_code`, `status` and `description` exist in the schema (migration 018) and are read by the quotation service, but cannot be entered through the UI. All 10 staging packages are 0, so a package quotation would print "0 screens" and no audience. See `QUOTATION_DOCUMENT_ANALYSIS.md` §4.1 |
 | **PIC Finance, sales team/phone not stored** | Two fields the printed template has (§9 items 10–11). A schema decision, not CSS |
 
 ### 3.4 Smaller, known, not urgent
