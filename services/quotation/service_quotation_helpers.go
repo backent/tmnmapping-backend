@@ -26,14 +26,26 @@ func (s *ServiceQuotationImpl) mustFind(ctx context.Context, tx *sql.Tx, id int)
 	return quotation
 }
 
-// assertCanRead: the owner, the assigned approver, and admin. Nobody else reads
-// someone else's pipeline.
-func (s *ServiceQuotationImpl) assertCanRead(quotation models.Quotation, actor Actor) {
+// assertCanRead: the owner, the assigned approver, anyone who has already acted on
+// it, and admin. Nobody else reads someone else's pipeline.
+func (s *ServiceQuotationImpl) assertCanRead(
+	quotation models.Quotation, approvals []models.QuotationApproval, actor Actor,
+) {
 	if actor.Role == models.RoleAdmin ||
 		quotation.SalesUserId == actor.UserId ||
 		quotation.CreatedByUserId == actor.UserId ||
 		(quotation.RequiredApproverUserId != 0 && quotation.RequiredApproverUserId == actor.UserId) {
 		return
+	}
+
+	// Approving and returning both clear required_approver_user_id, so the check
+	// above stops matching the instant the decision is made -- which locked an
+	// approver out of the quotation they had just signed off. Anyone the audit trail
+	// names keeps read access: they need to see what they decided.
+	for _, approval := range approvals {
+		if approval.ActorUserId != 0 && approval.ActorUserId == actor.UserId {
+			return
+		}
 	}
 
 	panic(exceptions.NewForbidden("this quotation belongs to someone else"))

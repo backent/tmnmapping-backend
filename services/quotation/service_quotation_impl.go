@@ -127,10 +127,12 @@ func (s *ServiceQuotationImpl) FindById(ctx context.Context, id int, actor Actor
 	defer helpers.CommitOrRollback(tx)
 
 	quotation := s.mustFind(ctx, tx, id)
-	s.assertCanRead(quotation, actor)
 
+	// Loaded before the check, not after: the audit trail is part of who may read.
 	approvals, err := s.RepositoryQuotationInterface.FindApprovals(ctx, tx, id)
 	helpers.PanicIfError(err)
+
+	s.assertCanRead(quotation, approvals, actor)
 
 	return toResponse(quotation, approvals)
 }

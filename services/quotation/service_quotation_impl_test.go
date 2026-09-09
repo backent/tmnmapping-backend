@@ -78,10 +78,80 @@ func TestFindById_RefusesAnotherSalespersonsQuotation(t *testing.T) {
 
 	d.quotation.On("FindById", mock.Anything, mock.Anything, 5).
 		Return(draftQuotation(5, 111), nil)
+	d.quotation.On("FindApprovals", mock.Anything, mock.Anything, 5).
+		Return([]models.QuotationApproval{}, nil)
 
 	assert.PanicsWithValue(t,
 		exceptions.NewForbidden("this quotation belongs to someone else"),
 		func() { svc.FindById(context.Background(), 5, salesActor(222)) })
+
+	assertMock()
+}
+
+// Approving clears required_approver_user_id, so the approver stops being the
+// ASSIGNED approver the moment they decide. They must still be able to open the
+// quotation they just signed off -- otherwise the approve call succeeds and the
+// screen that reloads behind it fails with "this quotation belongs to someone else".
+func TestFindById_AllowsAnApproverAfterTheyHaveApproved(t *testing.T) {
+	svc, d, assertMock := newQuotationService(t, true)
+
+	q := draftQuotation(5, 111)
+	q.Status = service.StatusApproved
+	q.RequiredApproverUserId = 0
+
+	d.quotation.On("FindById", mock.Anything, mock.Anything, 5).Return(q, nil)
+	d.quotation.On("FindApprovals", mock.Anything, mock.Anything, 5).
+		Return([]models.QuotationApproval{
+			{QuotationId: 5, Version: 1, ActorUserId: 111, Action: models.ApprovalActionSubmitted},
+			{QuotationId: 5, Version: 1, ActorUserId: 222, Action: models.ApprovalActionApproved},
+		}, nil)
+
+	resp := svc.FindById(context.Background(), 5, service.Actor{UserId: 222, Role: models.RoleHeadOfSales})
+
+	assert.Equal(t, 5, resp.Id)
+	assertMock()
+}
+
+// The same applies after returning one: the reason they wrote is theirs to re-read.
+func TestFindById_AllowsAnApproverAfterTheyHaveReturned(t *testing.T) {
+	svc, d, assertMock := newQuotationService(t, true)
+
+	q := draftQuotation(5, 111)
+	q.Status = service.StatusReturned
+	q.RequiredApproverUserId = 0
+
+	d.quotation.On("FindById", mock.Anything, mock.Anything, 5).Return(q, nil)
+	d.quotation.On("FindApprovals", mock.Anything, mock.Anything, 5).
+		Return([]models.QuotationApproval{
+			{QuotationId: 5, Version: 1, ActorUserId: 222, Action: models.ApprovalActionReturned, Comment: "too deep"},
+		}, nil)
+
+	resp := svc.FindById(context.Background(), 5, service.Actor{UserId: 222, Role: models.RoleHeadOfSales})
+
+	assert.Equal(t, 5, resp.Id)
+	assertMock()
+}
+
+// An unrelated approver is still refused: acting on it is what grants access, not
+// merely holding an approver role.
+func TestFindById_RefusesAnApproverWhoNeverActed(t *testing.T) {
+	svc, d, assertMock := newQuotationService(t, false)
+
+	q := draftQuotation(5, 111)
+	q.Status = service.StatusApproved
+	q.RequiredApproverUserId = 0
+
+	d.quotation.On("FindById", mock.Anything, mock.Anything, 5).Return(q, nil)
+	d.quotation.On("FindApprovals", mock.Anything, mock.Anything, 5).
+		Return([]models.QuotationApproval{
+			{QuotationId: 5, Version: 1, ActorUserId: 222, Action: models.ApprovalActionApproved},
+		}, nil)
+
+	assert.PanicsWithValue(t,
+		exceptions.NewForbidden("this quotation belongs to someone else"),
+		func() {
+			svc.FindById(context.Background(), 5, service.Actor{UserId: 333, Role: models.RoleCEO})
+		})
 
 	assertMock()
 }
