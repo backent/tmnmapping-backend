@@ -574,6 +574,7 @@ Notes:
 
 | Gap | Impact |
 |---|---|
+| **Printed document does not match the template layout** | The source is A4 **landscape**, with a different header, two tinted line-item tables and a CHECKER box. Ours is a portrait reflow: right content and arithmetic, wrong layout. Deferred — gap list in `QUOTATION_DOCUMENT_ANALYSIS.md` §9 |
 | **PIC Finance, sales phone/team not stored** | Those template fields are omitted from the printed document |
 | **No dedicated approval queue screen** | Approvers filter the list instead |
 | **No version-history browsing UI** | Versions are stored and visible in the audit trail, but not diffable |

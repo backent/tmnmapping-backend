@@ -271,6 +271,59 @@ From `QUOTATION_FEATURE_ANALYSIS.md` §7:
 | 5 | Customer / brand source | ✅ **User upload** |
 | 6 | Quotable inventory (`sellable`, `lcd_presence_status`) | Still open |
 | 7 | `audience` / `impression` semantics | Possibly moot — §6.1 |
-| 8 | PDF vs browser print | Still open; this is clearly a print-ready A4 layout |
+| 8 | PDF vs browser print | Print CSS fixed 2026-09-09; **layout does not match the template — see §9** |
 | 9 | Localization | Document is English only |
 | 10 | Notifications | Still open |
+
+---
+
+## 9. ⏸ Deviations from the source template — DEFERRED
+
+**Status:** known, and deliberately left for now. Raised 2026-09-09; the user will
+come back to it. **Do not treat the current document as finished.**
+
+The built document (`frontend/src/pages/quotation-document.vue`) is a faithful
+*portrait reflow* of the template's content. Every field and clause is present and
+the arithmetic matches. But the **layout is not the template's**, and for a document
+a client signs, resembling the real thing matters.
+
+Source of truth: `260101. Template Quotation 2026.pdf`, verified 2026-09-09 from its
+`/MediaBox`: **842 × 595 pt = 297 × 210 mm — A4 LANDSCAPE**, one page.
+
+### 9.1 The gap list
+
+| # | Source template | What we built | Severity |
+|---|---|---|---|
+| 1 | **A4 landscape** | A4 portrait | **Structural** — most of the rest follows from this |
+| 2 | TMN logo, plus "Member company of" with the Focus Media Group and Sinarmas marks | No logos at all | High — it is letterhead |
+| 3 | Separate bordered **CHECKER** box top-right: black bar, Saving Value, Total Discount on **yellow**, NEED APPROVAL! on **red** | Values scattered into the letterhead and party rows; plain red text | High |
+| 4 | Title and both party columns inside **one bordered box** | Two borderless tables side by side | Medium |
+| 5 | **Two separate line-item tables**, each with its own header row — placement tinted **blue** and labelled with the package name ("Package A"), bonus tinted **peach** | One table, grey header, placement and bonus as two rows | High |
+| 6 | First column is screen count over building type ("950 / Apartment", "70 / Retail & Hotel") | Package name or "N buildings", screen count beneath | Medium |
+| 7 | Money cells carry a left-aligned `IDR` prefix with the amount right-aligned in the same cell | `Rp` prefix, one right-aligned run | Low |
+| 8 | TOTAL row highlights the summed weeks in **yellow** | Plain bold row | Low |
+| 9 | Terms, Terms of Payment, Documents for Invoicing and PIC Finance all inside one bordered box | Separate ungrouped sections | Medium |
+| 10 | **PIC Finance Department: Name / Email / HP** | Omitted — not stored anywhere | Medium — data decision, see §5 |
+| 11 | Sales **Team**, **No. HP**, **Email** in the left party column | Omitted — not stored anywhere | Medium — data decision, see §5 |
+| 12 | Totals block is a bordered, blue-tinted box | Borderless rows | Low |
+
+### 9.2 What is NOT wrong
+
+Stated so the rework does not "fix" what is already right:
+
+- The **arithmetic** matches the template exactly, including VAT on nett.
+- **Total Discount shows the effective rate** (70.44% on the template), not the
+  customer discount (65%). Ours does the same. See §3 — these must not be swapped.
+- All **ten clauses** are present and verbatim, typos included.
+- The **bonus reads FREE** in both the Discount and Total Nett columns.
+
+### 9.3 When picking this up
+
+1. Landscape first (`@page { size: A4 landscape }`). The column widths only make
+   sense at 297mm, and items 4, 5 and 9 depend on it.
+2. Items 10 and 11 are **data**, not layout — they need somewhere to live before the
+   document can render them. Schema decision, not CSS.
+3. Logos need asset files from the business, including the two partner marks.
+4. Verify by rendering a real PDF and comparing side by side with the source, not by
+   reading the markup. `qlmanage -t -s 2400 -o . file.pdf` renders a page to PNG on
+   macOS without installing anything.
