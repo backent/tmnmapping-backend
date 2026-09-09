@@ -1,6 +1,7 @@
 # Quotation document — analysis of the real TMN template
 
-**Status:** Analysis only. No code changed.
+**Status:** Analysis, and now also the spec for the rework. The document was built
+from this; its layout does **not** match the template — see §9.
 **Date:** 2026-09-07
 **Source:** `260101. Template Quotation 2026.pdf` — a filled example, one page.
 **Related:** [`QUOTATION_FEATURE_ANALYSIS.md`](QUOTATION_FEATURE_ANALYSIS.md) §1.2, §6.5, §7 ·

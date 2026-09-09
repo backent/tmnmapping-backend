@@ -14,6 +14,7 @@ Companion documents:
 
 | Document | What it is for |
 |---|---|
+| **`QUOTATION_PROGRESS.md`** | **Where the project stands and what is left. Start there.** |
 | `QUOTATION_FEATURE_ANALYSIS.md` | The original gap analysis against the reference prototype |
 | `QUOTATION_DOCUMENT_ANALYSIS.md` | The real 2026 PDF template, field by field |
 | `PHASE_0_ROLES_PROGRESS.md` | How roles and the permission layer were built |

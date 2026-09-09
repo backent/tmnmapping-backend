@@ -3,7 +3,9 @@
 Tracking doc for the first phase of the sales quotation feature.
 Source analysis: [`QUOTATION_FEATURE_ANALYSIS.md`](QUOTATION_FEATURE_ANALYSIS.md) (§5, §8).
 
-**Status:** ✅ Complete — backend and frontend, tests green, not yet deployed.
+**Status:** ✅ Complete — backend and frontend, tests green, running on staging.
+Historical: this tracked Phase 0 only. Current status lives in
+[`QUOTATION_PROGRESS.md`](QUOTATION_PROGRESS.md).
 **Branches:** `feat/phase-0-roles-authorization` → `feat/user-management` → `feat/permission-layer` (both `backend/` and `frontend/`)
 **Started / finished:** 2026-09-04 – 2026-09-05
 

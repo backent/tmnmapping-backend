@@ -1,6 +1,8 @@
 # Staging environment — plan
 
-**Status:** Plan. Nothing deployed. No change made to the server.
+**Status:** ⚠️ SUPERSEDED. Written as a plan; staging is now live and has been
+since 2026-09-07. Kept for the reasoning in §2 (why a port cannot simply be
+opened). For what is actually running, see [`QUOTATION_PROGRESS.md`](QUOTATION_PROGRESS.md) §1.
 **Date:** 2026-09-07
 **Goal:** deploy and test a release on the same host before it reaches production.
 
