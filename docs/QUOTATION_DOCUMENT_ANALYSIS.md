@@ -159,7 +159,7 @@ Supporting the mode is not the same as being able to use it. Three gaps:
 |---|---|---|
 | Package prices | `rate_card_package_prices` | ⛔ Table exists, **still empty on every rate card version**. Import pipeline is built (template → import → export → edit → delete); only the data is missing, and only the business can supply it. |
 | Package traffic + impressions | `sales_packages` | ✅ Columns added by migration `018`. The quotation service reads them into the selection. **But every row is 0** — see below. |
-| Package screen count | `sales_packages` | ✅ Column added by migration `018`, read by the service. **Every row is 0** — see below. |
+| Package screen count | `sales_packages` | ⚠️ **Questionable — do not build further on this.** Column added by `018` and read by the service, but see §4.2: nothing confirms screen count is a real requirement. |
 | A way to enter those figures | `frontend/src/pages/sales-package-form.vue` | ⛔ **Missing.** The form exposes only `Name`. `package_code`, `status`, `description`, `screen_count`, `traffic` and `impressions` have no input, so they cannot be set at all through the UI. |
 
 ⚠️ **Consequence:** the service copies `screen_count`, `traffic` and `impressions`
@@ -175,6 +175,41 @@ So `sales_packages` needs a migration adding: `package_code` (unique), `status`,
 Phase 3's package mode, and it is small — but the **package prices themselves are a
 data gap only the business can close**, in the same way the building prices arrived
 as a spreadsheet.
+
+### 4.2 ⚠️ Screen count may not be a real requirement
+
+Recorded 2026-09-09, after re-checking. **`screen_count` currently has no confirmed
+consumer.** It exists because of an inference of mine that this document stated as
+fact, and it should not have.
+
+What was checked:
+
+| Claim | Verdict |
+|---|---|
+| The reference prototype uses a screen count | ❌ **No.** 148 matches for "screen" across the project, every one a UI component name, CSS, or screen-reader text. Its buildings carry `traffic` and `impressions` only; its packages carry no figures at all |
+| The template's "Spot/Day/Screen" column needs stored screen data | ❌ **No.** That is the unit label for the spots figure, which the salesperson types into the wizard ("Spots / day / screen") and the document prints verbatim |
+| The template's `950` is a screen count | ⚠️ **Unverified.** The cell shows `950` over `Apartment`, under a column headed with the package name. Nothing labels it. §4.1 previously asserted it was screens; that was an inference presented as a fact, and it is what produced the column, the form field and the document text |
+
+**The one open question for the business:** in the Package A row, what does `950`
+count — screens, buildings, or something else?
+
+**Consequence while it is unanswered.** `screen_count` is rendered in three places:
+`PricingSummary.vue` and twice in `quotation-document.vue`. In building mode the
+service derives it as `ScreenCount++`, one per building. Measured against the real
+rate card file that is wrong for 85% of buildings: 1,621 buildings hold 7,832
+screens, so one-per-building **undercounts by 79%**. We are therefore printing a
+number we cannot justify onto a document a client signs.
+
+Options, in order of preference:
+
+1. Ask the business what `950` is. Cheapest, and settles everything.
+2. Until answered, **stop displaying it**. Removing an unjustifiable number from a
+   binding document is safer than showing it, and it is reversible.
+3. Only if it turns out to be real: add `buildings.screen_count` (the rate card file
+   has `Total Screens` per building), sum it instead of counting rows, and give the
+   package form a recommendation derived from its member buildings.
+
+Do **not** do 3 before 1.
 
 ## 5. Fields the document has that we do not model
 
