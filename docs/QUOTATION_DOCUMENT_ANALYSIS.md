@@ -211,6 +211,62 @@ Options, in order of preference:
 
 Do **not** do 3 before 1.
 
+### 4.3 Traffic and impressions — removed from display, plumbing kept
+
+Decided 2026-09-10. **Audience figures are no longer shown anywhere in the
+quotation feature.** The data path is untouched, so this reverses cheaply.
+
+**Why.** ERP is the only source, and it barely has the data:
+
+| | Count | With audience |
+|---|---|---|
+| All buildings | 3,762 | 450 (12%) |
+| **Buildings on the current rate card** | **1,581** | **86 (5.4%)** |
+
+95% of sellable inventory has no audience figure, so every real quotation summed to
+zero. Both on staging did:
+
+```
+Q-2026-0001  placement  traffic 0  impressions 0
+Q-2026-0002  placement  traffic 0  impressions 0
+```
+
+Printing a hard zero next to a price is worse than printing nothing: it reads as
+"this inventory reaches nobody". The signed template carries no audience field
+either — TVC duration, spots, weeks, rates and money, nothing else. The figures were
+inherited from the reference prototype, not required by the business.
+
+**Removed from:** `PricingSummary.vue` (the per-selection audience block, which had
+nothing left in it once screen count went), the building appendix columns in
+`quotation-detail.vue`, and the Traffic/Impressions inputs on
+`sales-package-form.vue`.
+
+**Deliberately kept:** the `traffic` and `impressions` columns on
+`quotation_selections`, `quotation_selection_items` and `sales_packages`; the API
+fields; the service summing in `service_quotation_helpers.go`; and the round-trip
+through the package form's state, so editing a package does not zero existing
+values. Nothing was dropped — only hidden.
+
+### 4.3.1 Option A — the agreed next step, when the data exists
+
+Kept open at the user's request: **users may later upload these figures, and if they
+do we want them.** The work, in order:
+
+1. Add `Traffic` and `Impressions` columns to the rate card building price upload
+   (`BuildingPriceColumns` in `services/ratecard/template.go`). The current
+   High Rises file has neither — verified against its headers — so the business must
+   supply them.
+2. Store them on `rate_card_building_prices` rather than reading `buildings.audience`
+   / `buildings.impression`. This is the same migration as the §9-adjacent catalogue
+   work: the figures become versioned with the price, so an approved quotation keeps
+   the audience it was sold on.
+3. Restore the three display sites. Each carries a comment pointing here.
+4. Give the package form its Traffic/Impressions inputs back, with the
+   sum-of-member-buildings suggestion.
+
+Do **1** before **3**: restoring the display while coverage is still 5% just puts
+the zeros back.
+
 ## 5. Fields the document has that we do not model
 
 | Group | Fields |

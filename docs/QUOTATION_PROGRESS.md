@@ -62,6 +62,7 @@ unprompted. Full twelve-item gap list: `QUOTATION_DOCUMENT_ANALYSIS.md` §9.
 | Gap | Blocks |
 |---|---|
 | **No package prices in any rate card** (all three versions have 0) | Package mode is unusable in the wizard — it says "No package has a price in the published rate card yet" |
+| **Audience figures (traffic / impressions) are hidden** | Removed from display 2026-09-10 because ERP has them for only 86 of 1,581 sellable buildings, so every quotation printed zeros. Columns, API and summing all kept. **Option A is the agreed next step if users start uploading the figures** — see `QUOTATION_DOCUMENT_ANALYSIS.md` §4.3.1 |
 | **`screen_count` may not be a real requirement** | Nothing confirms it. Not in the reference prototype; the template's "Spot/Day/Screen" column is satisfied by the spots the salesperson types. It rests on an unlabelled "950" I inferred was screens. Meanwhile building mode counts one screen per building, which the rate card shows undercounts by 79% — so the printed document carries a number we cannot justify. **One question to the business settles it.** See `QUOTATION_DOCUMENT_ANALYSIS.md` §4.2 |
 | ~~The sales package form exposes only `Name`~~ | ✅ Fixed 2026-09-09. The form could not save at all — the API required `package_code` and `status`, which it never sent, so every create and update returned 400. All six fields are now there |
 | **PIC Finance, sales team/phone not stored** | Two fields the printed template has (§9 items 10–11). A schema decision, not CSS |
