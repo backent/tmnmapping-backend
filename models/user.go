@@ -15,6 +15,19 @@ type User struct {
 	UpdatedAt           string
 }
 
+// CanRaiseQuotations reports whether this user may create a quotation they own.
+//
+// The per-user flag is the rule, with one exemption: admin. Administration includes
+// entering data on the business's behalf, and an admin can set the flag on their own
+// account anyway -- denying them would be theatre, not a control.
+//
+// This lives on the model so the service that enforces it and the login response
+// that advertises it cannot disagree. The frontend reads the answer rather than
+// re-deriving the exemption.
+func (u User) CanRaiseQuotations() bool {
+	return u.CanCreateQuotations || HasRole(NormalizeRole(u.Role), RoleAdmin)
+}
+
 type NullAbleUser struct {
 	Id                  sql.NullInt32
 	Username            sql.NullString

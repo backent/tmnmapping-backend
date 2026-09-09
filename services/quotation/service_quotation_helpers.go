@@ -97,7 +97,7 @@ func (s *ServiceQuotationImpl) assertCanCreateFor(ctx context.Context, tx *sql.T
 	helpers.PanicIfError(err)
 
 	if ownerId == actor.UserId {
-		if !actorUser.CanCreateQuotations && actor.Role != models.RoleAdmin {
+		if !actorUser.CanRaiseQuotations() {
 			panic(exceptions.NewForbidden("your account is not permitted to create quotations"))
 		}
 
