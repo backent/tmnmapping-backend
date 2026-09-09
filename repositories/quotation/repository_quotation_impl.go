@@ -89,24 +89,30 @@ func scanQuotation(rows *sql.Rows) (models.Quotation, error) {
 func buildScope(scope ListScope, startAt int) (string, []interface{}) {
 	var clauses []string
 	var args []interface{}
-	next := func() string { return "$" + strconv.Itoa(startAt+len(args)) }
+
+	// bind appends the argument AND returns its placeholder, so the two can never
+	// disagree. They previously did: the placeholder was numbered after the append,
+	// which made the first argument $2 and left $1 unreferenced. Postgres cannot
+	// infer a type for a parameter that appears nowhere, so every scoped query --
+	// meaning every list a non-admin ever loads -- failed with 42P18.
+	bind := func(value interface{}) string {
+		args = append(args, value)
+
+		return "$" + strconv.Itoa(startAt+len(args)-1)
+	}
 
 	if scope.OwnedByUserId > 0 {
-		args = append(args, scope.OwnedByUserId)
-		clauses = append(clauses, "q.sales_user_id = "+next())
+		clauses = append(clauses, "q.sales_user_id = "+bind(scope.OwnedByUserId))
 	}
 	if scope.AwaitingApprovalByUserId > 0 {
-		args = append(args, scope.AwaitingApprovalByUserId)
-		clauses = append(clauses, "q.required_approver_user_id = "+next())
+		clauses = append(clauses, "q.required_approver_user_id = "+bind(scope.AwaitingApprovalByUserId))
 		clauses = append(clauses, "q.status IN ('pending_manager','pending_business_control','pending_ceo')")
 	}
 	if scope.Status != "" {
-		args = append(args, scope.Status)
-		clauses = append(clauses, "q.status = "+next())
+		clauses = append(clauses, "q.status = "+bind(scope.Status))
 	}
 	if scope.Search != "" {
-		args = append(args, "%"+scope.Search+"%")
-		p := next()
+		p := bind("%" + scope.Search + "%")
 		clauses = append(clauses, "(q.quote_number ILIKE "+p+" OR c.name ILIKE "+p+" OR b.name ILIKE "+p+")")
 	}
 
