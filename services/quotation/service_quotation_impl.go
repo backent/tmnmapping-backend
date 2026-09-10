@@ -57,6 +57,7 @@ func NewServiceQuotationImpl(
 		RepositoryBrand:              repoBrand,
 		RepositoryUser:               repoUser,
 		RepositorySalesAssignment:    repoSalesAssignment,
+		RepositorySalesPackage:       repoSalesPackage,
 		Thresholds:                   DefaultThresholds(),
 	}
 }
