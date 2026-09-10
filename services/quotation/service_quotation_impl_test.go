@@ -2,7 +2,6 @@ package quotation_test
 
 import (
 	"context"
-	"database/sql"
 	"testing"
 
 	"github.com/malikabdulaziz/tmn-backend/exceptions"
@@ -15,14 +14,15 @@ import (
 )
 
 type svcDeps struct {
-	quotation  *mocks.MockRepositoryQuotation
-	rateCard   *mocks.MockRepositoryRateCard
-	building   *mocks.MockRepositoryBuilding
-	customer   *mocks.MockRepositoryCustomer
-	brand      *mocks.MockRepositoryBrand
-	user       *mocks.MockRepositoryUser
-	assignment *mocks.MockRepositorySalesAssignment
-	pkg        *mocks.MockRepositorySalesPackage
+	buildingPrice *mocks.MockRepositoryBuildingPrice
+	quotation     *mocks.MockRepositoryQuotation
+	rateCard      *mocks.MockRepositoryRateCard
+	building      *mocks.MockRepositoryBuilding
+	customer      *mocks.MockRepositoryCustomer
+	brand         *mocks.MockRepositoryBrand
+	user          *mocks.MockRepositoryUser
+	assignment    *mocks.MockRepositorySalesAssignment
+	pkg           *mocks.MockRepositorySalesPackage
 }
 
 func newQuotationService(t *testing.T, commits bool) (service.ServiceQuotationInterface, svcDeps, func()) {
@@ -30,14 +30,15 @@ func newQuotationService(t *testing.T, commits bool) (service.ServiceQuotationIn
 
 	db, sqlMock := testutil.NewMockDB(t)
 	d := svcDeps{
-		quotation:  &mocks.MockRepositoryQuotation{},
-		rateCard:   &mocks.MockRepositoryRateCard{},
-		building:   &mocks.MockRepositoryBuilding{},
-		customer:   &mocks.MockRepositoryCustomer{},
-		brand:      &mocks.MockRepositoryBrand{},
-		user:       &mocks.MockRepositoryUser{},
-		assignment: &mocks.MockRepositorySalesAssignment{},
-		pkg:        &mocks.MockRepositorySalesPackage{},
+		buildingPrice: &mocks.MockRepositoryBuildingPrice{},
+		quotation:     &mocks.MockRepositoryQuotation{},
+		rateCard:      &mocks.MockRepositoryRateCard{},
+		building:      &mocks.MockRepositoryBuilding{},
+		customer:      &mocks.MockRepositoryCustomer{},
+		brand:         &mocks.MockRepositoryBrand{},
+		user:          &mocks.MockRepositoryUser{},
+		assignment:    &mocks.MockRepositorySalesAssignment{},
+		pkg:           &mocks.MockRepositorySalesPackage{},
 	}
 
 	sqlMock.ExpectBegin()
@@ -47,7 +48,7 @@ func newQuotationService(t *testing.T, commits bool) (service.ServiceQuotationIn
 		sqlMock.ExpectRollback()
 	}
 
-	svc := service.NewServiceQuotationImpl(db, d.quotation, d.rateCard, d.building,
+	svc := service.NewServiceQuotationImpl(db, d.quotation, d.buildingPrice, d.building,
 		d.customer, d.brand, d.user, d.assignment, d.pkg)
 
 	return svc, d, func() { assert.NoError(t, sqlMock.ExpectationsWereMet()) }
@@ -236,22 +237,6 @@ func TestSubmit_RefusesEmptyQuotation(t *testing.T) {
 
 	assert.PanicsWithValue(t,
 		exceptions.NewBadRequestError("this quotation has nothing selected"),
-		func() { svc.Submit(context.Background(), 5, salesActor(111)) })
-
-	assertMock()
-}
-
-// Nothing can be priced before a rate card is published, which is the state the
-// system is in until someone publishes one.
-func TestSubmit_RefusesWhenNoRateCardIsPublished(t *testing.T) {
-	svc, d, assertMock := newQuotationService(t, false)
-
-	d.quotation.On("FindById", mock.Anything, mock.Anything, 5).Return(draftQuotation(5, 111), nil)
-	d.rateCard.On("FindCurrentVersion", mock.Anything, mock.Anything).
-		Return(models.RateCardVersion{}, sql.ErrNoRows)
-
-	assert.PanicsWithValue(t,
-		exceptions.NewBadRequestError("no rate card has been published yet, so nothing can be priced"),
 		func() { svc.Submit(context.Background(), 5, salesActor(111)) })
 
 	assertMock()

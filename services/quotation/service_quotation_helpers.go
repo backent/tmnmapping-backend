@@ -152,17 +152,6 @@ func (s *ServiceQuotationImpl) assertCustomerAndBrand(ctx context.Context, tx *s
 // ---------------------------------------------------------------------------
 
 func (s *ServiceQuotationImpl) applySelections(ctx context.Context, tx *sql.Tx, quotationId int, placement, bonus *webQuotation.SelectionRequest) {
-	version, err := s.RepositoryRateCard.FindCurrentVersion(ctx, tx)
-	hasRateCard := err == nil
-	if err != nil && err != sql.ErrNoRows {
-		helpers.PanicIfError(err)
-	}
-
-	versionId := 0
-	if hasRateCard {
-		versionId = version.Id
-	}
-
 	var selections []models.QuotationSelection
 	for _, pair := range []struct {
 		kind string
@@ -174,7 +163,7 @@ func (s *ServiceQuotationImpl) applySelections(ctx context.Context, tx *sql.Tx, 
 		if pair.req == nil {
 			continue
 		}
-		selections = append(selections, s.buildSelection(ctx, tx, versionId, pair.kind, *pair.req))
+		selections = append(selections, s.buildSelection(ctx, tx, pair.kind, *pair.req))
 	}
 
 	helpers.PanicIfError(s.RepositoryQuotationInterface.ReplaceSelections(ctx, tx, quotationId, selections))
@@ -183,9 +172,9 @@ func (s *ServiceQuotationImpl) applySelections(ctx context.Context, tx *sql.Tx, 
 // buildSelection resolves a client's choice into a priced selection.
 //
 // The client sends only WHAT it picked. Every price, traffic and impression figure
-// is read here from the rate card and the master data, so the client is never
+// is read here from the current prices and the master data, so the client is never
 // trusted for money.
-func (s *ServiceQuotationImpl) buildSelection(ctx context.Context, tx *sql.Tx, versionId int, kind string, request webQuotation.SelectionRequest) models.QuotationSelection {
+func (s *ServiceQuotationImpl) buildSelection(ctx context.Context, tx *sql.Tx, kind string, request webQuotation.SelectionRequest) models.QuotationSelection {
 	selection := models.QuotationSelection{
 		Kind:               kind,
 		Mode:               request.Mode,
@@ -237,10 +226,10 @@ func (s *ServiceQuotationImpl) buildSelection(ctx context.Context, tx *sql.Tx, v
 			}
 			helpers.PanicIfError(err)
 
-			price := s.buildingWeeklyRate(ctx, tx, versionId, buildingId)
+			price := s.buildingWeeklyRate(ctx, tx, buildingId)
 			if price == 0 {
 				panic(exceptions.NewBadRequestError(
-					"\"" + building.Name + "\" has no price in the published rate card, so it cannot be quoted"))
+					"\"" + building.Name + "\" has no price yet, so it cannot be quoted"))
 			}
 
 			weeklyRate += price
@@ -268,9 +257,9 @@ func (s *ServiceQuotationImpl) buildSelection(ctx context.Context, tx *sql.Tx, v
 	return selection
 }
 
-// repriceSelection re-reads prices at submit time from the published rate card,
+// repriceSelection re-reads prices at submit time from the current prices,
 // discarding whatever was stored while the quotation was a draft.
-func (s *ServiceQuotationImpl) repriceSelection(ctx context.Context, tx *sql.Tx, versionId int, selection models.QuotationSelection) models.QuotationSelection {
+func (s *ServiceQuotationImpl) repriceSelection(ctx context.Context, tx *sql.Tx, selection models.QuotationSelection) models.QuotationSelection {
 	request := webQuotation.SelectionRequest{
 		Mode:               selection.Mode,
 		SalesPackageId:     selection.SalesPackageId,
@@ -282,24 +271,17 @@ func (s *ServiceQuotationImpl) repriceSelection(ctx context.Context, tx *sql.Tx,
 		request.BuildingIds = append(request.BuildingIds, item.BuildingId)
 	}
 
-	return s.buildSelection(ctx, tx, versionId, selection.Kind, request)
+	return s.buildSelection(ctx, tx, selection.Kind, request)
 }
 
-func (s *ServiceQuotationImpl) buildingWeeklyRate(ctx context.Context, tx *sql.Tx, versionId, buildingId int) int64 {
-	if versionId == 0 {
+func (s *ServiceQuotationImpl) buildingWeeklyRate(ctx context.Context, tx *sql.Tx, buildingId int) int64 {
+	price, err := s.RepositoryBuildingPrice.FindByBuildingId(ctx, tx, buildingId)
+	if err == sql.ErrNoRows {
 		return 0
 	}
-
-	prices, err := s.RepositoryRateCard.FindBuildingPrices(ctx, tx, versionId, 100000, 0, "")
 	helpers.PanicIfError(err)
 
-	for _, price := range prices {
-		if price.BuildingId == buildingId {
-			return price.PriceIdrPerWeek
-		}
-	}
-
-	return 0
+	return price.PriceIdrPerWeek
 }
 
 // ---------------------------------------------------------------------------

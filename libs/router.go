@@ -8,6 +8,7 @@ import (
 	controllersBranch "github.com/malikabdulaziz/tmn-backend/controllers/branch"
 	controllersBrand "github.com/malikabdulaziz/tmn-backend/controllers/brand"
 	controllersBuilding "github.com/malikabdulaziz/tmn-backend/controllers/building"
+	controllersBuildingPrice "github.com/malikabdulaziz/tmn-backend/controllers/buildingprice"
 	controllersBuildingRestriction "github.com/malikabdulaziz/tmn-backend/controllers/buildingrestriction"
 	controllersCategory "github.com/malikabdulaziz/tmn-backend/controllers/category"
 	controllersCustomer "github.com/malikabdulaziz/tmn-backend/controllers/customer"
@@ -63,6 +64,8 @@ func NewRouter(
 	controllersSalesAssignment controllersSalesAssignment.ControllerSalesAssignmentInterface,
 	controllersRateCard controllersRateCard.ControllerRateCardInterface,
 	controllersQuotation controllersQuotation.ControllerQuotationInterface,
+	buildingPriceMiddleware *middlewares.BuildingPriceMiddleware,
+	controllersBuildingPrice controllersBuildingPrice.ControllerBuildingPriceInterface,
 ) *httprouter.Router {
 	router := httprouter.New()
 
@@ -647,6 +650,39 @@ func NewRouter(
 		loggingMiddleware.Log(
 			authMiddleware.RequireAuth(
 				authMiddleware.RequirePermission(models.PermissionRateCardsView)(controllersRateCard.PackagePriceTemplate))))
+
+	// Building prices. One price per building, no versions -- see migration 021.
+	router.GET("/building-prices",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBuildingPricesView)(controllersBuildingPrice.FindAll))))
+
+	router.PUT("/building-prices",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBuildingPricesManage)(
+					buildingPriceMiddleware.ValidateUpsert(controllersBuildingPrice.Upsert)))))
+
+	router.DELETE("/building-prices/:buildingId",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBuildingPricesManage)(controllersBuildingPrice.Delete))))
+
+	// dry_run=true previews the file without writing anything.
+	router.POST("/building-prices-import",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBuildingPricesManage)(controllersBuildingPrice.Import))))
+
+	router.GET("/building-prices-export",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBuildingPricesView)(controllersBuildingPrice.Export))))
+
+	router.GET("/building-prices-template",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBuildingPricesView)(controllersBuildingPrice.Template))))
 
 	// Quotation routes.
 	//

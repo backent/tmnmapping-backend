@@ -27,7 +27,7 @@ func TestQuotationServiceWiresEveryDependency(t *testing.T) {
 	svc := service.NewServiceQuotationImpl(
 		db,
 		&mocks.MockRepositoryQuotation{},
-		&mocks.MockRepositoryRateCard{},
+		&mocks.MockRepositoryBuildingPrice{},
 		&mocks.MockRepositoryBuilding{},
 		&mocks.MockRepositoryCustomer{},
 		&mocks.MockRepositoryBrand{},

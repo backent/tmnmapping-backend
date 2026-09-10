@@ -11,9 +11,9 @@ import (
 	"github.com/malikabdulaziz/tmn-backend/models"
 	repositoriesBrand "github.com/malikabdulaziz/tmn-backend/repositories/brand"
 	repositoriesBuilding "github.com/malikabdulaziz/tmn-backend/repositories/building"
+	repositoriesBuildingPrice "github.com/malikabdulaziz/tmn-backend/repositories/buildingprice"
 	repositoriesCustomer "github.com/malikabdulaziz/tmn-backend/repositories/customer"
 	repositoriesQuotation "github.com/malikabdulaziz/tmn-backend/repositories/quotation"
-	repositoriesRateCard "github.com/malikabdulaziz/tmn-backend/repositories/ratecard"
 	repositoriesSalesAssignment "github.com/malikabdulaziz/tmn-backend/repositories/salesassignment"
 	repositoriesSalesPackage "github.com/malikabdulaziz/tmn-backend/repositories/salespackage"
 	repositoriesUser "github.com/malikabdulaziz/tmn-backend/repositories/user"
@@ -27,7 +27,7 @@ const DefaultValidityDays = 30
 type ServiceQuotationImpl struct {
 	DB *sql.DB
 	repositoriesQuotation.RepositoryQuotationInterface
-	RepositoryRateCard        repositoriesRateCard.RepositoryRateCardInterface
+	RepositoryBuildingPrice   repositoriesBuildingPrice.RepositoryBuildingPriceInterface
 	RepositoryBuilding        repositoriesBuilding.RepositoryBuildingInterface
 	RepositoryCustomer        repositoriesCustomer.RepositoryCustomerInterface
 	RepositoryBrand           repositoriesBrand.RepositoryBrandInterface
@@ -40,7 +40,7 @@ type ServiceQuotationImpl struct {
 func NewServiceQuotationImpl(
 	db *sql.DB,
 	repoQuotation repositoriesQuotation.RepositoryQuotationInterface,
-	repoRateCard repositoriesRateCard.RepositoryRateCardInterface,
+	repoBuildingPrice repositoriesBuildingPrice.RepositoryBuildingPriceInterface,
 	repoBuilding repositoriesBuilding.RepositoryBuildingInterface,
 	repoCustomer repositoriesCustomer.RepositoryCustomerInterface,
 	repoBrand repositoriesBrand.RepositoryBrandInterface,
@@ -51,7 +51,7 @@ func NewServiceQuotationImpl(
 	return &ServiceQuotationImpl{
 		DB:                           db,
 		RepositoryQuotationInterface: repoQuotation,
-		RepositoryRateCard:           repoRateCard,
+		RepositoryBuildingPrice:      repoBuildingPrice,
 		RepositoryBuilding:           repoBuilding,
 		RepositoryCustomer:           repoCustomer,
 		RepositoryBrand:              repoBrand,
@@ -276,18 +276,12 @@ func (s *ServiceQuotationImpl) Submit(ctx context.Context, id int, actor Actor) 
 		panic(exceptions.NewBadRequestError("a quotation needs a placement; bonus alone cannot be sold"))
 	}
 
-	version, err := s.RepositoryRateCard.FindCurrentVersion(ctx, tx)
-	if err == sql.ErrNoRows {
-		panic(exceptions.NewBadRequestError("no rate card has been published yet, so nothing can be priced"))
-	}
-	helpers.PanicIfError(err)
-
-	// Re-price every selection from the published rate card, then recompute totals.
+	// Re-price every selection at current prices, then recompute totals.
 	priced := make([]models.QuotationSelection, len(quotation.Selections))
 	input := PricingInput{Discount: quotation.Discount, TaxRate: quotation.TaxRate}
 
 	for i, selection := range quotation.Selections {
-		repriced := s.repriceSelection(ctx, tx, version.Id, selection)
+		repriced := s.repriceSelection(ctx, tx, selection)
 		priced[i] = repriced
 
 		pricing := SelectionPricing{
@@ -319,7 +313,6 @@ func (s *ServiceQuotationImpl) Submit(ctx context.Context, id int, actor Actor) 
 		quotation.Version++
 	}
 
-	quotation.RateCardVersionId = version.Id
 	quotation.Status = route.Status
 	quotation.RequiredApproverUserId = route.ApproverId
 	applyPricing(&quotation, summary)
@@ -396,12 +389,6 @@ func (s *ServiceQuotationImpl) PreviewPricing(ctx context.Context, request webQu
 	helpers.PanicIfError(err)
 	defer helpers.CommitOrRollback(tx)
 
-	version, err := s.RepositoryRateCard.FindCurrentVersion(ctx, tx)
-	if err == sql.ErrNoRows {
-		panic(exceptions.NewBadRequestError("no rate card has been published yet, so nothing can be priced"))
-	}
-	helpers.PanicIfError(err)
-
 	taxRate := request.TaxRate
 	if taxRate == 0 {
 		taxRate = DefaultTaxRate
@@ -421,7 +408,7 @@ func (s *ServiceQuotationImpl) PreviewPricing(ctx context.Context, request webQu
 			continue
 		}
 
-		selection := s.buildSelection(ctx, tx, version.Id, pair.kind, *pair.req)
+		selection := s.buildSelection(ctx, tx, pair.kind, *pair.req)
 		pricing := SelectionPricing{
 			GrossPricePerWeek: selection.GrossPrice / int64(max(selection.Weeks, 1)),
 			Weeks:             selection.Weeks,

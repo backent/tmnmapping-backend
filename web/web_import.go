@@ -15,7 +15,14 @@ type ImportResult struct {
 	// applied -- a rate card row priced 0 for a building with no screens installed,
 	// for example. Reported so the operator can reconcile the row count rather than
 	// wondering where the difference went.
-	Skipped  int           `json:"skipped"`
+	Skipped int `json:"skipped"`
+
+	// Unchanged counts rows whose price already matched, so a preview can say how
+	// much an upload will actually change.
+	Unchanged int `json:"unchanged"`
+
+	// DryRun marks a preview: every row was checked and counted, nothing written.
+	DryRun   bool          `json:"dry_run"`
 	Imported bool          `json:"imported"`
 	Errors   []ImportError `json:"errors"`
 }

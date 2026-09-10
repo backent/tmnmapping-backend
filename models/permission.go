@@ -53,6 +53,12 @@ const (
 	PermissionRateCardsManage  = "rate-cards.manage"
 	PermissionRateCardsPublish = "rate-cards.publish"
 
+	// Building prices: what one week on one building costs. Everyone reads them --
+	// a quotation cannot be priced otherwise -- only admin edits. One price per
+	// building, no versions and no publish step; see migration 021.
+	PermissionBuildingPricesView   = "building-prices.view"
+	PermissionBuildingPricesManage = "building-prices.manage"
+
 	// Quotations. Reading and writing are open to every role because the service
 	// scopes them per user: a salesperson only ever sees their own pipeline, and an
 	// approver only their queue. Restricting the endpoint by role instead would
@@ -123,6 +129,9 @@ var Permissions = map[string][]string{
 	PermissionRateCardsView:    Roles,
 	PermissionRateCardsManage:  {RoleAdmin},
 	PermissionRateCardsPublish: {RoleAdmin},
+
+	PermissionBuildingPricesView:   Roles,
+	PermissionBuildingPricesManage: {RoleAdmin},
 
 	PermissionQuotationsView:   Roles,
 	PermissionQuotationsManage: Roles,

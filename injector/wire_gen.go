@@ -13,6 +13,7 @@ import (
 	branch3 "github.com/malikabdulaziz/tmn-backend/controllers/branch"
 	brandAdv3 "github.com/malikabdulaziz/tmn-backend/controllers/brand"
 	building3 "github.com/malikabdulaziz/tmn-backend/controllers/building"
+	buildingprice3 "github.com/malikabdulaziz/tmn-backend/controllers/buildingprice"
 	buildingrestriction3 "github.com/malikabdulaziz/tmn-backend/controllers/buildingrestriction"
 	category3 "github.com/malikabdulaziz/tmn-backend/controllers/category"
 	customer3 "github.com/malikabdulaziz/tmn-backend/controllers/customer"
@@ -33,6 +34,7 @@ import (
 	"github.com/malikabdulaziz/tmn-backend/repositories/branch"
 	brandAdv "github.com/malikabdulaziz/tmn-backend/repositories/brand"
 	"github.com/malikabdulaziz/tmn-backend/repositories/building"
+	buildingpriceRepo "github.com/malikabdulaziz/tmn-backend/repositories/buildingprice"
 	"github.com/malikabdulaziz/tmn-backend/repositories/buildingrestriction"
 	"github.com/malikabdulaziz/tmn-backend/repositories/category"
 	customerRepo "github.com/malikabdulaziz/tmn-backend/repositories/customer"
@@ -51,6 +53,7 @@ import (
 	branch2 "github.com/malikabdulaziz/tmn-backend/services/branch"
 	brandAdv2 "github.com/malikabdulaziz/tmn-backend/services/brand"
 	building2 "github.com/malikabdulaziz/tmn-backend/services/building"
+	buildingprice2 "github.com/malikabdulaziz/tmn-backend/services/buildingprice"
 	"github.com/malikabdulaziz/tmn-backend/services/buildingproposal"
 	buildingrestriction2 "github.com/malikabdulaziz/tmn-backend/services/buildingrestriction"
 	category2 "github.com/malikabdulaziz/tmn-backend/services/category"
@@ -142,9 +145,13 @@ func InitializeRouter() *httprouter.Router {
 	controllerSalesAssignmentInterface := salesassignment3.NewControllerSalesAssignmentImpl(serviceSalesAssignmentInterface)
 	serviceRateCardInterface := ratecard2.NewServiceRateCardImpl(db, repositoryRateCardInterface, repositoryBuildingInterface, repositorySalesPackageInterface)
 	controllerRateCardInterface := ratecard3.NewControllerRateCardImpl(serviceRateCardInterface)
-	serviceQuotationInterface := quotation2.NewServiceQuotationImpl(db, repositoryQuotationInterface, repositoryRateCardInterface, repositoryBuildingInterface, repositoryCustomerInterface, repositoryBrandAdvInterface, repositoryUserInterface, repositorySalesAssignmentInterface, repositorySalesPackageInterface)
+	repositoryBuildingPriceInterface := buildingpriceRepo.NewRepositoryBuildingPriceImpl()
+	serviceBuildingPriceInterface := buildingprice2.NewServiceBuildingPriceImpl(db, repositoryBuildingPriceInterface, repositoryBuildingInterface)
+	controllerBuildingPriceInterface := buildingprice3.NewControllerBuildingPriceImpl(serviceBuildingPriceInterface)
+	buildingPriceMiddleware := middlewares.NewBuildingPriceMiddleware(validate)
+	serviceQuotationInterface := quotation2.NewServiceQuotationImpl(db, repositoryQuotationInterface, repositoryBuildingPriceInterface, repositoryBuildingInterface, repositoryCustomerInterface, repositoryBrandAdvInterface, repositoryUserInterface, repositorySalesAssignmentInterface, repositorySalesPackageInterface)
 	controllerQuotationInterface := quotation3.NewControllerQuotationImpl(serviceQuotationInterface)
-	router := libs.NewRouter(authMiddleware, buildingMiddleware, poiMiddleware, salesPackageMiddleware, buildingRestrictionMiddleware, savedPolygonMiddleware, loggingMiddleware, categoryMiddleware, subCategoryMiddleware, motherBrandMiddleware, branchMiddleware, userMiddleware, customerMiddleware, brandAdvMiddleware, salesAssignmentMiddleware, rateCardMiddleware, quotationMiddleware, controllerAuthInterface, controllerBuildingInterface, controllerImageInterface, controllerPOIInterface, controllerSalesPackageInterface, controllerBuildingRestrictionInterface, controllerSavedPolygonInterface, controllerDashboardInterface, controllerCategoryInterface, controllerSubCategoryInterface, controllerMotherBrandInterface, controllerBranchInterface, controllerUserInterface, controllerCustomerInterface, controllerBrandAdvInterface, controllerSalesAssignmentInterface, controllerRateCardInterface, controllerQuotationInterface)
+	router := libs.NewRouter(authMiddleware, buildingMiddleware, poiMiddleware, salesPackageMiddleware, buildingRestrictionMiddleware, savedPolygonMiddleware, loggingMiddleware, categoryMiddleware, subCategoryMiddleware, motherBrandMiddleware, branchMiddleware, userMiddleware, customerMiddleware, brandAdvMiddleware, salesAssignmentMiddleware, rateCardMiddleware, quotationMiddleware, controllerAuthInterface, controllerBuildingInterface, controllerImageInterface, controllerPOIInterface, controllerSalesPackageInterface, controllerBuildingRestrictionInterface, controllerSavedPolygonInterface, controllerDashboardInterface, controllerCategoryInterface, controllerSubCategoryInterface, controllerMotherBrandInterface, controllerBranchInterface, controllerUserInterface, controllerCustomerInterface, controllerBrandAdvInterface, controllerSalesAssignmentInterface, controllerRateCardInterface, controllerQuotationInterface, buildingPriceMiddleware, controllerBuildingPriceInterface)
 	return router
 }
 
