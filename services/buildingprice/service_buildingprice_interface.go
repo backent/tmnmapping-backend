@@ -13,7 +13,8 @@ type ServiceBuildingPriceInterface interface {
 	Delete(ctx context.Context, buildingId int)
 
 	// Import checks and counts every row; with dryRun it stops there and writes
-	// nothing, so an upload can be previewed before it reprices anything.
+	// nothing, so an upload can be previewed before it reprices anything. Rows that
+	// fail are listed in the result and left out; the valid rows apply.
 	Import(ctx context.Context, fileBytes []byte, fileType string, dryRun bool) web.ImportResult
 
 	Export(ctx context.Context) ([]byte, error)

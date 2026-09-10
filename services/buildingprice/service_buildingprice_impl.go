@@ -160,12 +160,11 @@ func (s *ServiceBuildingPriceImpl) Import(ctx context.Context, fileBytes []byte,
 		queue = append(queue, pending{buildingId: building.Id, price: price})
 	}
 
-	// All or nothing: one bad row and the whole file is refused, so there is never a
-	// half-applied price list to reconcile.
-	if result.HasErrors() {
-		return *result
-	}
-
+	// A bad row is reported and left out; the valid rows still apply. The preview
+	// lists every rejected row and why before anything is written, so applying a
+	// partly bad file is a decision the operator makes knowingly. Refusing it
+	// outright meant the business's own rate card workbook -- 16 unusable rows out of
+	// 1,624 -- could never be uploaded as it is.
 	var changes []pending
 	for _, item := range queue {
 		current, had := existing[item.buildingId]

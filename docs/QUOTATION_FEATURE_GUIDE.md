@@ -229,7 +229,8 @@ The normal flow is: **Template** → fill it in → **Import**. Use **Export** t
 current data down, edit, and push it back.
 
 **Imports are all-or-nothing.** If any row fails, nothing is written — you get the
-errors and the data is untouched. There is no partial import to clean up.
+errors and the data is untouched. There is no partial import to clean up. (Prices
+are the one exception, and preview first — see §3.8.)
 
 ### 3.8 Setting prices (admin)
 
@@ -240,7 +241,10 @@ price — or add, edit and remove prices one building at a time.
 An upload is **previewed before it applies**: rows read, new, changed, already
 correct and skipped, then **Apply**. Nothing changes until you confirm. Buildings not
 in the file keep their price, and a row priced 0 is skipped rather than offered for
-nothing. Like every import, one bad row refuses the whole file.
+nothing. Unlike the other imports, a partly bad file is **not** refused: the preview
+lists every row that will be left out and why — an unknown IRIS code, a blank one —
+and **Apply** writes the rest. The business's own workbook has 16 such rows out of
+1,624, so it would otherwise never upload as it is.
 
 **Package prices** are set on each sales package's own form, which shows what its
 member buildings add up to as a starting point.

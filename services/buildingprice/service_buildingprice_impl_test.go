@@ -84,17 +84,39 @@ func TestImport_AcceptsTheRateCardWorkbookAsItIs(t *testing.T) {
 	assert.Equal(t, 1, result.Created)
 }
 
-// One bad row refuses the whole file, so a price list is never half-applied.
-func TestImport_RefusesTheFileOnAnUnknownBuildingAndSkipsZeroPrices(t *testing.T) {
-	svc, prices, buildings := newService(t)
+const mixedFile = "IRIS Building ID,Price per Week (IDR)\nB1,4000\nB2,0\nNOPE,5000\n,7000\n"
+
+func mixedFixtures(prices *mocks.MockRepositoryBuildingPrice, buildings *mocks.MockRepositoryBuilding) {
 	prices.On("FindAllPrices", mock.Anything, mock.Anything).Return(map[int]int64{}, nil)
+	buildings.On("FindByIrisCode", mock.Anything, mock.Anything, "B1").Return(models.Building{Id: 1}, nil)
 	buildings.On("FindByIrisCode", mock.Anything, mock.Anything, "NOPE").Return(models.Building{}, sql.ErrNoRows)
+}
 
-	result := svc.Import(context.Background(),
-		[]byte("IRIS Building ID,Price per Week (IDR)\nB1,0\nNOPE,5000\n"), "csv", false)
+// A partly bad file is not refused. The real rate card workbook has 16 unusable rows
+// out of 1,624, and refusing it outright meant it could never be uploaded as it is.
+// The preview lists the rows that will be left out and why, and writes nothing.
+func TestImport_PreviewListsRejectedRowsWithoutWriting(t *testing.T) {
+	svc, prices, buildings := newService(t)
+	mixedFixtures(prices, buildings)
 
-	assert.False(t, result.Imported)
+	result := svc.Import(context.Background(), []byte(mixedFile), "csv", true)
+
+	assert.True(t, result.DryRun)
+	assert.Equal(t, 1, result.Created, "B1 is valid")
 	assert.Equal(t, 1, result.Skipped, "a zero price is skipped, not sold for nothing")
-	assert.Len(t, result.Errors, 1)
+	assert.Len(t, result.Errors, 2, "the unknown code and the blank one are listed")
 	prices.AssertNotCalled(t, "Upsert", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+}
+
+// Applying the same file writes the valid rows and leaves the rejected ones out.
+func TestImport_ApplyWritesValidRowsAndLeavesTheRestOut(t *testing.T) {
+	svc, prices, buildings := newService(t)
+	mixedFixtures(prices, buildings)
+	prices.On("Upsert", mock.Anything, mock.Anything, 1, int64(4000)).Return(nil)
+
+	result := svc.Import(context.Background(), []byte(mixedFile), "csv", false)
+
+	assert.True(t, result.Imported)
+	assert.Len(t, result.Errors, 2)
+	prices.AssertNumberOfCalls(t, "Upsert", 1)
 }

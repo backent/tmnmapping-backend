@@ -65,12 +65,10 @@ func (c *ControllerBuildingPriceImpl) Import(w http.ResponseWriter, r *http.Requ
 	dryRun := r.URL.Query().Get("dry_run") == "true"
 	result := c.service.Import(r.Context(), fileBytes, ext, dryRun)
 
-	code, status := http.StatusOK, "OK"
-	if len(result.Errors) > 0 || (!result.Imported && !result.DryRun) {
-		code, status = http.StatusBadRequest, "BAD REQUEST"
-	}
-
-	helpers.ReturnReponseJSON(w, web.WebResponse{Status: status, Code: code, Data: result})
+	// Rejected rows are data, listed in the result -- not a failed request, because
+	// the valid rows still apply. A file that cannot be read at all (wrong type,
+	// missing columns) panics into a 400 before it gets here.
+	helpers.ReturnReponseJSON(w, web.WebResponse{Status: "OK", Code: http.StatusOK, Data: result})
 }
 
 func (c *ControllerBuildingPriceImpl) Export(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
