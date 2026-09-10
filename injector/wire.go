@@ -19,6 +19,7 @@ import (
 	controllersPOI "github.com/malikabdulaziz/tmn-backend/controllers/poi"
 	controllersQuotation "github.com/malikabdulaziz/tmn-backend/controllers/quotation"
 	controllersRateCard "github.com/malikabdulaziz/tmn-backend/controllers/ratecard"
+	controllersBuildingPrice "github.com/malikabdulaziz/tmn-backend/controllers/buildingprice"
 	controllersSalesAssignment "github.com/malikabdulaziz/tmn-backend/controllers/salesassignment"
 	controllersSalesPackage "github.com/malikabdulaziz/tmn-backend/controllers/salespackage"
 	controllersSavedPolygon "github.com/malikabdulaziz/tmn-backend/controllers/savedpolygon"
@@ -38,6 +39,7 @@ import (
 	repositoriesPOI "github.com/malikabdulaziz/tmn-backend/repositories/poi"
 	repositoriesQuotation "github.com/malikabdulaziz/tmn-backend/repositories/quotation"
 	repositoriesRateCard "github.com/malikabdulaziz/tmn-backend/repositories/ratecard"
+	repositoriesBuildingPrice "github.com/malikabdulaziz/tmn-backend/repositories/buildingprice"
 	repositoriesSalesAssignment "github.com/malikabdulaziz/tmn-backend/repositories/salesassignment"
 	repositoriesSalesPackage "github.com/malikabdulaziz/tmn-backend/repositories/salespackage"
 	repositoriesSavedPolygon "github.com/malikabdulaziz/tmn-backend/repositories/savedpolygon"
@@ -58,6 +60,7 @@ import (
 	servicesPOI "github.com/malikabdulaziz/tmn-backend/services/poi"
 	servicesQuotation "github.com/malikabdulaziz/tmn-backend/services/quotation"
 	servicesRateCard "github.com/malikabdulaziz/tmn-backend/services/ratecard"
+	servicesBuildingPrice "github.com/malikabdulaziz/tmn-backend/services/buildingprice"
 	servicesSalesAssignment "github.com/malikabdulaziz/tmn-backend/services/salesassignment"
 	servicesSalesPackage "github.com/malikabdulaziz/tmn-backend/services/salespackage"
 	servicesSavedPolygon "github.com/malikabdulaziz/tmn-backend/services/savedpolygon"
@@ -130,6 +133,13 @@ var rateCardSet = wire.NewSet(
 	controllersRateCard.NewControllerRateCardImpl,
 )
 
+// Building prices: one per building, no versions -- see migration 021.
+var buildingPriceSet = wire.NewSet(
+	repositoriesBuildingPrice.NewRepositoryBuildingPriceImpl,
+	servicesBuildingPrice.NewServiceBuildingPriceImpl,
+	controllersBuildingPrice.NewControllerBuildingPriceImpl,
+)
+
 var userSet = wire.NewSet(
 	servicesUser.NewServiceUserImpl,
 	controllersUser.NewControllerUserImpl,
@@ -183,6 +193,7 @@ var middlewareSet = wire.NewSet(
 	middlewares.NewSalesAssignmentMiddleware,
 	middlewares.NewRateCardMiddleware,
 	middlewares.NewQuotationMiddleware,
+	middlewares.NewBuildingPriceMiddleware,
 )
 
 func InitializeRouter() *httprouter.Router {
@@ -202,6 +213,7 @@ func InitializeRouter() *httprouter.Router {
 		advertiserSet,
 		rateCardSet,
 		quotationSet,
+		buildingPriceSet,
 		poiSet,
 		salespackageSet,
 		buildingrestrictionSet,
