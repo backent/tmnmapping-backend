@@ -40,7 +40,7 @@ agreed to what, and no way to answer "what did we actually quote this client in
 March?".
 
 This feature moves the whole thing into the application: **priced from a controlled
-rate card, routed for approval by rule, and recorded permanently.**
+price list, routed for approval by rule, and recorded permanently.**
 
 ### The one idea worth understanding first
 
@@ -63,7 +63,7 @@ quotation-specific — so the next feature can reuse them without a rewrite.
 | `head_of_sales` | Sales manager | Approves discounts up to 65% |
 | `head_of_business_control` | Commercial control | Approves 65–75% |
 | `ceo` | CEO | Approves above 75% |
-| `admin` | System administrator | Maintains master data, rate cards, users. **Cannot approve** |
+| `admin` | System administrator | Maintains master data, prices, users. **Cannot approve** |
 
 `admin` being unable to approve is intentional: approval authority follows the sales
 hierarchy, not system administration. Someone who can edit the database should not
@@ -76,7 +76,7 @@ also be able to sign off a discount.
     ┌───────────────────────────────────────────────────────────────────┐
     │                                                                   │
     │   ┌──────────────────────┐        ┌──────────────────────────┐   │
-    │   │ Browse rate card     │        │ Download / upload        │   │
+    │   │ Browse prices        │        │ Download / upload        │   │
     │   │ (read current prices)│        │ master data (spreadsheet)│   │
     │   └──────────────────────┘        └──────────────────────────┘   │
     │              ▲                                  ▲                 │
@@ -87,7 +87,7 @@ also be able to sign off a discount.
     │   │  • pick placement    │        └──────────────────────────┘   │
     │   │  • pick bonus        │                     ▲                 │
     │   │  • set discount      │        ┌──────────────────────────┐   │
-    │   └──────────┬───────────┘        │ Publish rate card version│   │
+    │   └──────────┬───────────┘        │ Upload & preview prices  │   │
     │              │ «includes»         └──────────────────────────┘   │
     │              ▼                                  ▲                 │
     │   ┌──────────────────────┐                      │                 │
@@ -120,7 +120,7 @@ also be able to sign off a discount.
     │          │    │ CEO                │    │                   │
     └──────────┘    └────────────────────┘    └───────────────────┘
      creates,        approve / return,          master data,
-     revises,        read the queue,            rate cards, users.
+     revises,        read the queue,            prices, users.
      prints          also create quotations     NEVER approves
 ```
 
@@ -130,7 +130,7 @@ Reading the actor lines:
   their own quotations.
 - **Approvers** — the three senior roles. They can also *create* quotations (they
   sell too), which is exactly why the no-self-approval rule in §7 exists.
-- **Admin** — master data and rate cards. Sees every quotation, approves none.
+- **Admin** — master data and prices. Sees every quotation, approves none.
 
 ---
 
@@ -147,8 +147,8 @@ A quotation cannot be priced out of thin air. Four things must exist first:
    system refuses to submit if a role has zero or several holders (§7).
 2. **Customers and brands.** A quotation is always *for* a brand *of* a customer.
 3. **Sales assignments.** Which salesperson owns which customer.
-4. **A published rate card.** Draft prices do not price anything. Until a card is
-   published, the wizard has nothing to offer.
+4. **Prices.** A building or package with no price cannot be quoted. Load building
+   prices on the **Prices** page (§3.8), and set each package's price on its own form.
 
 Items 2 and 3 are fastest via spreadsheet — see §3.7.
 
@@ -169,15 +169,14 @@ way and updating about 300ms after you stop typing.
 At the end you have two buttons: **Save draft** (come back later) and **Submit for
 approval**.
 
-> If a package you expect is missing in step 2, the hint says so directly: *"No
-> package has a price in the published rate card yet."* That is a rate card gap, not
-> a bug.
+> If a package you expect is missing in step 2, it has no price yet or it is
+> inactive. Set its price on the sales package form. That is a data gap, not a bug.
 
 ### 3.3 Submitting
 
 **Submit for approval** does three things in one transaction:
 
-1. **Re-prices everything** against the published rate card. Whatever the browser
+1. **Re-prices everything** at current prices. Whatever the browser
    showed is discarded and recalculated server-side. A draft left for a month is
    priced as of *today*.
 2. **Resolves the approver** from your discount and the no-self-approval rule (§7).
@@ -223,7 +222,7 @@ output. Use your browser's "Save as PDF" destination to produce a file to email.
 
 ### 3.7 Master data by spreadsheet (admin)
 
-Customers, brands, sales assignments and rate card prices all have the same three
+Customers, brands, sales assignments and building prices all have the same three
 buttons: **Template**, **Export**, **Import**.
 
 The normal flow is: **Template** → fill it in → **Import**. Use **Export** to pull
@@ -232,14 +231,22 @@ current data down, edit, and push it back.
 **Imports are all-or-nothing.** If any row fails, nothing is written — you get the
 errors and the data is untouched. There is no partial import to clean up.
 
-### 3.8 Publishing a rate card (admin)
+### 3.8 Setting prices (admin)
 
-Edit prices on a **draft** card freely; they affect nothing. When ready, open the
-card and press **Publish**.
+**Building prices** live on the **Prices** page. Upload a spreadsheet — the
+business's own rate card workbook works as-is, its "Round Up" column is read as the
+price — or add, edit and remove prices one building at a time.
 
-**Publishing cannot be undone.** From that moment every new quotation prices against
-it. Quotations already submitted keep the card they were priced against (§9) — their
-numbers do not move.
+An upload is **previewed before it applies**: rows read, new, changed, already
+correct and skipped, then **Apply**. Nothing changes until you confirm. Buildings not
+in the file keep their price, and a row priced 0 is skipped rather than offered for
+nothing. Like every import, one bad row refuses the whole file.
+
+**Package prices** are set on each sales package's own form, which shows what its
+member buildings add up to as a starting point.
+
+There are no versions and no publish step. A change takes effect for the next
+quotation priced and **never** alters a quotation already submitted — see §9.
 
 ### 3.9 When something is refused
 
@@ -252,7 +259,8 @@ The system fails loudly rather than guessing. What the common refusals mean:
 | Submit refused, owner is the CEO | Nobody outranks the CEO, so there is no valid approver | Someone else must own the quotation |
 | **403** on approve | You are not the assigned approver | Check whose queue it is in |
 | **400** on return | The reason was blank | Write why |
-| No packages offered | No package is priced in the published rate card | Price it, publish the card |
+| No packages offered | No active package has a price | Set one on the sales package form |
+| *"X has no price yet, so it cannot be quoted"* | That building or package has no price | Add it on the Prices page, or on the package form |
 
 ---
 
@@ -287,7 +295,7 @@ A quotation is always in exactly one of six states.
 Rules that hold at every step:
 
 1. **Prices are recalculated on submit.** Not trusted from the browser. A quotation
-   sitting in draft for a month is re-priced against the rate card when it is
+   sitting in draft for a month is re-priced at current prices when it is
    finally submitted.
 2. **Returning requires a written reason.** Enforced in the service *and* by a
    database `CHECK` constraint — an empty reason is rejected with a 400.
@@ -432,7 +440,7 @@ Acting on an approval is separate and *is* role-restricted:
 |---|---|
 | `quotations.view` / `quotations.manage` | all roles (scoped per user) |
 | `quotations.approve` | `head_of_sales`, `head_of_business_control`, `ceo` |
-| `customers.*`, `brands.*`, `rate-cards.manage`, `rate-cards.publish` | `admin` only (view is open) |
+| `customers.*`, `brands.*`, `building-prices.manage`, `sales-packages.manage` | `admin` only (view is open) |
 
 All of this lives in **one file**, `models/permission.go`. Adding a feature means
 adding keys there and listing the roles — routes and the role vocabulary stay
@@ -445,16 +453,22 @@ immediately rather than silently rejecting every request to that route forever.
 
 ---
 
-## 9. Rate cards — why quotations do not re-price themselves
+## 9. Prices — why quotations do not re-price themselves
 
-Prices live in **versioned rate cards**. A rate card is edited as a draft, then
-**published**; publishing is its own permission because it changes what every future
-quotation is priced against.
+Prices are **current**, not versioned. A building's weekly price sits on the Prices
+page; a package's sits on the package. Change one and the next quotation priced uses
+the new figure.
 
-Each quotation stores `rate_card_version_id` — the card it was priced against. When
-a new card is published, **existing quotations keep their prices.** An approved
-quotation is a commitment; it must not silently change because someone updated a
-price list.
+That is safe because **a submitted quotation carries its own copy of every price**.
+Submit stores the full pricing snapshot on the quotation and a unit price per
+building on `quotation_selection_items`, and reading a quotation never recalculates.
+An approved quotation is a commitment, and it keeps its figures whatever happens to
+the price list afterwards.
+
+This replaced versioned rate cards (draft → publish → current → historical) on
+2026-09-10. The versions looked like the protection, but the snapshot always was; the
+versions were ceremony nobody outside the system saw. The rate card tables remain in
+the database, unused, as history.
 
 The same principle appears twice more:
 
@@ -479,13 +493,13 @@ customers ──────────── customer_id ───────
     │                                      │
     └── brands ──────── brand_id ──────────┤
                                            ▼
-rate_card_versions ─── priced_against ─► quotations
-    ├── rate_card_building_prices            │
-    ├── rate_card_package_prices             ├──► quotation_selections ──► quotation_selection_items
-    └── rate_card_package_buildings          │      (placement | bonus)       (building snapshots)
+building_prices ─────── priced from ──► quotations
+    (one per building)                       │
+                                             ├──► quotation_selections ──► quotation_selection_items
+                                             │      (placement | bonus)       (building + price snapshots)
                                              │
 buildings ───────────────────────────────────┼──► quotation_versions   (immutable snapshot per submit)
-sales_packages ──────────────────────────────┤
+sales_packages (carry their own price) ──────┤
                                              └──► quotation_approvals  (who did what, when, why)
 ```
 
@@ -509,8 +523,9 @@ Constraints worth knowing (the database enforces business rules, not just shapes
 - Package mode requires a package; building mode forbids one.
 - Amounts cannot be negative.
 
-Migrations: `015` roles, `016` customers/brands/assignments, `017` rate card,
-`018` sales package master fields, `019` quotations.
+Migrations: `015` roles, `016` customers/brands/assignments, `017` rate card (now
+unused), `018` sales package master fields, `019` quotations, `020` package price,
+`021` building prices.
 
 ---
 
@@ -525,7 +540,8 @@ Migrations: `015` roles, `016` customers/brands/assignments, `017` rate card,
 | `/quotations/:id` | Detail: figures, selections, approval history, actions |
 | `/quotations/:id/edit` | Revise a draft or returned quotation |
 | `/quotations/:id/document` | **The printable A4 document** |
-| `/rate-cards`, `/customers`, `/brands`, `/sales-assignments` | Supporting master data |
+| `/building-prices` | Prices: search, add, edit, remove, upload with preview |
+| `/customers`, `/advertiser-brands`, `/sales-assignments`, `/sales-packages` | Supporting master data |
 
 The wizard's six steps: **Customer & brand → Placement → Bonus → Campaign →
 Discount → Review**. The pricing panel is visible throughout and updates ~300ms

@@ -4,7 +4,7 @@
 frozen reference or a plan written before the work; none of them track status.
 If you are picking the project up, read this file, then the guide.
 
-**Last verified:** 2026-09-09, against the running staging environment.
+**Last verified:** 2026-09-10, against the running staging environment.
 
 ---
 
@@ -12,9 +12,9 @@ If you are picking the project up, read this file, then the guide.
 
 | | Staging | Production |
 |---|---|---|
-| Backend | `2.31.0-staging.7` | `2.30.0` |
-| Frontend | `2.46.0-staging.9` | `2.45.0` |
-| Migration | 019 | **014** |
+| Backend | `2.31.0-staging.10` | `2.30.0` |
+| Frontend | `2.46.0-staging.17` | `2.45.0` |
+| Migration | 021 | **014** |
 
 **Nothing is in production, and nothing is pushed to any git remote.** Production
 still runs migration 014, so none of the quotation tables exist there.
@@ -27,10 +27,10 @@ still runs migration 014, so none of the quotation tables exist there.
 |---|---|---|
 | **0** | Roles, permission layer, user management UI | ✅ Done, on staging |
 | **1** | Customers, brands, sales assignments + spreadsheet import | ✅ Done, on staging |
-| **2** | Rate card: versions, per-week building and package prices, publish | ✅ Done, on staging |
+| **2** | Prices: per-week building prices on a Prices page with upload preview, package prices on the package. Replaced versioned rate cards 2026-09-10 | ✅ Done, on staging |
 | **3** | Quotation core: wizard, server-side pricing, submit | ✅ Done, on staging |
 | **4** | Approvals: routing, approve/return, audit trail | ⚠️ **Almost** — see §3.1 |
-| **5** | Printed document | ⚠️ **Works, wrong layout** — see §3.2 |
+| **5** | Printed document | ✅ Rebuilt to the template in landscape; logo files still needed — see §3.2 |
 | **6** | Notifications, server-side PDF, localization, dashboards | ❌ Not started |
 
 Phases are not a formal plan; they are how the work was sequenced. The numbered
@@ -75,7 +75,7 @@ carry a red "NOT YET PRICED — do not send to a client" banner.
 
 | Gap | Blocks |
 |---|---|
-| **No package prices in any rate card** (all three versions have 0) | Package mode is unusable in the wizard — it says "No package has a price in the published rate card yet" |
+| **Real package prices not loaded** | Packages carry their own price since migration 020, set on the package form, and package mode works end to end. Only the test package SP-0018 has one |
 | **Audience figures (traffic / impressions) are hidden** | Removed from display 2026-09-10 because ERP has them for only 86 of 1,581 sellable buildings, so every quotation printed zeros. Columns, API and summing all kept. **Option A is the agreed next step if users start uploading the figures** — see `QUOTATION_DOCUMENT_ANALYSIS.md` §4.3.1 |
 | **`screen_count` may not be a real requirement** | Nothing confirms it. Not in the reference prototype; the template's "Spot/Day/Screen" column is satisfied by the spots the salesperson types. It rests on an unlabelled "950" I inferred was screens. Meanwhile building mode counts one screen per building, which the rate card shows undercounts by 79% — so the printed document carries a number we cannot justify. **One question to the business settles it.** See `QUOTATION_DOCUMENT_ANALYSIS.md` §4.2 |
 | ~~The sales package form exposes only `Name`~~ | ✅ Fixed 2026-09-09. The form could not save at all — the API required `package_code` and `status`, which it never sent, so every create and update returned 400. All six fields are now there |
@@ -83,10 +83,12 @@ carry a red "NOT YET PRICED — do not send to a client" banner.
 
 ### 3.4 Smaller, known, not urgent
 
-- No manual **"Add price"** on a rate card — import only, though the API already
-  upserts, so it is a missing button rather than a missing capability.
-- A **published** rate card hides its edit controls with no explanation of why, which
-  reads as a bug. Needs a line of copy.
+- ~~No manual "Add price" on a rate card; a published card hid its edit controls
+  unexplained~~ — ✅ gone with the Rate Cards page. The Prices page adds, edits and
+  removes by hand.
+- **Remove the dormant rate card backend.** The `rate_card_*` tables and `/rate-cards*`
+  endpoints are unused since 2026-09-10 but still present, deliberately kept for one
+  release as history. Drop them in a follow-up migration.
 - **`sales_group`** is stored, editable and returned by the API, and read by nothing.
   Decide: wire it up or drop it.
 - **Building contract import** — planned in `BUILDING_CONTRACT_IMPORT_PLAN.md`,
@@ -101,10 +103,12 @@ server-side PDF, no localization — the document is English only.
 
 ## 4. Before production
 
-1. Migration 014 → 019 on the production database. Rehearsed against a copy of real
-   production data (3,762 buildings, 19 users) and it applied cleanly.
+1. Migrations 014 → 021 on the production database. 014 → 019 was rehearsed against
+   a copy of real production data (3,762 buildings, 19 users) and applied cleanly;
+   **020 and 021 have only been applied to staging** and need the same rehearsal.
 2. Load real customers, brands and sales assignments.
-3. Publish a real rate card **including package prices** (§3.3).
+3. Upload real building prices on the Prices page, and set a price on every package
+   that should be quotable (§3.3).
 4. Assign the approver roles — exactly **one** user per role, or submit fails loudly
    by design.
 5. Decide the `can_create_quotations` default for real users. Admin is exempt.
