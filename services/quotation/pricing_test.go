@@ -176,3 +176,24 @@ func TestCalculatePricing_RejectsOverflowingAmounts(t *testing.T) {
 	})
 	assert.ErrorIs(t, err, quotation.ErrAmountRange)
 }
+
+// ---------------------------------------------------------------------------
+// Package pricing moved onto the package (migration 020)
+// ---------------------------------------------------------------------------
+
+// A package priced at zero is unpriced, not free. Quoting it would sell the whole
+// package for nothing, which is exactly the mistake the building path already
+// refuses -- see "has no price in the published rate card".
+func TestPackageGrossUsesTheWeeklyRateTimesWeeks(t *testing.T) {
+	// 112,500,000/week over 4 weeks, the shape a real package quotation takes.
+	selection := quotation.SelectionPricing{GrossPricePerWeek: 112_500_000, Weeks: 4}
+
+	assert.Equal(t, int64(450_000_000), selection.Gross())
+}
+
+func TestPackageGrossIsZeroWhenUnpriced(t *testing.T) {
+	selection := quotation.SelectionPricing{GrossPricePerWeek: 0, Weeks: 4}
+
+	assert.Equal(t, int64(0), selection.Gross(),
+		"an unpriced package must not produce a sellable gross")
+}

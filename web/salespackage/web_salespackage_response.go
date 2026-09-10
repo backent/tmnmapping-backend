@@ -19,6 +19,7 @@ type SalesPackageResponse struct {
 	ScreenCount int                   `json:"screen_count"`
 	Traffic     int                   `json:"traffic"`
 	Impressions int                   `json:"impressions"`
+	PriceIdrPerWeek int64             `json:"price_idr_per_week"`
 	Buildings   []BuildingRefResponse `json:"buildings"`
 	CreatedAt   string                `json:"created_at"`
 	UpdatedAt   string                `json:"updated_at"`

@@ -63,6 +63,8 @@ func (s *ServiceSalesPackageImpl) Create(ctx context.Context, request webSalesPa
 		ScreenCount: request.ScreenCount,
 		Traffic:     request.Traffic,
 		Impressions: request.Impressions,
+
+		PriceIdrPerWeek: request.PriceIdrPerWeek,
 	}
 	created, err := s.RepositorySalesPackageInterface.Create(ctx, tx, pkg, request.BuildingIds)
 	helpers.PanicIfError(err)
@@ -115,7 +117,15 @@ func (s *ServiceSalesPackageImpl) Update(ctx context.Context, request webSalesPa
 
 	s.validateBuildingIdsErr(ctx, tx, request.BuildingIds)
 
+	existing.PackageCode = request.PackageCode
 	existing.Name = request.Name
+	existing.Description = request.Description
+	existing.Status = request.Status
+	existing.ScreenCount = request.ScreenCount
+	existing.Traffic = request.Traffic
+	existing.Impressions = request.Impressions
+	existing.PriceIdrPerWeek = request.PriceIdrPerWeek
+
 	updated, err := s.RepositorySalesPackageInterface.Update(ctx, tx, existing, request.BuildingIds)
 	helpers.PanicIfError(err)
 	return s.modelToResponse(updated)
@@ -313,9 +323,12 @@ func (s *ServiceSalesPackageImpl) modelToResponse(p models.SalesPackage) webSale
 		ScreenCount: p.ScreenCount,
 		Traffic:     p.Traffic,
 		Impressions: p.Impressions,
-		Buildings:   buildings,
-		CreatedAt:   p.CreatedAt,
-		UpdatedAt:   p.UpdatedAt,
+
+		PriceIdrPerWeek: p.PriceIdrPerWeek,
+
+		Buildings: buildings,
+		CreatedAt: p.CreatedAt,
+		UpdatedAt: p.UpdatedAt,
 	}
 }
 

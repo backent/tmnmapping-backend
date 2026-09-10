@@ -15,6 +15,10 @@ type CreateSalesPackageRequest struct {
 	ScreenCount int   `json:"screen_count" validate:"gte=0"`
 	Traffic     int   `json:"traffic" validate:"gte=0"`
 	Impressions int   `json:"impressions" validate:"gte=0"`
+
+	// What the advertiser pays for one week of the whole package. Zero means
+	// "not priced yet"; the quotation service refuses to quote it.
+	PriceIdrPerWeek int64 `json:"price_idr_per_week" validate:"gte=0"`
 	BuildingIds []int `json:"building_ids" validate:"required,min=1"`
 }
 
@@ -29,6 +33,10 @@ type UpdateSalesPackageRequest struct {
 	ScreenCount int   `json:"screen_count" validate:"gte=0"`
 	Traffic     int   `json:"traffic" validate:"gte=0"`
 	Impressions int   `json:"impressions" validate:"gte=0"`
+
+	// What the advertiser pays for one week of the whole package. Zero means
+	// "not priced yet"; the quotation service refuses to quote it.
+	PriceIdrPerWeek int64 `json:"price_idr_per_week" validate:"gte=0"`
 	BuildingIds []int `json:"building_ids" validate:"required,min=1"`
 }
 

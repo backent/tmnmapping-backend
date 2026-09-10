@@ -215,7 +215,14 @@ func (s *ServiceQuotationImpl) buildSelection(ctx context.Context, tx *sql.Tx, v
 		selection.Traffic = int64(pkg.Traffic)
 		selection.Impressions = int64(pkg.Impressions)
 
-		selection.GrossPrice = s.packageWeeklyRate(ctx, tx, versionId, pkg.Id) * int64(request.Weeks)
+		// The package carries its own price -- migration 020. Zero means nobody has
+		// priced it, which is refused rather than sold for nothing.
+		if pkg.PriceIdrPerWeek == 0 {
+			panic(exceptions.NewBadRequestError(
+				"\"" + pkg.Name + "\" has no price yet, so it cannot be quoted"))
+		}
+
+		selection.GrossPrice = pkg.PriceIdrPerWeek * int64(request.Weeks)
 
 	case models.SelectionModeBuilding:
 		if len(request.BuildingIds) == 0 {
@@ -293,23 +300,6 @@ func (s *ServiceQuotationImpl) buildingWeeklyRate(ctx context.Context, tx *sql.T
 	}
 
 	return 0
-}
-
-func (s *ServiceQuotationImpl) packageWeeklyRate(ctx context.Context, tx *sql.Tx, versionId, packageId int) int64 {
-	if versionId == 0 {
-		panic(exceptions.NewBadRequestError("no rate card has been published yet, so nothing can be priced"))
-	}
-
-	prices, err := s.RepositoryRateCard.FindPackagePrices(ctx, tx, versionId, 100000, 0, "")
-	helpers.PanicIfError(err)
-
-	for _, price := range prices {
-		if price.SalesPackageId == packageId {
-			return price.PriceIdrPerWeek
-		}
-	}
-
-	panic(exceptions.NewBadRequestError("that package has no price in the published rate card"))
 }
 
 // ---------------------------------------------------------------------------

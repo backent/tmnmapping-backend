@@ -32,10 +32,10 @@ func safeOrder(orderBy, orderDirection string) (string, string) {
 
 // Create inserts a new sales package and its building links
 func (r *RepositorySalesPackageImpl) Create(ctx context.Context, tx *sql.Tx, pkg models.SalesPackage, buildingIds []int) (models.SalesPackage, error) {
-	SQL := `INSERT INTO ` + models.SalesPackageTable + ` (package_code, name, description, status, screen_count, traffic, impressions)
-		VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, created_at, updated_at`
+	SQL := `INSERT INTO ` + models.SalesPackageTable + ` (package_code, name, description, status, screen_count, traffic, impressions, price_idr_per_week)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, created_at, updated_at`
 	err := tx.QueryRowContext(ctx, SQL, pkg.PackageCode, pkg.Name, pkg.Description, pkg.Status,
-		pkg.ScreenCount, pkg.Traffic, pkg.Impressions).Scan(&pkg.Id, &pkg.CreatedAt, &pkg.UpdatedAt)
+		pkg.ScreenCount, pkg.Traffic, pkg.Impressions, pkg.PriceIdrPerWeek).Scan(&pkg.Id, &pkg.CreatedAt, &pkg.UpdatedAt)
 	if err != nil {
 		return models.SalesPackage{}, err
 	}
@@ -56,7 +56,7 @@ func (r *RepositorySalesPackageImpl) Create(ctx context.Context, tx *sql.Tx, pkg
 // FindAll retrieves all sales packages with pagination and ordering; loads building refs per package
 func (r *RepositorySalesPackageImpl) FindAll(ctx context.Context, tx *sql.Tx, take int, skip int, orderBy string, orderDirection string) ([]models.SalesPackage, error) {
 	orderBy, orderDirection = safeOrder(orderBy, orderDirection)
-	SQL := `SELECT id, package_code, name, description, status, screen_count, traffic, impressions, created_at, updated_at FROM ` + models.SalesPackageTable + `
+	SQL := `SELECT id, package_code, name, description, status, screen_count, traffic, impressions, price_idr_per_week, created_at, updated_at FROM ` + models.SalesPackageTable + `
 		ORDER BY ` + orderBy + ` ` + orderDirection + `, name ASC LIMIT $1 OFFSET $2`
 	rows, err := tx.QueryContext(ctx, SQL, take, skip)
 	if err != nil {
@@ -68,7 +68,7 @@ func (r *RepositorySalesPackageImpl) FindAll(ctx context.Context, tx *sql.Tx, ta
 	var ids []int
 	for rows.Next() {
 		var n models.NullAbleSalesPackage
-		if err := rows.Scan(&n.Id, &n.PackageCode, &n.Name, &n.Description, &n.Status, &n.ScreenCount, &n.Traffic, &n.Impressions, &n.CreatedAt, &n.UpdatedAt); err != nil {
+		if err := rows.Scan(&n.Id, &n.PackageCode, &n.Name, &n.Description, &n.Status, &n.ScreenCount, &n.Traffic, &n.Impressions, &n.PriceIdrPerWeek, &n.CreatedAt, &n.UpdatedAt); err != nil {
 			return nil, err
 		}
 		pkg := models.NullAbleSalesPackageToSalesPackage(n)
@@ -101,10 +101,10 @@ func (r *RepositorySalesPackageImpl) CountAll(ctx context.Context, tx *sql.Tx) (
 
 // FindById retrieves a sales package by ID with its building refs
 func (r *RepositorySalesPackageImpl) FindById(ctx context.Context, tx *sql.Tx, id int) (models.SalesPackage, error) {
-	SQL := `SELECT id, package_code, name, description, status, screen_count, traffic, impressions, created_at, updated_at FROM ` + models.SalesPackageTable + ` WHERE id = $1`
+	SQL := `SELECT id, package_code, name, description, status, screen_count, traffic, impressions, price_idr_per_week, created_at, updated_at FROM ` + models.SalesPackageTable + ` WHERE id = $1`
 	row := tx.QueryRowContext(ctx, SQL, id)
 	var n models.NullAbleSalesPackage
-	if err := row.Scan(&n.Id, &n.PackageCode, &n.Name, &n.Description, &n.Status, &n.ScreenCount, &n.Traffic, &n.Impressions, &n.CreatedAt, &n.UpdatedAt); err != nil {
+	if err := row.Scan(&n.Id, &n.PackageCode, &n.Name, &n.Description, &n.Status, &n.ScreenCount, &n.Traffic, &n.Impressions, &n.PriceIdrPerWeek, &n.CreatedAt, &n.UpdatedAt); err != nil {
 		return models.SalesPackage{}, err
 	}
 	pkg := models.NullAbleSalesPackageToSalesPackage(n)
@@ -119,9 +119,10 @@ func (r *RepositorySalesPackageImpl) FindById(ctx context.Context, tx *sql.Tx, i
 // Update updates name and replaces building links
 func (r *RepositorySalesPackageImpl) Update(ctx context.Context, tx *sql.Tx, pkg models.SalesPackage, buildingIds []int) (models.SalesPackage, error) {
 	SQL := `UPDATE ` + models.SalesPackageTable + ` SET package_code = $1, name = $2, description = $3,
-		status = $4, screen_count = $5, traffic = $6, impressions = $7, updated_at = $8 WHERE id = $9 RETURNING updated_at`
+		status = $4, screen_count = $5, traffic = $6, impressions = $7, price_idr_per_week = $8,
+		updated_at = $9 WHERE id = $10 RETURNING updated_at`
 	err := tx.QueryRowContext(ctx, SQL, pkg.PackageCode, pkg.Name, pkg.Description, pkg.Status,
-		pkg.ScreenCount, pkg.Traffic, pkg.Impressions, time.Now(), pkg.Id).Scan(&pkg.UpdatedAt)
+		pkg.ScreenCount, pkg.Traffic, pkg.Impressions, pkg.PriceIdrPerWeek, time.Now(), pkg.Id).Scan(&pkg.UpdatedAt)
 	if err != nil {
 		return models.SalesPackage{}, err
 	}
@@ -168,10 +169,10 @@ func (r *RepositorySalesPackageImpl) FindAllFlat(ctx context.Context, tx *sql.Tx
 	var err error
 
 	if search != "" {
-		SQL := `SELECT id, package_code, name, description, status, screen_count, traffic, impressions, created_at, updated_at FROM ` + models.SalesPackageTable + ` WHERE name ILIKE $1 ORDER BY name`
+		SQL := `SELECT id, package_code, name, description, status, screen_count, traffic, impressions, price_idr_per_week, created_at, updated_at FROM ` + models.SalesPackageTable + ` WHERE name ILIKE $1 ORDER BY name`
 		rows, err = tx.QueryContext(ctx, SQL, "%"+search+"%")
 	} else {
-		SQL := `SELECT id, package_code, name, description, status, screen_count, traffic, impressions, created_at, updated_at FROM ` + models.SalesPackageTable + ` ORDER BY name`
+		SQL := `SELECT id, package_code, name, description, status, screen_count, traffic, impressions, price_idr_per_week, created_at, updated_at FROM ` + models.SalesPackageTable + ` ORDER BY name`
 		rows, err = tx.QueryContext(ctx, SQL)
 	}
 	if err != nil {
@@ -183,7 +184,7 @@ func (r *RepositorySalesPackageImpl) FindAllFlat(ctx context.Context, tx *sql.Tx
 	var ids []int
 	for rows.Next() {
 		var n models.NullAbleSalesPackage
-		if err := rows.Scan(&n.Id, &n.PackageCode, &n.Name, &n.Description, &n.Status, &n.ScreenCount, &n.Traffic, &n.Impressions, &n.CreatedAt, &n.UpdatedAt); err != nil {
+		if err := rows.Scan(&n.Id, &n.PackageCode, &n.Name, &n.Description, &n.Status, &n.ScreenCount, &n.Traffic, &n.Impressions, &n.PriceIdrPerWeek, &n.CreatedAt, &n.UpdatedAt); err != nil {
 			return nil, err
 		}
 		pkg := models.NullAbleSalesPackageToSalesPackage(n)
@@ -217,7 +218,7 @@ func (r *RepositorySalesPackageImpl) FindByNames(ctx context.Context, tx *sql.Tx
 		placeholders[i] = "$" + strconv.Itoa(i+1)
 		args[i] = name
 	}
-	SQL := `SELECT id, package_code, name, description, status, screen_count, traffic, impressions, created_at, updated_at FROM ` + models.SalesPackageTable + ` WHERE name IN (` + strings.Join(placeholders, ",") + `)`
+	SQL := `SELECT id, package_code, name, description, status, screen_count, traffic, impressions, price_idr_per_week, created_at, updated_at FROM ` + models.SalesPackageTable + ` WHERE name IN (` + strings.Join(placeholders, ",") + `)`
 	rows, err := tx.QueryContext(ctx, SQL, args...)
 	if err != nil {
 		return nil, err
@@ -227,7 +228,7 @@ func (r *RepositorySalesPackageImpl) FindByNames(ctx context.Context, tx *sql.Tx
 	var packages []models.SalesPackage
 	for rows.Next() {
 		var n models.NullAbleSalesPackage
-		if err := rows.Scan(&n.Id, &n.PackageCode, &n.Name, &n.Description, &n.Status, &n.ScreenCount, &n.Traffic, &n.Impressions, &n.CreatedAt, &n.UpdatedAt); err != nil {
+		if err := rows.Scan(&n.Id, &n.PackageCode, &n.Name, &n.Description, &n.Status, &n.ScreenCount, &n.Traffic, &n.Impressions, &n.PriceIdrPerWeek, &n.CreatedAt, &n.UpdatedAt); err != nil {
 			return nil, err
 		}
 		packages = append(packages, models.NullAbleSalesPackageToSalesPackage(n))

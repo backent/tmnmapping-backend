@@ -9,17 +9,21 @@ import (
 // summed from its member buildings -- see docs/QUOTATION_DOCUMENT_ANALYSIS.md §4.1.
 // The price lives in rate_card_package_prices, versioned like every other price.
 type SalesPackage struct {
-	Id          int           `json:"id"`
-	PackageCode string        `json:"package_code"`
-	Name        string        `json:"name"`
-	Description string        `json:"description"`
-	Status      string        `json:"status"`
-	ScreenCount int           `json:"screen_count"`
-	Traffic     int           `json:"traffic"`
-	Impressions int           `json:"impressions"`
-	Buildings   []BuildingRef `json:"buildings"`
-	CreatedAt   string        `json:"created_at"`
-	UpdatedAt   string        `json:"updated_at"`
+	Id          int    `json:"id"`
+	PackageCode string `json:"package_code"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Status      string `json:"status"`
+	ScreenCount int    `json:"screen_count"`
+	Traffic     int    `json:"traffic"`
+	Impressions int    `json:"impressions"`
+
+	// What the advertiser pays for one week of the whole package. Set on the
+	// package rather than in a rate card -- see migration 020.
+	PriceIdrPerWeek int64         `json:"price_idr_per_week"`
+	Buildings       []BuildingRef `json:"buildings"`
+	CreatedAt       string        `json:"created_at"`
+	UpdatedAt       string        `json:"updated_at"`
 }
 
 // BuildingRef holds a lightweight subset of building fields used in relation responses
@@ -43,16 +47,17 @@ type SalesPackageBuilding struct {
 }
 
 type NullAbleSalesPackage struct {
-	Id          sql.NullInt64
-	PackageCode sql.NullString
-	Name        sql.NullString
-	Description sql.NullString
-	Status      sql.NullString
-	ScreenCount sql.NullInt64
-	Traffic     sql.NullInt64
-	Impressions sql.NullInt64
-	CreatedAt   sql.NullString
-	UpdatedAt   sql.NullString
+	Id              sql.NullInt64
+	PackageCode     sql.NullString
+	Name            sql.NullString
+	Description     sql.NullString
+	Status          sql.NullString
+	ScreenCount     sql.NullInt64
+	Traffic         sql.NullInt64
+	Impressions     sql.NullInt64
+	PriceIdrPerWeek sql.NullInt64
+	CreatedAt       sql.NullString
+	UpdatedAt       sql.NullString
 }
 
 type NullAbleSalesPackageBuilding struct {
@@ -74,9 +79,12 @@ func NullAbleSalesPackageToSalesPackage(nullable NullAbleSalesPackage) SalesPack
 		ScreenCount: int(nullable.ScreenCount.Int64),
 		Traffic:     int(nullable.Traffic.Int64),
 		Impressions: int(nullable.Impressions.Int64),
-		Buildings:   []BuildingRef{},
-		CreatedAt:   nullable.CreatedAt.String,
-		UpdatedAt:   nullable.UpdatedAt.String,
+
+		PriceIdrPerWeek: nullable.PriceIdrPerWeek.Int64,
+
+		Buildings: []BuildingRef{},
+		CreatedAt: nullable.CreatedAt.String,
+		UpdatedAt: nullable.UpdatedAt.String,
 	}
 }
 
