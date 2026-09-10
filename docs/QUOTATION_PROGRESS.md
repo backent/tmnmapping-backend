@@ -12,8 +12,8 @@ If you are picking the project up, read this file, then the guide.
 
 | | Staging | Production |
 |---|---|---|
-| Backend | `2.31.0-staging.10` | `2.30.0` |
-| Frontend | `2.46.0-staging.17` | `2.45.0` |
+| Backend | `2.31.0-staging.11` | `2.30.0` |
+| Frontend | `2.46.0-staging.18` | `2.45.0` |
 | Migration | 021 | **014** |
 
 **Nothing is in production, and nothing is pushed to any git remote.** Production
