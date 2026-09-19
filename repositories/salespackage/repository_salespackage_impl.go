@@ -39,10 +39,8 @@ func (r *RepositorySalesPackageImpl) Create(ctx context.Context, tx *sql.Tx, pkg
 	if err != nil {
 		return models.SalesPackage{}, err
 	}
-	for _, bid := range buildingIds {
-		if err := r.CreateBuildingLink(ctx, tx, pkg.Id, bid); err != nil {
-			return models.SalesPackage{}, err
-		}
+	if err := r.createBuildingLinks(ctx, tx, pkg.Id, buildingIds); err != nil {
+		return models.SalesPackage{}, err
 	}
 	// Load building refs for response
 	buildings, err := r.findBuildingRefsBySalesPackageId(ctx, tx, pkg.Id)
@@ -129,10 +127,8 @@ func (r *RepositorySalesPackageImpl) Update(ctx context.Context, tx *sql.Tx, pkg
 	if err := r.DeleteBuildingLinksBySalesPackageId(ctx, tx, pkg.Id); err != nil {
 		return models.SalesPackage{}, err
 	}
-	for _, bid := range buildingIds {
-		if err := r.CreateBuildingLink(ctx, tx, pkg.Id, bid); err != nil {
-			return models.SalesPackage{}, err
-		}
+	if err := r.createBuildingLinks(ctx, tx, pkg.Id, buildingIds); err != nil {
+		return models.SalesPackage{}, err
 	}
 	buildings, err := r.findBuildingRefsBySalesPackageId(ctx, tx, pkg.Id)
 	if err != nil {
@@ -154,6 +150,73 @@ func (r *RepositorySalesPackageImpl) CreateBuildingLink(ctx context.Context, tx 
 	SQL := `INSERT INTO ` + models.SalesPackageBuildingTable + ` (sales_package_id, building_id) VALUES ($1, $2)`
 	_, err := tx.ExecContext(ctx, SQL, salesPackageId, buildingId)
 	return err
+}
+
+// linkColumns is how many placeholders one link row costs. Postgres caps a statement
+// at 65535 parameters; linksPerInsert keeps a batch far inside that.
+const (
+	linkColumns    = 2
+	linksPerInsert = 1000
+)
+
+// createBuildingLinks writes the package's building links in batches.
+//
+// A package can now be filled from a filtered "select all", so this is no longer a
+// handful of rows: a row-at-a-time insert meant one round trip per building on every
+// save. Batching turns that into one statement per 1000.
+//
+// Duplicate ids are dropped first. The table has UNIQUE (sales_package_id,
+// building_id), so a repeated id would fail the whole insert rather than be ignored
+// -- and one batch failing rolls back the entire save.
+func (r *RepositorySalesPackageImpl) createBuildingLinks(ctx context.Context, tx *sql.Tx, salesPackageId int, buildingIds []int) error {
+	unique := dedupeBuildingIds(buildingIds)
+
+	for start := 0; start < len(unique); start += linksPerInsert {
+		end := start + linksPerInsert
+		if end > len(unique) {
+			end = len(unique)
+		}
+
+		SQL, args := buildBuildingLinksInsert(salesPackageId, unique[start:end])
+		if _, err := tx.ExecContext(ctx, SQL, args...); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// buildBuildingLinksInsert renders one multi-row INSERT and its arguments. Split out
+// from the exec so the placeholder numbering can be tested without a database.
+func buildBuildingLinksInsert(salesPackageId int, buildingIds []int) (string, []interface{}) {
+	values := make([]string, len(buildingIds))
+	args := make([]interface{}, 0, len(buildingIds)*linkColumns)
+
+	for i, buildingId := range buildingIds {
+		base := i * linkColumns
+		values[i] = "($" + strconv.Itoa(base+1) + ",$" + strconv.Itoa(base+2) + ")"
+		args = append(args, salesPackageId, buildingId)
+	}
+
+	SQL := `INSERT INTO ` + models.SalesPackageBuildingTable +
+		` (sales_package_id, building_id) VALUES ` + strings.Join(values, ",")
+
+	return SQL, args
+}
+
+// dedupeBuildingIds keeps the first occurrence of each id and drops the rest.
+func dedupeBuildingIds(ids []int) []int {
+	seen := make(map[int]struct{}, len(ids))
+	unique := make([]int, 0, len(ids))
+	for _, id := range ids {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		unique = append(unique, id)
+	}
+
+	return unique
 }
 
 // Delete deletes a sales package (CASCADE removes junction rows)
