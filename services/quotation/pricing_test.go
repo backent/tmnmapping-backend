@@ -8,13 +8,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// baseUnit prices a selection at the base campaign unit: 15 seconds, 180 spots a day,
+// for the given weeks. Every expectation written before campaign multipliers existed
+// is a base-unit campaign, so these must come out unchanged.
+func baseUnit(t *testing.T, ratePerWeek int64, weeks int) quotation.SelectionPricing {
+	t.Helper()
+
+	gross, err := quotation.SelectionGross(ratePerWeek, weeks,
+		quotation.BaseTvcDurationSeconds, quotation.BaseSpotsPerDay)
+	require.NoError(t, err)
+
+	return quotation.SelectionPricing{Gross: gross}
+}
+
 // The real TMN quotation template, reproduced exactly.
 // See docs/QUOTATION_DOCUMENT_ANALYSIS.md §1. Every figure below is read off that
 // document, not invented, which makes this the most valuable test in the package.
 func TestCalculatePricing_MatchesTheRealQuotationTemplate(t *testing.T) {
 	summary, err := quotation.CalculatePricing(quotation.PricingInput{
-		Placement: quotation.SelectionPricing{GrossPricePerWeek: 380_000_000, Weeks: 4},
-		Bonus:     quotation.SelectionPricing{GrossPricePerWeek: 70_000_000, Weeks: 4},
+		Placement: baseUnit(t, 380_000_000, 4),
+		Bonus:     baseUnit(t, 70_000_000, 4),
 		Discount:  65,
 		TaxRate:   quotation.DefaultTaxRate,
 	})
@@ -52,7 +65,7 @@ func TestCalculatePricing_GrossIsRatePerWeekTimesWeeks(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			summary, err := quotation.CalculatePricing(quotation.PricingInput{
-				Placement: quotation.SelectionPricing{GrossPricePerWeek: tt.rate, Weeks: tt.weeks},
+				Placement: baseUnit(t, tt.rate, tt.weeks),
 			})
 			require.NoError(t, err)
 			assert.Equal(t, tt.expected, summary.PlacementGross)
@@ -64,8 +77,8 @@ func TestCalculatePricing_GrossIsRatePerWeekTimesWeeks(t *testing.T) {
 // which is what drags the effective rate above the customer discount.
 func TestCalculatePricing_BonusIsFreeButCountsTowardGross(t *testing.T) {
 	summary, err := quotation.CalculatePricing(quotation.PricingInput{
-		Placement: quotation.SelectionPricing{GrossPricePerWeek: 100_000_000, Weeks: 4},
-		Bonus:     quotation.SelectionPricing{GrossPricePerWeek: 100_000_000, Weeks: 4},
+		Placement: baseUnit(t, 100_000_000, 4),
+		Bonus:     baseUnit(t, 100_000_000, 4),
 		Discount:  50,
 	})
 	require.NoError(t, err)
@@ -81,7 +94,7 @@ func TestCalculatePricing_BonusIsFreeButCountsTowardGross(t *testing.T) {
 
 func TestCalculatePricing_WithoutBonus(t *testing.T) {
 	summary, err := quotation.CalculatePricing(quotation.PricingInput{
-		Placement: quotation.SelectionPricing{GrossPricePerWeek: 100_000_000, Weeks: 4},
+		Placement: baseUnit(t, 100_000_000, 4),
 		Discount:  25,
 	})
 	require.NoError(t, err)
@@ -96,7 +109,7 @@ func TestCalculatePricing_WithoutBonus(t *testing.T) {
 // would overcharge by 139,480,000.
 func TestCalculatePricing_TaxIsChargedOnNett(t *testing.T) {
 	summary, err := quotation.CalculatePricing(quotation.PricingInput{
-		Placement: quotation.SelectionPricing{GrossPricePerWeek: 100_000_000, Weeks: 4},
+		Placement: baseUnit(t, 100_000_000, 4),
 		Discount:  50,
 		TaxRate:   0.11,
 	})
@@ -108,7 +121,7 @@ func TestCalculatePricing_TaxIsChargedOnNett(t *testing.T) {
 
 func TestCalculatePricing_ZeroTaxRateIsValid(t *testing.T) {
 	summary, err := quotation.CalculatePricing(quotation.PricingInput{
-		Placement: quotation.SelectionPricing{GrossPricePerWeek: 1_000_000, Weeks: 1},
+		Placement: baseUnit(t, 1_000_000, 1),
 		TaxRate:   0,
 	})
 	require.NoError(t, err)
@@ -135,7 +148,7 @@ func TestCalculatePricing_DiscountBoundaries(t *testing.T) {
 	for _, tt := range tests {
 		t.Run("", func(t *testing.T) {
 			summary, err := quotation.CalculatePricing(quotation.PricingInput{
-				Placement: quotation.SelectionPricing{GrossPricePerWeek: 250_000_000, Weeks: 4},
+				Placement: baseUnit(t, 250_000_000, 4),
 				Discount:  tt.discount,
 			})
 			require.NoError(t, err)
@@ -172,8 +185,16 @@ func TestCalculatePricing_EmptyQuotation(t *testing.T) {
 // billions.
 func TestCalculatePricing_RejectsOverflowingAmounts(t *testing.T) {
 	_, err := quotation.CalculatePricing(quotation.PricingInput{
-		Placement: quotation.SelectionPricing{GrossPricePerWeek: 1 << 52, Weeks: 52},
+		Placement: quotation.SelectionPricing{Gross: 1 << 54},
 	})
+	assert.ErrorIs(t, err, quotation.ErrAmountRange)
+}
+
+// The multipliers are the new way to overflow: a large rate times weeks times both
+// campaign multipliers has to be caught where it is computed.
+func TestSelectionGross_RejectsOverflowingAmounts(t *testing.T) {
+	_, err := quotation.SelectionGross(1<<52, 52, 75, 900)
+
 	assert.ErrorIs(t, err, quotation.ErrAmountRange)
 }
 
@@ -186,14 +207,14 @@ func TestCalculatePricing_RejectsOverflowingAmounts(t *testing.T) {
 // refuses -- see "has no price in the published rate card".
 func TestPackageGrossUsesTheWeeklyRateTimesWeeks(t *testing.T) {
 	// 112,500,000/week over 4 weeks, the shape a real package quotation takes.
-	selection := quotation.SelectionPricing{GrossPricePerWeek: 112_500_000, Weeks: 4}
+	selection := baseUnit(t, 112_500_000, 4)
 
-	assert.Equal(t, int64(450_000_000), selection.Gross())
+	assert.Equal(t, int64(450_000_000), selection.Gross)
 }
 
 func TestPackageGrossIsZeroWhenUnpriced(t *testing.T) {
-	selection := quotation.SelectionPricing{GrossPricePerWeek: 0, Weeks: 4}
+	selection := baseUnit(t, 0, 4)
 
-	assert.Equal(t, int64(0), selection.Gross(),
+	assert.Equal(t, int64(0), selection.Gross,
 		"an unpriced package must not produce a sellable gross")
 }

@@ -263,15 +263,8 @@ func (r *RepositoryQuotationImpl) ReplaceSelections(ctx context.Context, tx *sql
 			return err
 		}
 
-		for _, item := range selection.Items {
-			itemSQL := `INSERT INTO ` + models.QuotationSelectionItemTable + ` (quotation_selection_id,
-				building_id, building_name, building_iris_code, building_type, citytown,
-				unit_price_idr, traffic, impressions) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`
-			if _, err := tx.ExecContext(ctx, itemSQL, selectionId, nullIfZero(item.BuildingId),
-				item.BuildingName, item.BuildingIrisCode, item.BuildingType, item.Citytown,
-				item.UnitPriceIdr, item.Traffic, item.Impressions); err != nil {
-				return err
-			}
+		if err := insertSelectionItems(ctx, tx, selectionId, selection.Items); err != nil {
+			return err
 		}
 	}
 
@@ -424,6 +417,66 @@ func (r *RepositoryQuotationImpl) CountByStatusForOwner(ctx context.Context, tx 
 	}
 
 	return counts, rows.Err()
+}
+
+// itemColumns is how many placeholders one item row costs. Postgres caps a
+// statement at 65535 parameters; itemsPerInsert keeps a batch well inside that with
+// room to spare, and small enough that one failed statement is cheap to roll back.
+const (
+	itemColumns    = 9
+	itemsPerInsert = 500
+)
+
+// insertSelectionItems writes the building snapshots in batches rather than one
+// statement per building.
+//
+// A selection can now hold every priced building at once, and a row-at-a-time insert
+// made submitting such a quotation one round trip per building. Batching turns that
+// into one statement per 500.
+func insertSelectionItems(ctx context.Context, tx *sql.Tx, selectionId int, items []models.QuotationSelectionItem) error {
+	for start := 0; start < len(items); start += itemsPerInsert {
+		end := start + itemsPerInsert
+		if end > len(items) {
+			end = len(items)
+		}
+
+		SQL, args := buildSelectionItemsInsert(selectionId, items[start:end])
+		if _, err := tx.ExecContext(ctx, SQL, args...); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// buildSelectionItemsInsert renders one multi-row INSERT and its arguments.
+//
+// Split out from the exec so the placeholder numbering can be tested without a
+// database. That numbering is worth guarding: getting it wrong is what broke every
+// scoped quotation list with a 42P18, and a batch insert has the same hazard nine
+// columns at a time.
+func buildSelectionItemsInsert(selectionId int, items []models.QuotationSelectionItem) (string, []interface{}) {
+	values := make([]string, len(items))
+	args := make([]interface{}, 0, len(items)*itemColumns)
+
+	for i, item := range items {
+		base := i * itemColumns
+		placeholders := make([]string, itemColumns)
+		for column := range placeholders {
+			placeholders[column] = "$" + strconv.Itoa(base+column+1)
+		}
+		values[i] = "(" + strings.Join(placeholders, ",") + ")"
+
+		args = append(args, selectionId, nullIfZero(item.BuildingId), item.BuildingName,
+			item.BuildingIrisCode, item.BuildingType, item.Citytown,
+			item.UnitPriceIdr, item.Traffic, item.Impressions)
+	}
+
+	SQL := `INSERT INTO ` + models.QuotationSelectionItemTable + ` (quotation_selection_id,
+		building_id, building_name, building_iris_code, building_type, citytown,
+		unit_price_idr, traffic, impressions) VALUES ` + strings.Join(values, ",")
+
+	return SQL, args
 }
 
 func nullIfZero(value int) interface{} {

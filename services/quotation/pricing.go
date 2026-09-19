@@ -2,6 +2,7 @@ package quotation
 
 import (
 	"errors"
+	"fmt"
 	"math"
 )
 
@@ -13,35 +14,108 @@ import (
 // priced at even if this default later changes.
 const DefaultTaxRate = 0.11
 
+// Campaign base units.
+//
+// Every price in the system -- a building's weekly rate and a sales package's alike
+// -- buys ONE unit: a 15-second spot, shown 180 times per day per screen, for one
+// week. A longer spot or a higher frequency is a multiple of that unit and multiplies
+// the rate, which is why a 30-second / 360-spot campaign costs four times a
+// 15-second / 180-spot one over the same weeks.
+//
+// These are constants rather than settings because they define what a stored price
+// MEANS. Changing one would silently reprice every building and package already in
+// the database -- a data migration, not a configuration change.
+const (
+	BaseTvcDurationSeconds = 15
+	BaseSpotsPerDay        = 180
+
+	// MaxUnitMultiplier caps how far a campaign can scale off the base unit.
+	MaxUnitMultiplier = 5
+)
+
 var (
 	ErrDiscountRange = errors.New("discount must be between 0 and 100")
 	ErrTaxRateRange  = errors.New("tax rate must be between 0 and 1")
 	ErrAmountRange   = errors.New("amount is not a safe whole rupiah value")
+
+	ErrTvcDurationUnit = fmt.Errorf("tvc duration must be one of %v seconds", AllowedTvcDurations())
+	ErrSpotsUnit       = fmt.Errorf("spots per day must be one of %v", AllowedSpots())
 )
+
+// AllowedTvcDurations and AllowedSpots are the values a campaign may take: the base
+// unit and its multiples, up to MaxUnitMultiplier. The wizard offers exactly these,
+// and the server refuses anything else rather than pricing a value nobody quoted.
+func AllowedTvcDurations() []int { return unitLadder(BaseTvcDurationSeconds) }
+
+func AllowedSpots() []int { return unitLadder(BaseSpotsPerDay) }
+
+func unitLadder(base int) []int {
+	ladder := make([]int, 0, MaxUnitMultiplier)
+	for multiplier := 1; multiplier <= MaxUnitMultiplier; multiplier++ {
+		ladder = append(ladder, base*multiplier)
+	}
+
+	return ladder
+}
+
+// UnitMultiplier reports how many base units a campaign value buys.
+//
+// A value that is not a whole multiple of the base, or that exceeds the cap, buys
+// nothing: there is no defensible price for 20 seconds when the rate card sells 15.
+func UnitMultiplier(value int, base int) (int, bool) {
+	if value <= 0 || base <= 0 || value%base != 0 {
+		return 0, false
+	}
+
+	multiplier := value / base
+	if multiplier > MaxUnitMultiplier {
+		return 0, false
+	}
+
+	return multiplier, true
+}
+
+// SelectionGross is one selection's gross, before any discount:
+//
+//	gross = rate_per_week × weeks × (duration / 15) × (spots / 180)
+//
+// The rate is what the building or package costs for one base unit for one week, so
+// all three campaign dimensions multiply through it.
+func SelectionGross(baseRatePerWeek int64, weeks int, durationSeconds int, spots int) (int64, error) {
+	durationMultiplier, ok := UnitMultiplier(durationSeconds, BaseTvcDurationSeconds)
+	if !ok {
+		return 0, ErrTvcDurationUnit
+	}
+
+	spotsMultiplier, ok := UnitMultiplier(spots, BaseSpotsPerDay)
+	if !ok {
+		return 0, ErrSpotsUnit
+	}
+
+	if baseRatePerWeek <= 0 || weeks <= 0 {
+		return 0, nil
+	}
+
+	gross := baseRatePerWeek * int64(weeks) * int64(durationMultiplier) * int64(spotsMultiplier)
+	if gross < 0 || gross > maxSafeIdr {
+		return 0, ErrAmountRange
+	}
+
+	return gross, nil
+}
 
 // maxSafeIdr guards against overflow producing a silently wrong price. Rupiah amounts
 // are whole numbers held in int64; anything beyond this is a data error, not a deal.
 const maxSafeIdr = int64(1) << 53
 
 // SelectionPricing is one side of a quotation — Placement or Bonus — reduced to what
-// pricing needs.
-type SelectionPricing struct {
-	// GrossPricePerWeek is the sum of the selected resources' weekly rates.
-	GrossPricePerWeek int64
-	Weeks             int
-}
-
-// Gross is the selection's total before any discount.
+// the totals need: the gross SelectionGross already worked out.
 //
-// Rates are per week and multiply straight through: a 4-week campaign at
-// 380,000,000/week is 1,520,000,000. There is no division by four anywhere -- that
-// belonged to the reference prototype's 4-week rate card, not to this business.
-func (s SelectionPricing) Gross() int64 {
-	if s.Weeks <= 0 || s.GrossPricePerWeek <= 0 {
-		return 0
-	}
-
-	return s.GrossPricePerWeek * int64(s.Weeks)
+// It holds the finished figure rather than the parts, so the campaign multipliers are
+// applied in exactly one place. Rebuilding a per-week rate here to multiply again is
+// what would double-count them.
+type SelectionPricing struct {
+	Gross int64
 }
 
 // PricingInput is everything CalculatePricing needs. It deliberately takes no
@@ -100,8 +174,8 @@ func CalculatePricing(input PricingInput) (PricingSummary, error) {
 		return PricingSummary{}, ErrTaxRateRange
 	}
 
-	placementGross := input.Placement.Gross()
-	bonusGross := input.Bonus.Gross()
+	placementGross := input.Placement.Gross
+	bonusGross := input.Bonus.Gross
 
 	placementDiscount := roundHalfUp(float64(placementGross) * (input.Discount / 100))
 	placementNet := placementGross - placementDiscount

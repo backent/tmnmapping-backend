@@ -211,22 +211,41 @@ func (s *ServiceQuotationImpl) buildSelection(ctx context.Context, tx *sql.Tx, k
 				"\"" + pkg.Name + "\" has no price yet, so it cannot be quoted"))
 		}
 
-		selection.GrossPrice = pkg.PriceIdrPerWeek * int64(request.Weeks)
+		selection.GrossPrice = grossFor(pkg.PriceIdrPerWeek, request)
 
 	case models.SelectionModeBuilding:
-		if len(request.BuildingIds) == 0 {
+		ids := dedupeIds(request.BuildingIds)
+		if len(ids) == 0 {
 			panic(exceptions.NewBadRequestError("a building selection needs at least one building"))
 		}
 
+		// Two queries, whatever the selection size. This used to be two per
+		// building, which made "select every building in Jakarta" cost hundreds of
+		// round trips on every keystroke of the discount field -- pricing preview
+		// runs this same path.
+		buildings, err := s.RepositoryBuilding.FindByIds(ctx, tx, ids)
+		helpers.PanicIfError(err)
+
+		byId := make(map[int]models.Building, len(buildings))
+		for _, building := range buildings {
+			byId[building.Id] = building
+		}
+
+		prices, err := s.RepositoryBuildingPrice.FindPricesByBuildingIds(ctx, tx, ids)
+		helpers.PanicIfError(err)
+
 		var weeklyRate int64
-		for _, buildingId := range request.BuildingIds {
-			building, err := s.RepositoryBuilding.FindById(ctx, tx, buildingId)
-			if err == sql.ErrNoRows {
+		selection.Items = make([]models.QuotationSelectionItem, 0, len(ids))
+
+		// Ranging over ids rather than the query result keeps the order the client
+		// sent, and turns a missing row into the same message it gave before.
+		for _, buildingId := range ids {
+			building, found := byId[buildingId]
+			if !found {
 				panic(exceptions.NewBadRequestError("building not found"))
 			}
-			helpers.PanicIfError(err)
 
-			price := s.buildingWeeklyRate(ctx, tx, buildingId)
+			price := prices[buildingId]
 			if price == 0 {
 				panic(exceptions.NewBadRequestError(
 					"\"" + building.Name + "\" has no price yet, so it cannot be quoted"))
@@ -248,7 +267,7 @@ func (s *ServiceQuotationImpl) buildSelection(ctx context.Context, tx *sql.Tx, k
 			})
 		}
 
-		selection.GrossPrice = weeklyRate * int64(request.Weeks)
+		selection.GrossPrice = grossFor(weeklyRate, request)
 
 	default:
 		panic(exceptions.NewBadRequestError("unknown selection mode"))
@@ -274,14 +293,38 @@ func (s *ServiceQuotationImpl) repriceSelection(ctx context.Context, tx *sql.Tx,
 	return s.buildSelection(ctx, tx, selection.Kind, request)
 }
 
-func (s *ServiceQuotationImpl) buildingWeeklyRate(ctx context.Context, tx *sql.Tx, buildingId int) int64 {
-	price, err := s.RepositoryBuildingPrice.FindByBuildingId(ctx, tx, buildingId)
-	if err == sql.ErrNoRows {
-		return 0
+// grossFor prices one selection from the base weekly rate the resources carry.
+//
+// A stored price buys one base unit -- 15 seconds, 180 spots a day, one week -- so a
+// longer spot or a higher frequency multiplies it. Refusing an off-ladder value here
+// rather than rounding it keeps the wizard and the invoice honest: there is no
+// defensible price for 20 seconds when the rate card sells 15.
+func grossFor(baseRatePerWeek int64, request webQuotation.SelectionRequest) int64 {
+	gross, err := SelectionGross(baseRatePerWeek, request.Weeks, request.TvcDurationSeconds, request.Spots)
+	if err != nil {
+		panic(exceptions.NewBadRequestError(err.Error()))
 	}
-	helpers.PanicIfError(err)
 
-	return price.PriceIdrPerWeek
+	return gross
+}
+
+// dedupeIds keeps the first occurrence of each id and drops the rest.
+//
+// The same building cannot be sold twice on one selection, and a bulk "select all
+// filtered" makes a repeated id easy to send by accident. Left in, a duplicate would
+// have been charged, counted and printed twice.
+func dedupeIds(ids []int) []int {
+	seen := make(map[int]struct{}, len(ids))
+	unique := make([]int, 0, len(ids))
+	for _, id := range ids {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		unique = append(unique, id)
+	}
+
+	return unique
 }
 
 // ---------------------------------------------------------------------------
@@ -329,10 +372,14 @@ func toSelectionResponse(s models.QuotationSelection) webQuotation.SelectionResp
 		perWeek = s.GrossPrice / int64(s.Weeks)
 	}
 
+	durationMultiplier, _ := UnitMultiplier(s.TvcDurationSeconds, BaseTvcDurationSeconds)
+	spotsMultiplier, _ := UnitMultiplier(s.Spots, BaseSpotsPerDay)
+
 	return webQuotation.SelectionResponse{
 		Kind: s.Kind, Mode: s.Mode, SalesPackageId: s.SalesPackageId,
 		SalesPackageName: s.SalesPackageName, TvcDurationSeconds: s.TvcDurationSeconds,
 		Weeks: s.Weeks, Spots: s.Spots, GrossPricePerWeek: perWeek, GrossPrice: s.GrossPrice,
+		DurationMultiplier: durationMultiplier, SpotsMultiplier: spotsMultiplier,
 		Traffic: s.Traffic, Impressions: s.Impressions, ScreenCount: s.ScreenCount,
 		Items: items,
 	}

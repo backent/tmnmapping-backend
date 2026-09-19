@@ -70,15 +70,21 @@ type SelectionItemResponse struct {
 }
 
 type SelectionResponse struct {
-	Kind               string                  `json:"kind"`
-	Mode               string                  `json:"mode"`
-	SalesPackageId     int                     `json:"sales_package_id"`
-	SalesPackageName   string                  `json:"sales_package_name"`
-	TvcDurationSeconds int                     `json:"tvc_duration_seconds"`
-	Weeks              int                     `json:"weeks"`
-	Spots              int                     `json:"spots"`
-	GrossPricePerWeek  int64                   `json:"gross_price_per_week"`
-	GrossPrice         int64                   `json:"gross_price"`
+	Kind               string `json:"kind"`
+	Mode               string `json:"mode"`
+	SalesPackageId     int    `json:"sales_package_id"`
+	SalesPackageName   string `json:"sales_package_name"`
+	TvcDurationSeconds int    `json:"tvc_duration_seconds"`
+	Weeks              int    `json:"weeks"`
+	Spots              int    `json:"spots"`
+	GrossPricePerWeek  int64  `json:"gross_price_per_week"`
+	GrossPrice         int64  `json:"gross_price"`
+
+	// How many base units the campaign buys: 30 seconds is 2, 360 spots is 2, and
+	// together they multiply the rate by 4. Sent so the UI can explain a figure
+	// without re-deriving the rule.
+	DurationMultiplier int                     `json:"duration_multiplier"`
+	SpotsMultiplier    int                     `json:"spots_multiplier"`
 	Traffic            int64                   `json:"traffic"`
 	Impressions        int64                   `json:"impressions"`
 	ScreenCount        int                     `json:"screen_count"`

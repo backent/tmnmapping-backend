@@ -28,6 +28,11 @@ func (m *MockRepositoryBuildingPrice) FindByBuildingId(ctx context.Context, tx *
 	return args.Get(0).(models.BuildingPrice), args.Error(1)
 }
 
+func (m *MockRepositoryBuildingPrice) FindPricesByBuildingIds(ctx context.Context, tx *sql.Tx, ids []int) (map[int]int64, error) {
+	args := m.Called(ctx, tx, ids)
+	return args.Get(0).(map[int]int64), args.Error(1)
+}
+
 func (m *MockRepositoryBuildingPrice) FindAllPrices(ctx context.Context, tx *sql.Tx) (map[int]int64, error) {
 	args := m.Called(ctx, tx)
 	return args.Get(0).(map[int]int64), args.Error(1)

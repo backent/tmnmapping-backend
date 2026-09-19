@@ -284,10 +284,10 @@ func (s *ServiceQuotationImpl) Submit(ctx context.Context, id int, actor Actor) 
 		repriced := s.repriceSelection(ctx, tx, selection)
 		priced[i] = repriced
 
-		pricing := SelectionPricing{
-			GrossPricePerWeek: repriced.GrossPrice / int64(max(repriced.Weeks, 1)),
-			Weeks:             repriced.Weeks,
-		}
+		// The gross was worked out when the selection was priced, campaign
+		// multipliers included. Dividing it back into a weekly rate here would lose
+		// precision and re-apply them.
+		pricing := SelectionPricing{Gross: repriced.GrossPrice}
 		if repriced.Kind == models.SelectionKindPlacement {
 			input.Placement = pricing
 		} else {
@@ -409,10 +409,7 @@ func (s *ServiceQuotationImpl) PreviewPricing(ctx context.Context, request webQu
 		}
 
 		selection := s.buildSelection(ctx, tx, pair.kind, *pair.req)
-		pricing := SelectionPricing{
-			GrossPricePerWeek: selection.GrossPrice / int64(max(selection.Weeks, 1)),
-			Weeks:             selection.Weeks,
-		}
+		pricing := SelectionPricing{Gross: selection.GrossPrice}
 		if pair.kind == models.SelectionKindPlacement {
 			input.Placement = pricing
 		} else {
