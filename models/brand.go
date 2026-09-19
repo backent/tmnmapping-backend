@@ -13,8 +13,17 @@ type Brand struct {
 	Name         string `json:"name"`
 	Category     string `json:"category"`
 	Status       string `json:"status"`
-	CreatedAt    string `json:"created_at"`
-	UpdatedAt    string `json:"updated_at"`
+
+	// The person a quotation for this brand is addressed to. The quotation wizard
+	// prefills from here; the quotation then keeps its own copy, so editing these
+	// never rewrites a quotation already sent.
+	AttentionTo  string `json:"attention_to"`
+	JobTitle     string `json:"job_title"`
+	ContactPhone string `json:"contact_phone"`
+	ContactEmail string `json:"contact_email"`
+
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 type NullAbleBrand struct {
@@ -26,6 +35,10 @@ type NullAbleBrand struct {
 	Name         sql.NullString
 	Category     sql.NullString
 	Status       sql.NullString
+	AttentionTo  sql.NullString
+	JobTitle     sql.NullString
+	ContactPhone sql.NullString
+	ContactEmail sql.NullString
 	CreatedAt    sql.NullString
 	UpdatedAt    sql.NullString
 }
@@ -42,6 +55,10 @@ func NullAbleBrandToBrand(n NullAbleBrand) Brand {
 		Name:         n.Name.String,
 		Category:     n.Category.String,
 		Status:       n.Status.String,
+		AttentionTo:  n.AttentionTo.String,
+		JobTitle:     n.JobTitle.String,
+		ContactPhone: n.ContactPhone.String,
+		ContactEmail: n.ContactEmail.String,
 		CreatedAt:    n.CreatedAt.String,
 		UpdatedAt:    n.UpdatedAt.String,
 	}

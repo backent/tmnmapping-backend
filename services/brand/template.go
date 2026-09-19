@@ -23,4 +23,41 @@ var TemplateColumns = []spreadsheets.SheetColumn{
 		Key: "status", Header: "Status", Required: false, Example: "active",
 		Note: "active or inactive. Defaults to active when left blank.",
 	},
+	{
+		Key: "attention_to", Header: "Attention To", Required: true, Example: "Budi Santoso",
+		Note: "The person a quotation for this brand is addressed to. Printed on the quotation document.",
+	},
+	{
+		Key: "job_title", Header: "Job Title", Required: true, Example: "Marketing Director",
+		Note: "Their job title, printed beneath their name on the quotation document.",
+	},
+	{
+		Key: "contact_phone", Header: "Contact Phone", Required: true, Example: "+62 812 3456 7890",
+		Note: "Contact number printed on the quotation document.",
+	},
+	{
+		Key: "contact_email", Header: "Contact Email", Required: true, Example: "budi@example.com",
+		Note: "Contact email printed on the quotation document.",
+	},
+}
+
+// brandContactError reports what is missing from a brand's contact, or "" when it is
+// complete.
+//
+// A quotation is addressed to a person, and the printed document carries all four
+// fields, so a brand without them cannot be quoted usefully. Kept beside the template
+// columns so the spreadsheet rule and the column list stay together.
+func brandContactError(attentionTo, jobTitle, contactPhone, contactEmail string) string {
+	switch {
+	case attentionTo == "":
+		return "Attention To is required"
+	case jobTitle == "":
+		return "Job Title is required"
+	case contactPhone == "":
+		return "Contact Phone is required"
+	case contactEmail == "":
+		return "Contact Email is required"
+	}
+
+	return ""
 }

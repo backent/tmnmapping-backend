@@ -18,7 +18,8 @@ func NewRepositoryBrandImpl() RepositoryBrandInterface {
 // Brands are always read with their customer joined: every screen that lists a brand
 // shows which advertiser it belongs to.
 var brandSelect = `SELECT b.id, b.code, b.customer_id, c.name, c.code, b.name, b.category,
-	b.status, b.created_at, b.updated_at FROM ` + models.BrandTable + ` b JOIN ` +
+	b.status, b.attention_to, b.job_title, b.contact_phone, b.contact_email,
+	b.created_at, b.updated_at FROM ` + models.BrandTable + ` b JOIN ` +
 	models.CustomerTable + ` c ON c.id = b.customer_id`
 
 var brandAllowedOrderBy = map[string]string{
@@ -42,7 +43,8 @@ func brandSafeOrder(orderBy, orderDirection string) (string, string) {
 func scanBrand(rows *sql.Rows) (models.Brand, error) {
 	var n models.NullAbleBrand
 	err := rows.Scan(&n.Id, &n.Code, &n.CustomerId, &n.CustomerName, &n.CustomerCode,
-		&n.Name, &n.Category, &n.Status, &n.CreatedAt, &n.UpdatedAt)
+		&n.Name, &n.Category, &n.Status, &n.AttentionTo, &n.JobTitle,
+		&n.ContactPhone, &n.ContactEmail, &n.CreatedAt, &n.UpdatedAt)
 	if err != nil {
 		return models.Brand{}, err
 	}
@@ -82,10 +84,12 @@ func brandFilter(search string, customerId int) (string, []interface{}) {
 
 func (r *RepositoryBrandImpl) Create(ctx context.Context, tx *sql.Tx, brand models.Brand) (models.Brand, error) {
 	SQL := "INSERT INTO " + models.BrandTable +
-		" (code, customer_id, name, category, status) VALUES ($1, $2, $3, $4, $5)" +
+		" (code, customer_id, name, category, status, attention_to, job_title," +
+		" contact_phone, contact_email) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)" +
 		" RETURNING id, created_at, updated_at"
 	err := tx.QueryRowContext(ctx, SQL, brand.Code, brand.CustomerId, brand.Name,
-		brand.Category, brand.Status).Scan(&brand.Id, &brand.CreatedAt, &brand.UpdatedAt)
+		brand.Category, brand.Status, brand.AttentionTo, brand.JobTitle,
+		brand.ContactPhone, brand.ContactEmail).Scan(&brand.Id, &brand.CreatedAt, &brand.UpdatedAt)
 
 	return brand, err
 }
@@ -151,10 +155,12 @@ func (r *RepositoryBrandImpl) findOne(ctx context.Context, tx *sql.Tx, where str
 
 func (r *RepositoryBrandImpl) Update(ctx context.Context, tx *sql.Tx, brand models.Brand) (models.Brand, error) {
 	SQL := "UPDATE " + models.BrandTable +
-		" SET code = $1, customer_id = $2, name = $3, category = $4, status = $5, updated_at = $6" +
-		" WHERE id = $7 RETURNING updated_at"
+		" SET code = $1, customer_id = $2, name = $3, category = $4, status = $5," +
+		" attention_to = $6, job_title = $7, contact_phone = $8, contact_email = $9," +
+		" updated_at = $10 WHERE id = $11 RETURNING updated_at"
 	err := tx.QueryRowContext(ctx, SQL, brand.Code, brand.CustomerId, brand.Name,
-		brand.Category, brand.Status, time.Now(), brand.Id).Scan(&brand.UpdatedAt)
+		brand.Category, brand.Status, brand.AttentionTo, brand.JobTitle,
+		brand.ContactPhone, brand.ContactEmail, time.Now(), brand.Id).Scan(&brand.UpdatedAt)
 
 	return brand, err
 }

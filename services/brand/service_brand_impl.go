@@ -41,6 +41,8 @@ func (s *ServiceBrandImpl) Create(ctx context.Context, request webBrand.CreateBr
 	created, err := s.RepositoryBrandInterface.Create(ctx, tx, models.Brand{
 		Code: request.Code, CustomerId: request.CustomerId, Name: request.Name,
 		Category: request.Category, Status: request.Status,
+		AttentionTo: request.AttentionTo, JobTitle: request.JobTitle,
+		ContactPhone: request.ContactPhone, ContactEmail: request.ContactEmail,
 	})
 	helpers.PanicIfError(err)
 
@@ -95,6 +97,10 @@ func (s *ServiceBrandImpl) Update(ctx context.Context, request webBrand.UpdateBr
 	existing.Name = request.Name
 	existing.Category = request.Category
 	existing.Status = request.Status
+	existing.AttentionTo = request.AttentionTo
+	existing.JobTitle = request.JobTitle
+	existing.ContactPhone = request.ContactPhone
+	existing.ContactEmail = request.ContactEmail
 
 	_, err = s.RepositoryBrandInterface.Update(ctx, tx, existing)
 	helpers.PanicIfError(err)
@@ -139,7 +145,8 @@ func (s *ServiceBrandImpl) Export(ctx context.Context, search string) ([]byte, e
 
 	rows := make([][]interface{}, len(list))
 	for i, item := range list {
-		rows[i] = []interface{}{item.Code, item.CustomerCode, item.Name, item.Category, item.Status}
+		rows[i] = []interface{}{item.Code, item.CustomerCode, item.Name, item.Category, item.Status,
+			item.AttentionTo, item.JobTitle, item.ContactPhone, item.ContactEmail}
 	}
 
 	return spreadsheets.BuildExport("Brands", headers, rows)
@@ -183,8 +190,13 @@ func (s *ServiceBrandImpl) Import(ctx context.Context, fileBytes []byte, fileTyp
 		name := spreadsheets.ColValue(row, colMap, "name")
 		category := spreadsheets.ColValue(row, colMap, "category")
 		status := strings.ToLower(spreadsheets.ColValue(row, colMap, "status"))
+		attentionTo := spreadsheets.ColValue(row, colMap, "attention_to")
+		jobTitle := spreadsheets.ColValue(row, colMap, "job_title")
+		contactPhone := spreadsheets.ColValue(row, colMap, "contact_phone")
+		contactEmail := spreadsheets.ColValue(row, colMap, "contact_email")
 
-		if code == "" && customerCode == "" && name == "" && category == "" && status == "" {
+		if code == "" && customerCode == "" && name == "" && category == "" && status == "" &&
+			attentionTo == "" && jobTitle == "" && contactPhone == "" && contactEmail == "" {
 			continue
 		}
 		result.Rows++
@@ -208,6 +220,18 @@ func (s *ServiceBrandImpl) Import(ctx context.Context, fileBytes []byte, fileTyp
 			result.AddError(rowNumber, "Status", status, "Status must be active or inactive")
 			continue
 		}
+		if contactError := brandContactError(attentionTo, jobTitle, contactPhone, contactEmail); contactError != "" {
+			existingBrand, lookupErr := s.RepositoryBrandInterface.FindByCode(ctx, tx, code)
+
+			// A brand that already carries a contact keeps it when the file leaves
+			// these columns blank; only a new brand, or one still without a contact,
+			// is refused.
+			if lookupErr == sql.ErrNoRows || (lookupErr == nil && existingBrand.AttentionTo == "") {
+				result.AddError(rowNumber, "Contact", "", contactError)
+				continue
+			}
+		}
+
 		if firstRow, duplicate := seenCodes[code]; duplicate {
 			result.AddError(rowNumber, "Brand Code", code,
 				"Duplicate Brand Code in this file (also on row "+strconv.Itoa(firstRow)+")")
@@ -225,6 +249,8 @@ func (s *ServiceBrandImpl) Import(ctx context.Context, fileBytes []byte, fileTyp
 
 		item := pending{brand: models.Brand{
 			Code: code, CustomerId: customer.Id, Name: name, Category: category, Status: status,
+			AttentionTo: attentionTo, JobTitle: jobTitle,
+			ContactPhone: contactPhone, ContactEmail: contactEmail,
 		}}
 
 		existing, err := s.RepositoryBrandInterface.FindByCode(ctx, tx, code)
@@ -295,6 +321,8 @@ func brandToResponse(b models.Brand) webBrand.BrandResponse {
 	return webBrand.BrandResponse{
 		Id: b.Id, Code: b.Code, CustomerId: b.CustomerId, CustomerCode: b.CustomerCode,
 		CustomerName: b.CustomerName, Name: b.Name, Category: b.Category, Status: b.Status,
+		AttentionTo: b.AttentionTo, JobTitle: b.JobTitle,
+		ContactPhone: b.ContactPhone, ContactEmail: b.ContactEmail,
 		CreatedAt: b.CreatedAt, UpdatedAt: b.UpdatedAt,
 	}
 }

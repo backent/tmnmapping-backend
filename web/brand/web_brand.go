@@ -8,6 +8,13 @@ type CreateBrandRequest struct {
 	Name       string `json:"name" validate:"required,max=255"`
 	Category   string `json:"category" validate:"omitempty,max=100"`
 	Status     string `json:"status" validate:"required,oneof=active inactive"`
+
+	// A quotation is addressed to a person, so a brand must name one. Required on
+	// create and update; the columns stay nullable for brands that predate this.
+	AttentionTo  string `json:"attention_to" validate:"required,max=255"`
+	JobTitle     string `json:"job_title" validate:"required,max=255"`
+	ContactPhone string `json:"contact_phone" validate:"required,max=50"`
+	ContactEmail string `json:"contact_email" validate:"required,email,max=255"`
 }
 
 type UpdateBrandRequest struct {
@@ -16,6 +23,13 @@ type UpdateBrandRequest struct {
 	Name       string `json:"name" validate:"required,max=255"`
 	Category   string `json:"category" validate:"omitempty,max=100"`
 	Status     string `json:"status" validate:"required,oneof=active inactive"`
+
+	// A quotation is addressed to a person, so a brand must name one. Required on
+	// create and update; the columns stay nullable for brands that predate this.
+	AttentionTo  string `json:"attention_to" validate:"required,max=255"`
+	JobTitle     string `json:"job_title" validate:"required,max=255"`
+	ContactPhone string `json:"contact_phone" validate:"required,max=50"`
+	ContactEmail string `json:"contact_email" validate:"required,email,max=255"`
 }
 
 type BrandResponse struct {
@@ -27,6 +41,10 @@ type BrandResponse struct {
 	Name         string `json:"name"`
 	Category     string `json:"category"`
 	Status       string `json:"status"`
+	AttentionTo  string `json:"attention_to"`
+	JobTitle     string `json:"job_title"`
+	ContactPhone string `json:"contact_phone"`
+	ContactEmail string `json:"contact_email"`
 	CreatedAt    string `json:"created_at"`
 	UpdatedAt    string `json:"updated_at"`
 }
