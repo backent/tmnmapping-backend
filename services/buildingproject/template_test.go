@@ -105,3 +105,21 @@ func TestTemplate_Builds(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, bytes)
 }
+
+// The form's dropdowns come from this map. Every closed vocabulary must appear, and
+// the open ones must not -- sending a fixed list for an open field would invite the
+// client to enforce one.
+func TestVocabulary_ServesEveryClosedListAndNoOpenOne(t *testing.T) {
+	service := &ServiceBuildingProjectImpl{}
+	vocabulary := service.Vocabulary()
+
+	for _, field := range ClosedVocabularyFields() {
+		assert.Equal(t, AllowedValues(field), vocabulary[field], "vocabulary for %q", field)
+	}
+
+	_, hasGrade := vocabulary["grade"]
+	assert.False(t, hasGrade, "grade is open; it must not be served as a fixed list")
+
+	assert.Equal(t, SuggestedGrades, vocabulary["grade_suggestions"],
+		"grades are offered as suggestions under a name that says so")
+}

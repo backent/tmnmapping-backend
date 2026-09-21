@@ -203,6 +203,21 @@ func (s *ServiceBuildingProjectImpl) Template() ([]byte, error) {
 	return BuildTemplate()
 }
 
+// Vocabulary is every closed vocabulary, keyed by the field it belongs to. Open
+// fields (grade, building type) are absent: they have no fixed list, and sending one
+// would invite the client to enforce it.
+func (s *ServiceBuildingProjectImpl) Vocabulary() map[string][]string {
+	vocabulary := map[string][]string{}
+	for _, field := range ClosedVocabularyFields() {
+		vocabulary[field] = AllowedValues(field)
+	}
+
+	// Suggested, not enforced -- the form offers these and still accepts anything.
+	vocabulary["grade_suggestions"] = append([]string{}, SuggestedGrades...)
+
+	return vocabulary
+}
+
 // blankIfZero writes an unset count as an empty cell rather than 0. Exporting 0 and
 // re-importing it would turn "never filled in" into a real zero on the way back.
 func blankIfZero(v int) interface{} {

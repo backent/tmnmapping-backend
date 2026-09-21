@@ -745,6 +745,12 @@ func NewRouter(
 			authMiddleware.RequireAuth(
 				authMiddleware.RequirePermission(models.PermissionBuildingProjectsView)(controllersBuildingProject.Template))))
 
+	// The form's dropdowns come from here, not from a copy in the client.
+	router.GET("/building-projects-vocabulary",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBuildingProjectsView)(controllersBuildingProject.Vocabulary))))
+
 	// Quotation routes.
 	//
 	// View and manage are open to every role: the service scopes them per user, so a

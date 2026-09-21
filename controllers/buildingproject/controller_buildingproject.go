@@ -25,6 +25,7 @@ type ControllerBuildingProjectInterface interface {
 	Import(w http.ResponseWriter, r *http.Request, p httprouter.Params)
 	Export(w http.ResponseWriter, r *http.Request, p httprouter.Params)
 	Template(w http.ResponseWriter, r *http.Request, p httprouter.Params)
+	Vocabulary(w http.ResponseWriter, r *http.Request, p httprouter.Params)
 }
 
 type ControllerBuildingProjectImpl struct {
@@ -122,6 +123,12 @@ func (c *ControllerBuildingProjectImpl) Export(w http.ResponseWriter, r *http.Re
 	fileBytes, err := c.service.Export(r.Context(), actorOf(r))
 	helpers.PanicIfError(err)
 	spreadsheets.WriteXLSX(w, "TMN_Projects_"+time.Now().Format("02-01-2006")+".xlsx", fileBytes)
+}
+
+// Vocabulary feeds the form's dropdowns from the same lists the importer validates
+// against, so the two cannot disagree.
+func (c *ControllerBuildingProjectImpl) Vocabulary(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	helpers.ReturnReponseJSON(w, web.WebResponse{Status: "OK", Code: http.StatusOK, Data: c.service.Vocabulary()})
 }
 
 func (c *ControllerBuildingProjectImpl) Template(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
