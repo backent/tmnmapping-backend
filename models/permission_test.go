@@ -29,7 +29,11 @@ func TestPermissions_NamingConvention(t *testing.T) {
 	// one: it changes what every future quotation is priced against.
 	// .approve exists because acting on an approval is not editing: it is restricted
 	// to the approver roles and excludes admin.
-	allowedSuffixes := []string{".view", ".manage", ".screen", ".publish", ".approve"}
+	// .finance exists because seeing a project is not the same act as seeing what TMN
+	// pays for it. It is the first permission that gates COLUMNS rather than a route:
+	// building_projects holds the name and status everyone reads in the same row as
+	// the landlord rental only finance may read.
+	allowedSuffixes := []string{".view", ".manage", ".screen", ".publish", ".approve", ".finance"}
 
 	for permission := range models.Permissions {
 		matched := false
@@ -90,6 +94,15 @@ func TestRoleCan(t *testing.T) {
 
 		{"sales cannot view users", models.RoleSales, models.PermissionUsersView, false},
 		{"admin can view users", models.RoleAdmin, models.PermissionUsersView, true},
+
+		// Landlord cost is gated apart from the project itself: everyone may read a
+		// project, only finance roles may read what TMN pays for it.
+		{"sales can view a building project", models.RoleSales, models.PermissionBuildingProjectsView, true},
+		{"sales cannot see project finance", models.RoleSales, models.PermissionBuildingProjectsFinance, false},
+		{"head of sales cannot see project finance", models.RoleHeadOfSales, models.PermissionBuildingProjectsFinance, false},
+		{"business control can see project finance", models.RoleHeadOfBusinessControl, models.PermissionBuildingProjectsFinance, true},
+		{"ceo can see project finance", models.RoleCEO, models.PermissionBuildingProjectsFinance, true},
+		{"admin can see project finance", models.RoleAdmin, models.PermissionBuildingProjectsFinance, true},
 
 		{"empty role holds nothing", "", models.PermissionPOIsView, false},
 		{"unknown role holds nothing", "wizard", models.PermissionPOIsView, false},

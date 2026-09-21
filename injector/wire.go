@@ -11,6 +11,7 @@ import (
 	controllersBrandAdv "github.com/malikabdulaziz/tmn-backend/controllers/brand"
 	controllersBuilding "github.com/malikabdulaziz/tmn-backend/controllers/building"
 	controllersBuildingPrice "github.com/malikabdulaziz/tmn-backend/controllers/buildingprice"
+	controllersBuildingProject "github.com/malikabdulaziz/tmn-backend/controllers/buildingproject"
 	controllersBuildingRestriction "github.com/malikabdulaziz/tmn-backend/controllers/buildingrestriction"
 	controllersCategory "github.com/malikabdulaziz/tmn-backend/controllers/category"
 	controllersCustomer "github.com/malikabdulaziz/tmn-backend/controllers/customer"
@@ -32,6 +33,7 @@ import (
 	repositoriesBrandAdv "github.com/malikabdulaziz/tmn-backend/repositories/brand"
 	repositoriesBuilding "github.com/malikabdulaziz/tmn-backend/repositories/building"
 	repositoriesBuildingPrice "github.com/malikabdulaziz/tmn-backend/repositories/buildingprice"
+	repositoriesBuildingProject "github.com/malikabdulaziz/tmn-backend/repositories/buildingproject"
 	repositoriesBuildingRestriction "github.com/malikabdulaziz/tmn-backend/repositories/buildingrestriction"
 	repositoriesCategory "github.com/malikabdulaziz/tmn-backend/repositories/category"
 	repositoriesCustomer "github.com/malikabdulaziz/tmn-backend/repositories/customer"
@@ -51,6 +53,7 @@ import (
 	servicesBrandAdv "github.com/malikabdulaziz/tmn-backend/services/brand"
 	servicesBuilding "github.com/malikabdulaziz/tmn-backend/services/building"
 	servicesBuildingPrice "github.com/malikabdulaziz/tmn-backend/services/buildingprice"
+	servicesBuildingProject "github.com/malikabdulaziz/tmn-backend/services/buildingproject"
 	servicesBuildingProposal "github.com/malikabdulaziz/tmn-backend/services/buildingproposal"
 	servicesBuildingRestriction "github.com/malikabdulaziz/tmn-backend/services/buildingrestriction"
 	servicesCategory "github.com/malikabdulaziz/tmn-backend/services/category"
@@ -140,6 +143,13 @@ var buildingPriceSet = wire.NewSet(
 	controllersBuildingPrice.NewControllerBuildingPriceImpl,
 )
 
+// Building projects: the landlord side of a building -- see migration 023.
+var buildingProjectSet = wire.NewSet(
+	repositoriesBuildingProject.NewRepositoryBuildingProjectImpl,
+	servicesBuildingProject.NewServiceBuildingProjectImpl,
+	controllersBuildingProject.NewControllerBuildingProjectImpl,
+)
+
 var userSet = wire.NewSet(
 	servicesUser.NewServiceUserImpl,
 	controllersUser.NewControllerUserImpl,
@@ -194,6 +204,7 @@ var middlewareSet = wire.NewSet(
 	middlewares.NewRateCardMiddleware,
 	middlewares.NewQuotationMiddleware,
 	middlewares.NewBuildingPriceMiddleware,
+	middlewares.NewBuildingProjectMiddleware,
 )
 
 func InitializeRouter() *httprouter.Router {
@@ -214,6 +225,7 @@ func InitializeRouter() *httprouter.Router {
 		rateCardSet,
 		quotationSet,
 		buildingPriceSet,
+		buildingProjectSet,
 		poiSet,
 		salespackageSet,
 		buildingrestrictionSet,

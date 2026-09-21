@@ -14,6 +14,7 @@ import (
 	brand3 "github.com/malikabdulaziz/tmn-backend/controllers/brand"
 	building3 "github.com/malikabdulaziz/tmn-backend/controllers/building"
 	buildingprice3 "github.com/malikabdulaziz/tmn-backend/controllers/buildingprice"
+	buildingproject3 "github.com/malikabdulaziz/tmn-backend/controllers/buildingproject"
 	buildingrestriction3 "github.com/malikabdulaziz/tmn-backend/controllers/buildingrestriction"
 	category3 "github.com/malikabdulaziz/tmn-backend/controllers/category"
 	customer3 "github.com/malikabdulaziz/tmn-backend/controllers/customer"
@@ -35,6 +36,7 @@ import (
 	"github.com/malikabdulaziz/tmn-backend/repositories/brand"
 	"github.com/malikabdulaziz/tmn-backend/repositories/building"
 	"github.com/malikabdulaziz/tmn-backend/repositories/buildingprice"
+	"github.com/malikabdulaziz/tmn-backend/repositories/buildingproject"
 	"github.com/malikabdulaziz/tmn-backend/repositories/buildingrestriction"
 	"github.com/malikabdulaziz/tmn-backend/repositories/category"
 	"github.com/malikabdulaziz/tmn-backend/repositories/customer"
@@ -54,6 +56,7 @@ import (
 	brand2 "github.com/malikabdulaziz/tmn-backend/services/brand"
 	building2 "github.com/malikabdulaziz/tmn-backend/services/building"
 	buildingprice2 "github.com/malikabdulaziz/tmn-backend/services/buildingprice"
+	buildingproject2 "github.com/malikabdulaziz/tmn-backend/services/buildingproject"
 	"github.com/malikabdulaziz/tmn-backend/services/buildingproposal"
 	buildingrestriction2 "github.com/malikabdulaziz/tmn-backend/services/buildingrestriction"
 	category2 "github.com/malikabdulaziz/tmn-backend/services/category"
@@ -151,7 +154,11 @@ func InitializeRouter() *httprouter.Router {
 	buildingPriceMiddleware := middlewares.NewBuildingPriceMiddleware(validate)
 	serviceBuildingPriceInterface := buildingprice2.NewServiceBuildingPriceImpl(db, repositoryBuildingPriceInterface, repositoryBuildingInterface)
 	controllerBuildingPriceInterface := buildingprice3.NewControllerBuildingPriceImpl(serviceBuildingPriceInterface)
-	router := libs.NewRouter(authMiddleware, buildingMiddleware, poiMiddleware, salesPackageMiddleware, buildingRestrictionMiddleware, savedPolygonMiddleware, loggingMiddleware, categoryMiddleware, subCategoryMiddleware, motherBrandMiddleware, branchMiddleware, userMiddleware, customerMiddleware, brandMiddleware, salesAssignmentMiddleware, rateCardMiddleware, quotationMiddleware, controllerAuthInterface, controllerBuildingInterface, controllerImageInterface, controllerPOIInterface, controllerSalesPackageInterface, controllerBuildingRestrictionInterface, controllerSavedPolygonInterface, controllerDashboardInterface, controllerCategoryInterface, controllerSubCategoryInterface, controllerMotherBrandInterface, controllerBranchInterface, controllerUserInterface, controllerCustomerInterface, controllerBrandInterface, controllerSalesAssignmentInterface, controllerRateCardInterface, controllerQuotationInterface, buildingPriceMiddleware, controllerBuildingPriceInterface)
+	buildingProjectMiddleware := middlewares.NewBuildingProjectMiddleware(validate)
+	repositoryBuildingProjectInterface := buildingproject.NewRepositoryBuildingProjectImpl()
+	serviceBuildingProjectInterface := buildingproject2.NewServiceBuildingProjectImpl(db, repositoryBuildingProjectInterface)
+	controllerBuildingProjectInterface := buildingproject3.NewControllerBuildingProjectImpl(serviceBuildingProjectInterface)
+	router := libs.NewRouter(authMiddleware, buildingMiddleware, poiMiddleware, salesPackageMiddleware, buildingRestrictionMiddleware, savedPolygonMiddleware, loggingMiddleware, categoryMiddleware, subCategoryMiddleware, motherBrandMiddleware, branchMiddleware, userMiddleware, customerMiddleware, brandMiddleware, salesAssignmentMiddleware, rateCardMiddleware, quotationMiddleware, controllerAuthInterface, controllerBuildingInterface, controllerImageInterface, controllerPOIInterface, controllerSalesPackageInterface, controllerBuildingRestrictionInterface, controllerSavedPolygonInterface, controllerDashboardInterface, controllerCategoryInterface, controllerSubCategoryInterface, controllerMotherBrandInterface, controllerBranchInterface, controllerUserInterface, controllerCustomerInterface, controllerBrandInterface, controllerSalesAssignmentInterface, controllerRateCardInterface, controllerQuotationInterface, buildingPriceMiddleware, controllerBuildingPriceInterface, buildingProjectMiddleware, controllerBuildingProjectInterface)
 	return router
 }
 
@@ -214,6 +221,9 @@ var rateCardSet = wire.NewSet(ratecard.NewRepositoryRateCardImpl, ratecard2.NewS
 // Building prices: one per building, no versions -- see migration 021.
 var buildingPriceSet = wire.NewSet(buildingprice.NewRepositoryBuildingPriceImpl, buildingprice2.NewServiceBuildingPriceImpl, buildingprice3.NewControllerBuildingPriceImpl)
 
+// Building projects: the landlord side of a building -- see migration 023.
+var buildingProjectSet = wire.NewSet(buildingproject.NewRepositoryBuildingProjectImpl, buildingproject2.NewServiceBuildingProjectImpl, buildingproject3.NewControllerBuildingProjectImpl)
+
 var userSet = wire.NewSet(user2.NewServiceUserImpl, user3.NewControllerUserImpl)
 
 var poiSet = wire.NewSet(poi.NewRepositoryPOIImpl, poi2.NewServicePOIImpl, poi3.NewControllerPOIImpl)
@@ -226,4 +236,4 @@ var savedpolygonSet = wire.NewSet(savedpolygon.NewRepositorySavedPolygonImpl, sa
 
 var dashboardSet = wire.NewSet(dashboard.NewRepositoryDashboardImpl, dashboard2.NewServiceDashboardImpl, dashboard3.NewControllerDashboardImpl)
 
-var middlewareSet = wire.NewSet(middlewares.NewAuthMiddleware, middlewares.NewBuildingMiddleware, middlewares.NewPOIMiddleware, middlewares.NewSalesPackageMiddleware, middlewares.NewBuildingRestrictionMiddleware, middlewares.NewSavedPolygonMiddleware, middlewares.NewLoggingMiddleware, middlewares.NewCategoryMiddleware, middlewares.NewSubCategoryMiddleware, middlewares.NewMotherBrandMiddleware, middlewares.NewBranchMiddleware, middlewares.NewUserMiddleware, middlewares.NewCustomerMiddleware, middlewares.NewBrandMiddleware, middlewares.NewSalesAssignmentMiddleware, middlewares.NewRateCardMiddleware, middlewares.NewQuotationMiddleware, middlewares.NewBuildingPriceMiddleware)
+var middlewareSet = wire.NewSet(middlewares.NewAuthMiddleware, middlewares.NewBuildingMiddleware, middlewares.NewPOIMiddleware, middlewares.NewSalesPackageMiddleware, middlewares.NewBuildingRestrictionMiddleware, middlewares.NewSavedPolygonMiddleware, middlewares.NewLoggingMiddleware, middlewares.NewCategoryMiddleware, middlewares.NewSubCategoryMiddleware, middlewares.NewMotherBrandMiddleware, middlewares.NewBranchMiddleware, middlewares.NewUserMiddleware, middlewares.NewCustomerMiddleware, middlewares.NewBrandMiddleware, middlewares.NewSalesAssignmentMiddleware, middlewares.NewRateCardMiddleware, middlewares.NewQuotationMiddleware, middlewares.NewBuildingPriceMiddleware, middlewares.NewBuildingProjectMiddleware)

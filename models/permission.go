@@ -59,6 +59,18 @@ const (
 	PermissionBuildingPricesView   = "building-prices.view"
 	PermissionBuildingPricesManage = "building-prices.manage"
 
+	// Building projects: the landlord side of a building. Reads are open like the
+	// other master data, writes are admin, but the contract money is its own
+	// permission -- see the .finance note below.
+	PermissionBuildingProjectsView   = "building-projects.view"
+	PermissionBuildingProjectsManage = "building-projects.manage"
+
+	// What TMN PAYS the landlord, as opposed to what an advertiser pays TMN. Every
+	// other figure in this application is revenue; this is cost, and it sits in the
+	// same row as the name and status that everyone needs to read. Splitting it out
+	// is the only way to let sales see a project without seeing its rental.
+	PermissionBuildingProjectsFinance = "building-projects.finance"
+
 	// Quotations. Reading and writing are open to every role because the service
 	// scopes them per user: a salesperson only ever sees their own pipeline, and an
 	// approver only their queue. Restricting the endpoint by role instead would
@@ -132,6 +144,14 @@ var Permissions = map[string][]string{
 
 	PermissionBuildingPricesView:   Roles,
 	PermissionBuildingPricesManage: {RoleAdmin},
+
+	PermissionBuildingProjectsView:   Roles,
+	PermissionBuildingProjectsManage: {RoleAdmin},
+
+	// Landlord contract values follow the finance hierarchy, not the sales one:
+	// business control owns cost, and the CEO sees everything. head_of_sales is
+	// deliberately absent -- revisit if margin per building becomes a sales tool.
+	PermissionBuildingProjectsFinance: {RoleAdmin, RoleHeadOfBusinessControl, RoleCEO},
 
 	PermissionQuotationsView:   Roles,
 	PermissionQuotationsManage: Roles,

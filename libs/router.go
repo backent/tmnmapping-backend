@@ -9,6 +9,7 @@ import (
 	controllersBrand "github.com/malikabdulaziz/tmn-backend/controllers/brand"
 	controllersBuilding "github.com/malikabdulaziz/tmn-backend/controllers/building"
 	controllersBuildingPrice "github.com/malikabdulaziz/tmn-backend/controllers/buildingprice"
+	controllersBuildingProject "github.com/malikabdulaziz/tmn-backend/controllers/buildingproject"
 	controllersBuildingRestriction "github.com/malikabdulaziz/tmn-backend/controllers/buildingrestriction"
 	controllersCategory "github.com/malikabdulaziz/tmn-backend/controllers/category"
 	controllersCustomer "github.com/malikabdulaziz/tmn-backend/controllers/customer"
@@ -66,6 +67,8 @@ func NewRouter(
 	controllersQuotation controllersQuotation.ControllerQuotationInterface,
 	buildingPriceMiddleware *middlewares.BuildingPriceMiddleware,
 	controllersBuildingPrice controllersBuildingPrice.ControllerBuildingPriceInterface,
+	buildingProjectMiddleware *middlewares.BuildingProjectMiddleware,
+	controllersBuildingProject controllersBuildingProject.ControllerBuildingProjectInterface,
 ) *httprouter.Router {
 	router := httprouter.New()
 
@@ -683,6 +686,64 @@ func NewRouter(
 		loggingMiddleware.Log(
 			authMiddleware.RequireAuth(
 				authMiddleware.RequirePermission(models.PermissionBuildingPricesView)(controllersBuildingPrice.Template))))
+
+	// Building projects. The landlord side of a building -- see migration 023.
+	//
+	// Reads are open like the other master data; writes are admin. The landlord money
+	// is NOT gated here: building-projects.finance decides which COLUMNS a caller
+	// receives, inside the service, because everyone may open a project and only
+	// finance may see what TMN pays for it. A route-level gate could only hide the
+	// whole project.
+	router.GET("/building-projects",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBuildingProjectsView)(controllersBuildingProject.FindAll))))
+
+	router.GET("/building-projects/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBuildingProjectsView)(controllersBuildingProject.FindById))))
+
+	// Who changed what, and when. Finance values inside the history are withheld from
+	// callers without the permission; the field and the actor are still named.
+	router.GET("/building-projects/:id/changes",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBuildingProjectsView)(controllersBuildingProject.FindChanges))))
+
+	router.POST("/building-projects",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBuildingProjectsManage)(
+					buildingProjectMiddleware.ValidateSave(controllersBuildingProject.Create)))))
+
+	router.PUT("/building-projects/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBuildingProjectsManage)(
+					buildingProjectMiddleware.ValidateSave(controllersBuildingProject.Update)))))
+
+	router.DELETE("/building-projects/:id",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBuildingProjectsManage)(controllersBuildingProject.Delete))))
+
+	// dry_run=true previews the file without writing. A blank cell CLEARS on this
+	// import, so the preview reports cleared fields separately from updated rows.
+	router.POST("/building-projects-import",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBuildingProjectsManage)(controllersBuildingProject.Import))))
+
+	router.GET("/building-projects-export",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBuildingProjectsView)(controllersBuildingProject.Export))))
+
+	router.GET("/building-projects-template",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBuildingProjectsView)(controllersBuildingProject.Template))))
 
 	// Quotation routes.
 	//
