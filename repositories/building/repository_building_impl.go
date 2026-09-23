@@ -73,10 +73,13 @@ func (repository *RepositoryBuildingImpl) Create(ctx context.Context, tx *sql.Tx
 
 // FindById retrieves a building by ID
 func (repository *RepositoryBuildingImpl) FindById(ctx context.Context, tx *sql.Tx, id int) (models.Building, error) {
-	SQL := `SELECT id, external_building_id, iris_code, name, project_name, audience, 
-		impression, cbd_area, building_status, competitor_location, competitor_exclusive, competitor_presence, sellable, connectivity, 
-		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, latitude, longitude, images, lcd_presence_status, synced_at, created_at, updated_at 
-		FROM ` + models.BuildingTable + ` WHERE id = $1`
+	SQL := `SELECT b.id, b.external_building_id, b.iris_code, b.name, b.project_name, b.audience, 
+		b.impression, b.cbd_area, b.building_status, b.competitor_location, b.competitor_exclusive, b.competitor_presence, b.sellable, b.connectivity, 
+		b.resource_type, b.subdistrict, b.citytown, b.province, b.grade_resource, b.building_type, b.completion_year, b.latitude, b.longitude, b.images, b.lcd_presence_status, b.synced_at, b.created_at, b.updated_at,
+		b.project_id, p.project_id_iris, p.name
+		FROM ` + models.BuildingTable + ` b
+		LEFT JOIN ` + models.BuildingProjectTable + ` p ON p.id = b.project_id
+		WHERE b.id = $1`
 
 	rows, err := tx.QueryContext(ctx, SQL, id)
 	if err != nil {
@@ -85,6 +88,8 @@ func (repository *RepositoryBuildingImpl) FindById(ctx context.Context, tx *sql.
 	defer rows.Close()
 
 	building := models.NullAbleBuilding{}
+
+	var projectName sql.NullString
 	if rows.Next() {
 		err := rows.Scan(
 			&building.Id,
@@ -115,11 +120,20 @@ func (repository *RepositoryBuildingImpl) FindById(ctx context.Context, tx *sql.
 			&building.SyncedAt,
 			&building.CreatedAt,
 			&building.UpdatedAt,
+			&building.ProjectId,
+			&building.ProjectIdIris,
+			&projectName,
 		)
 		if err != nil {
 			return models.Building{}, err
 		}
-		return models.NullAbleBuildingToBuilding(building), nil
+
+		result := models.NullAbleBuildingToBuilding(building)
+		// The project's own name, not buildings.project_name -- that column is the
+		// ERP correlation key the LOI dashboard joins on and can differ.
+		result.ProjectDisplayName = projectName.String
+
+		return result, nil
 	}
 
 	return models.Building{}, sql.ErrNoRows

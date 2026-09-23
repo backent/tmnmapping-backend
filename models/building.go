@@ -11,11 +11,11 @@ type BuildingImage struct {
 }
 
 type Building struct {
-	Id                  int             `json:"id"`
-	ExternalBuildingId  string          `json:"external_building_id"`
-	IrisCode            string          `json:"iris_code"`
-	Name                string          `json:"name"`
-	ProjectName         string          `json:"project_name"`
+	Id                 int    `json:"id"`
+	ExternalBuildingId string `json:"external_building_id"`
+	IrisCode           string `json:"iris_code"`
+	Name               string `json:"name"`
+	ProjectName        string `json:"project_name"`
 
 	// ProjectId links the building to a building_projects row (migration 024).
 	// ProjectIdIris is the project's key, joined rather than stored: the change log
@@ -23,6 +23,10 @@ type Building struct {
 	// readable and "7 -> 8" is not.
 	ProjectId     int    `json:"project_id"`
 	ProjectIdIris string `json:"project_id_iris"`
+	// ProjectDisplayName is the PROJECT's name, joined. Not the same as ProjectName
+	// above, which is the ERP correlation key the LOI dashboard joins on and may
+	// differ from what the project is actually called.
+	ProjectDisplayName  string          `json:"project_display_name"`
 	Audience            int             `json:"audience"`
 	Impression          int             `json:"impression"`
 	CbdArea             string          `json:"cbd_area"`
