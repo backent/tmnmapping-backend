@@ -31,9 +31,9 @@ func (repository *RepositoryBuildingImpl) Create(ctx context.Context, tx *sql.Tx
 	SQL := `INSERT INTO ` + models.BuildingTable + ` 
 		(external_building_id, iris_code, name, project_name, audience, impression, 
 		cbd_area, building_status, competitor_location, competitor_exclusive, competitor_presence, sellable, connectivity, 
-		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, latitude, longitude, location, images, lcd_presence_status, synced_at) 
+		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, latitude, longitude, location, images, lcd_presence_status, synced_at, project_id) 
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, 
-		CASE WHEN $21::DOUBLE PRECISION IS NOT NULL AND $22::DOUBLE PRECISION IS NOT NULL AND ($21::DOUBLE PRECISION) != 0 AND ($22::DOUBLE PRECISION) != 0 THEN ST_SetSRID(ST_MakePoint($22::DOUBLE PRECISION, $21::DOUBLE PRECISION), 4326)::geography ELSE NULL END, $23, $24, $25) 
+		CASE WHEN $21::DOUBLE PRECISION IS NOT NULL AND $22::DOUBLE PRECISION IS NOT NULL AND ($21::DOUBLE PRECISION) != 0 AND ($22::DOUBLE PRECISION) != 0 THEN ST_SetSRID(ST_MakePoint($22::DOUBLE PRECISION, $21::DOUBLE PRECISION), 4326)::geography ELSE NULL END, $23, $24, $25, $26) 
 		RETURNING id, created_at, updated_at`
 
 	err = tx.QueryRowContext(ctx, SQL,
@@ -62,6 +62,10 @@ func (repository *RepositoryBuildingImpl) Create(ctx context.Context, tx *sql.Tx
 		imagesJSON,
 		nullIfEmpty(building.LcdPresenceStatus),
 		nullIfEmpty(building.SyncedAt),
+		// The project link. Absent until 2026-09-23, so a building created with a
+		// project -- by the form or the spreadsheet import -- came back unlinked
+		// while every other field saved correctly.
+		nullIfZero(building.ProjectId),
 	).Scan(&building.Id, &building.CreatedAt, &building.UpdatedAt)
 
 	if err != nil {
