@@ -16,4 +16,9 @@ type ControllerBuildingInterface interface {
 	ExportMappingBuildings(w http.ResponseWriter, r *http.Request, p httprouter.Params)
 	GetLCDPresenceSummary(w http.ResponseWriter, r *http.Request, p httprouter.Params)
 	GetDropdownOptions(w http.ResponseWriter, r *http.Request, p httprouter.Params)
+
+	Import(w http.ResponseWriter, r *http.Request, p httprouter.Params)
+	Export(w http.ResponseWriter, r *http.Request, p httprouter.Params)
+	Template(w http.ResponseWriter, r *http.Request, p httprouter.Params)
+	FindChanges(w http.ResponseWriter, r *http.Request, p httprouter.Params)
 }

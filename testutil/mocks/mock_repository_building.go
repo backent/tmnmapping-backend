@@ -84,3 +84,25 @@ func (m *MockRepositoryBuilding) FindAllDropdown(ctx context.Context, tx *sql.Tx
 	args := m.Called(ctx, tx)
 	return args.Get(0).([]models.Building), args.Error(1)
 }
+
+// Spreadsheet import, export and the change log -- migration 025.
+
+func (m *MockRepositoryBuilding) FindAllForExport(ctx context.Context, tx *sql.Tx) ([]models.Building, error) {
+	args := m.Called(ctx, tx)
+	return args.Get(0).([]models.Building), args.Error(1)
+}
+
+func (m *MockRepositoryBuilding) RecordChanges(ctx context.Context, tx *sql.Tx, changes []models.BuildingChange) error {
+	args := m.Called(ctx, tx, changes)
+	return args.Error(0)
+}
+
+func (m *MockRepositoryBuilding) FindChanges(ctx context.Context, tx *sql.Tx, buildingId int, take int, skip int) ([]models.BuildingChange, error) {
+	args := m.Called(ctx, tx, buildingId, take, skip)
+	return args.Get(0).([]models.BuildingChange), args.Error(1)
+}
+
+func (m *MockRepositoryBuilding) CountChanges(ctx context.Context, tx *sql.Tx, buildingId int) (int, error) {
+	args := m.Called(ctx, tx, buildingId)
+	return args.Int(0), args.Error(1)
+}

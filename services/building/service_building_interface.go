@@ -3,6 +3,8 @@ package building
 import (
 	"context"
 
+	"github.com/malikabdulaziz/tmn-backend/models"
+	"github.com/malikabdulaziz/tmn-backend/web"
 	webBuilding "github.com/malikabdulaziz/tmn-backend/web/building"
 )
 
@@ -17,4 +19,12 @@ type ServiceBuildingInterface interface {
 	ExportForMappingWithFilters(ctx context.Context, request webBuilding.MappingBuildingRequest) ([]byte, error)
 	GetLCDPresenceSummary(ctx context.Context) webBuilding.LCDPresenceSummaryResponse
 	FindAllDropdown(ctx context.Context) []webBuilding.BuildingDropdownResponse
+
+	// Spreadsheet maintenance. A blank cell CLEARS on this import, so the result
+	// reports cleared fields separately from updated rows and every change is
+	// written to building_changes -- the undo trail that makes it survivable.
+	Import(ctx context.Context, fileBytes []byte, fileType string, dryRun bool, actor Actor) web.ImportResult
+	Export(ctx context.Context) ([]byte, error)
+	Template() ([]byte, error)
+	FindChanges(ctx context.Context, buildingId int, take int, skip int) ([]models.BuildingChange, int)
 }

@@ -112,6 +112,33 @@ func NewRouter(
 		loggingMiddleware.Log(
 			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionBuildingsManage)(controllersBuilding.SyncManual))))
 
+	// Spreadsheet maintenance for buildings. dry_run=true previews without writing.
+	//
+	// A blank cell CLEARS on this import, unlike the price and brand imports where a
+	// blank leaves the value alone. Everything it changes is written to
+	// building_changes, which is what makes that survivable.
+	router.POST("/buildings-import",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBuildingsManage)(controllersBuilding.Import))))
+
+	router.GET("/buildings-export",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBuildingsView)(controllersBuilding.Export))))
+
+	router.GET("/buildings-template",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBuildingsView)(controllersBuilding.Template))))
+
+	// The recovery path after a destructive upload, so it is readable by anyone who
+	// can read buildings rather than gated behind manage.
+	router.GET("/buildings/:id/changes",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBuildingsView)(controllersBuilding.FindChanges))))
+
 	router.GET("/building-filter-options",
 		loggingMiddleware.Log(
 			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionMappingView)(controllersBuilding.GetFilterOptions))))

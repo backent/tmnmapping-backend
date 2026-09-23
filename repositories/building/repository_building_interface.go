@@ -34,4 +34,11 @@ type RepositoryBuildingInterface interface {
 	FindByIds(ctx context.Context, tx *sql.Tx, ids []int) ([]models.Building, error)
 	GetLCDPresenceSummary(ctx context.Context, tx *sql.Tx) ([]LCDPresenceCountRow, error)
 	FindAllDropdown(ctx context.Context, tx *sql.Tx) ([]models.Building, error)
+
+	// Spreadsheet import and export, plus the change log that makes a destructive
+	// upload recoverable -- see migration 025.
+	FindAllForExport(ctx context.Context, tx *sql.Tx) ([]models.Building, error)
+	RecordChanges(ctx context.Context, tx *sql.Tx, changes []models.BuildingChange) error
+	FindChanges(ctx context.Context, tx *sql.Tx, buildingId int, take int, skip int) ([]models.BuildingChange, error)
+	CountChanges(ctx context.Context, tx *sql.Tx, buildingId int) (int, error)
 }

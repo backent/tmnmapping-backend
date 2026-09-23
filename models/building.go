@@ -115,3 +115,83 @@ func NullAbleBuildingToBuilding(nullable NullAbleBuilding) Building {
 		UpdatedAt:           nullable.UpdatedAt.String,
 	}
 }
+
+// BuildingChange is one field of one building changing, attributed and timestamped.
+// Same shape as BuildingProjectChange: one row per FIELD, because knowing a building
+// was touched is not useful while knowing audience went from 0 to 4,200 is.
+//
+// It exists because a blank cell CLEARS on the spreadsheet import, so a careless
+// upload can empty columns across thousands of rows. This is the undo trail.
+type BuildingChange struct {
+	Id int `json:"id"`
+
+	// BuildingId is null once the building is deleted; the external id and name are
+	// copied in, so the history stays readable after the row it describes is gone.
+	BuildingId         int    `json:"building_id"`
+	ExternalBuildingId string `json:"external_building_id"`
+	BuildingName       string `json:"building_name"`
+
+	ActorUserId int    `json:"actor_user_id"`
+	ActorName   string `json:"actor_name"`
+	ActorRole   string `json:"actor_role"`
+
+	Action string `json:"action"`
+	// form, import, or sync. ERP still writes photos here after the cutover, and a
+	// change nobody made by hand should say so.
+	Source  string `json:"source"`
+	BatchId string `json:"batch_id"`
+
+	Field    string `json:"field"`
+	OldValue string `json:"old_value"`
+	NewValue string `json:"new_value"`
+
+	CreatedAt string `json:"created_at"`
+}
+
+type NullAbleBuildingChange struct {
+	Id                 sql.NullInt64
+	BuildingId         sql.NullInt64
+	ExternalBuildingId sql.NullString
+	BuildingName       sql.NullString
+	ActorUserId        sql.NullInt64
+	ActorName          sql.NullString
+	ActorRole          sql.NullString
+	Action             sql.NullString
+	Source             sql.NullString
+	BatchId            sql.NullString
+	Field              sql.NullString
+	OldValue           sql.NullString
+	NewValue           sql.NullString
+	CreatedAt          sql.NullString
+}
+
+func NullAbleBuildingChangeToChange(n NullAbleBuildingChange) BuildingChange {
+	return BuildingChange{
+		Id:                 int(n.Id.Int64),
+		BuildingId:         int(n.BuildingId.Int64),
+		ExternalBuildingId: n.ExternalBuildingId.String,
+		BuildingName:       n.BuildingName.String,
+		ActorUserId:        int(n.ActorUserId.Int64),
+		ActorName:          n.ActorName.String,
+		ActorRole:          n.ActorRole.String,
+		Action:             n.Action.String,
+		Source:             n.Source.String,
+		BatchId:            n.BatchId.String,
+		Field:              n.Field.String,
+		OldValue:           n.OldValue.String,
+		NewValue:           n.NewValue.String,
+		CreatedAt:          n.CreatedAt.String,
+	}
+}
+
+const (
+	BuildingActionCreated = "created"
+	BuildingActionUpdated = "updated"
+	BuildingActionDeleted = "deleted"
+
+	BuildingSourceForm   = "form"
+	BuildingSourceImport = "import"
+	BuildingSourceSync   = "sync"
+)
+
+var BuildingChangeTable string = "building_changes"
