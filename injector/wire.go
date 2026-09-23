@@ -47,14 +47,12 @@ import (
 	repositoriesSavedPolygon "github.com/malikabdulaziz/tmn-backend/repositories/savedpolygon"
 	repositoriesSubCategory "github.com/malikabdulaziz/tmn-backend/repositories/subcategory"
 	repositoriesUser "github.com/malikabdulaziz/tmn-backend/repositories/user"
-	servicesAcquisition "github.com/malikabdulaziz/tmn-backend/services/acquisition"
 	servicesAuth "github.com/malikabdulaziz/tmn-backend/services/auth"
 	servicesBranch "github.com/malikabdulaziz/tmn-backend/services/branch"
 	servicesBrandAdv "github.com/malikabdulaziz/tmn-backend/services/brand"
 	servicesBuilding "github.com/malikabdulaziz/tmn-backend/services/building"
 	servicesBuildingPrice "github.com/malikabdulaziz/tmn-backend/services/buildingprice"
 	servicesBuildingProject "github.com/malikabdulaziz/tmn-backend/services/buildingproject"
-	servicesBuildingProposal "github.com/malikabdulaziz/tmn-backend/services/buildingproposal"
 	servicesBuildingRestriction "github.com/malikabdulaziz/tmn-backend/services/buildingrestriction"
 	servicesCategory "github.com/malikabdulaziz/tmn-backend/services/category"
 	servicesCustomer "github.com/malikabdulaziz/tmn-backend/services/customer"
@@ -246,26 +244,6 @@ func InitializeBuildingService() servicesBuilding.ServiceBuildingInterface {
 		repositoriesBuildingProject.NewRepositoryBuildingProjectImpl,
 		repositoriesPOI.NewRepositoryPOIImpl,
 		servicesBuilding.NewServiceBuildingImpl,
-	)
-	return nil
-}
-
-func InitializeAcquisitionService() servicesAcquisition.ServiceAcquisitionInterface {
-	wire.Build(
-		libs.NewDatabase,
-		libs.NewLogger,
-		libs.ProvideERPClient,
-		servicesAcquisition.NewServiceAcquisitionImpl,
-	)
-	return nil
-}
-
-func InitializeBuildingProposalService() servicesBuildingProposal.ServiceBuildingProposalInterface {
-	wire.Build(
-		libs.NewDatabase,
-		libs.NewLogger,
-		libs.ProvideERPClient,
-		servicesBuildingProposal.NewServiceBuildingProposalImpl,
 	)
 	return nil
 }

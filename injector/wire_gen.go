@@ -50,14 +50,12 @@ import (
 	"github.com/malikabdulaziz/tmn-backend/repositories/savedpolygon"
 	"github.com/malikabdulaziz/tmn-backend/repositories/subcategory"
 	"github.com/malikabdulaziz/tmn-backend/repositories/user"
-	"github.com/malikabdulaziz/tmn-backend/services/acquisition"
 	auth2 "github.com/malikabdulaziz/tmn-backend/services/auth"
 	branch2 "github.com/malikabdulaziz/tmn-backend/services/branch"
 	brand2 "github.com/malikabdulaziz/tmn-backend/services/brand"
 	building2 "github.com/malikabdulaziz/tmn-backend/services/building"
 	buildingprice2 "github.com/malikabdulaziz/tmn-backend/services/buildingprice"
 	buildingproject2 "github.com/malikabdulaziz/tmn-backend/services/buildingproject"
-	"github.com/malikabdulaziz/tmn-backend/services/buildingproposal"
 	buildingrestriction2 "github.com/malikabdulaziz/tmn-backend/services/buildingrestriction"
 	category2 "github.com/malikabdulaziz/tmn-backend/services/category"
 	customer2 "github.com/malikabdulaziz/tmn-backend/services/customer"
@@ -171,22 +169,6 @@ func InitializeBuildingService() building2.ServiceBuildingInterface {
 	logger := libs.NewLogger()
 	serviceBuildingInterface := building2.NewServiceBuildingImpl(db, repositoryBuildingInterface, repositoryBuildingProjectInterface, repositoryPOIInterface, erpClient, logger)
 	return serviceBuildingInterface
-}
-
-func InitializeAcquisitionService() acquisition.ServiceAcquisitionInterface {
-	db := libs.NewDatabase()
-	erpClient := libs.ProvideERPClient()
-	logger := libs.NewLogger()
-	serviceAcquisitionInterface := acquisition.NewServiceAcquisitionImpl(db, erpClient, logger)
-	return serviceAcquisitionInterface
-}
-
-func InitializeBuildingProposalService() buildingproposal.ServiceBuildingProposalInterface {
-	db := libs.NewDatabase()
-	erpClient := libs.ProvideERPClient()
-	logger := libs.NewLogger()
-	serviceBuildingProposalInterface := buildingproposal.NewServiceBuildingProposalImpl(db, erpClient, logger)
-	return serviceBuildingProposalInterface
 }
 
 func InitializeLOIService() loi.ServiceLOIInterface {

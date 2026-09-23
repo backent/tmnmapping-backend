@@ -216,3 +216,19 @@ func nullIfZeroCoordinate(v float64) interface{} {
 
 	return v
 }
+
+// UpdateImagesFromSync writes the ONLY two columns the ERP feed still owns.
+//
+// After the cutover the spreadsheet owns every other column, and the sync must not
+// touch them: it ran on a timer against a table people now edit by hand, so a full
+// UPDATE would quietly revert their work between uploads. Photos stay on ERP because
+// they are file paths served from there, and moving them in-house is separate work.
+func (r *RepositoryBuildingImpl) UpdateImagesFromSync(ctx context.Context, tx *sql.Tx, buildingId int, imagesJSON string) error {
+	_, err := tx.ExecContext(ctx,
+		`UPDATE `+models.BuildingTable+`
+		 SET images = $1, synced_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+		 WHERE id = $2`,
+		changeNullIfEmpty(imagesJSON), buildingId)
+
+	return err
+}

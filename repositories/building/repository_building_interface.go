@@ -41,6 +41,8 @@ type RepositoryBuildingInterface interface {
 	// UpdateFromImport writes every column the spreadsheet owns. Update() is the
 	// FORM's update and touches only three columns, so the importer must not use it.
 	UpdateFromImport(ctx context.Context, tx *sql.Tx, building models.Building) (models.Building, error)
+	// UpdateImagesFromSync is the narrowed ERP sync: photos and synced_at only.
+	UpdateImagesFromSync(ctx context.Context, tx *sql.Tx, buildingId int, imagesJSON string) error
 	RecordChanges(ctx context.Context, tx *sql.Tx, changes []models.BuildingChange) error
 	FindChanges(ctx context.Context, tx *sql.Tx, buildingId int, take int, skip int) ([]models.BuildingChange, error)
 	CountChanges(ctx context.Context, tx *sql.Tx, buildingId int) (int, error)

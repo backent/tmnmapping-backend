@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/malikabdulaziz/tmn-backend/exceptions"
 	"github.com/malikabdulaziz/tmn-backend/helpers"
@@ -203,400 +202,141 @@ func trimERPBuilding(b *erp.ERPBuilding) {
 	b.BuildingType = strings.TrimSpace(b.BuildingType)
 }
 
-// processBuilding handles the processing of a single building (create or update)
-func (service *ServiceBuildingImpl) processBuilding(
-	ctx context.Context,
-	erpBuilding erp.ERPBuilding,
-	workflowStateMap map[string]string,
-	screenCountMap map[string]int,
-	counters *syncCounters,
-) {
-	// ERP hands back values with stray whitespace -- two IRIS codes arrive with a
-	// trailing tab, which makes "B003027\t" a different string from "B003027"
-	// everywhere it is compared. Trimming in the database does not hold: the next
-	// sync writes the untrimmed value straight back. It has to happen here.
-	trimERPBuilding(&erpBuilding)
-
-	// Check for context cancellation
-	select {
-	case <-ctx.Done():
-		service.Logger.WithField("building_id", erpBuilding.BuildingId).Warn("Context cancelled, skipping building")
-		return
-	default:
-	}
-
-	// Get workflow state and screen count
-	workflowState := ""
-	screenCount := 0
-	if erpBuilding.BuildingProject != "" {
-		if ws, exists := workflowStateMap[erpBuilding.BuildingProject]; exists {
-			workflowState = ws
-		}
-		if count, exists := screenCountMap[erpBuilding.BuildingProject]; exists {
-			screenCount = count
-		}
-	}
-
-	// Calculate LCD presence status
-	calculatedStatus := calculateLcdPresenceStatus(
-		erpBuilding.CompetitorPresence != 0,
-		erpBuilding.CompetitorExclusive != 0,
-		workflowState,
-	)
-
-	// Log building data for debugging
-	service.Logger.WithFields(logrus.Fields{
-		"building_name":        erpBuilding.BuildingName,
-		"building_project":     erpBuilding.BuildingProject,
-		"screen_count":         screenCount,
-		"workflow_state":       workflowState,
-		"competitor_presence":  erpBuilding.CompetitorPresence,
-		"competitor_exclusive": erpBuilding.CompetitorExclusive,
-		"lcd_presence_status":  calculatedStatus,
-		"external_building_id": erpBuilding.BuildingId,
-	}).Info("Processing building from ERP")
-
-	tx, err := service.DB.Begin()
-	if err != nil {
-		service.Logger.WithError(err).WithField("building_id", erpBuilding.BuildingId).Error("Failed to start transaction")
-		counters.addError(erpBuilding.BuildingId, erpBuilding.BuildingName, err)
-		return
-	}
-
-	// Check if building exists by external ID
-	existingBuilding, err := service.RepositoryBuildingInterface.FindByExternalId(ctx, tx, erpBuilding.BuildingId)
-
-	if err == sql.ErrNoRows {
-		// Use workflow_state as building_status
-		buildingStatus := workflowState
-
-		// Convert ERP image fields to JSON array format
-		images := []models.BuildingImage{}
-		if erpBuilding.FrontSidePhoto != "" {
-			images = append(images, models.BuildingImage{Name: "front_side", Path: erpBuilding.FrontSidePhoto})
-		}
-		if erpBuilding.BackSidePhoto != "" {
-			images = append(images, models.BuildingImage{Name: "back_side", Path: erpBuilding.BackSidePhoto})
-		}
-		if erpBuilding.LeftSidePhoto != "" {
-			images = append(images, models.BuildingImage{Name: "left_side", Path: erpBuilding.LeftSidePhoto})
-		}
-		if erpBuilding.RightSidePhoto != "" {
-			images = append(images, models.BuildingImage{Name: "right_side", Path: erpBuilding.RightSidePhoto})
-		}
-
-		// Create new building
-		newBuilding := models.Building{
-			ExternalBuildingId:  erpBuilding.BuildingId,
-			IrisCode:            erpBuilding.IrisCode,
-			Name:                erpBuilding.BuildingName,
-			ProjectName:         erpBuilding.BuildingProject,
-			Audience:            erpBuilding.AudienceActual,
-			Impression:          erpBuilding.AudienceProjection,
-			CbdArea:             erpBuilding.CbdArea,
-			Subdistrict:         erpBuilding.Subdistrict,
-			Citytown:            erpBuilding.Citytown,
-			Province:            erpBuilding.Province,
-			GradeResource:       erpBuilding.GradeResource,
-			BuildingType:        CanonicalizeBuildingType(erpBuilding.BuildingType),
-			CompletionYear:      erpBuilding.CompletionYear,
-			Latitude:            erpBuilding.Latitude,
-			Longitude:           erpBuilding.Longitude,
-			BuildingStatus:      buildingStatus,
-			CompetitorLocation:  erpBuilding.CompetitorPresence != 0,
-			CompetitorExclusive: erpBuilding.CompetitorExclusive != 0,
-			CompetitorPresence:  erpBuilding.CompetitorPresence != 0,
-			LcdPresenceStatus:   calculatedStatus,
-			Images:              images,
-			SyncedAt:            time.Now().Format(time.RFC3339),
-		}
-
-		_, err = service.RepositoryBuildingInterface.Create(ctx, tx, newBuilding)
-		if err != nil {
-			service.Logger.WithError(err).WithFields(logrus.Fields{
-				"building_id":   erpBuilding.BuildingId,
-				"building_name": erpBuilding.BuildingName,
-			}).Error("Failed to create building")
-			tx.Rollback()
-			counters.addError(erpBuilding.BuildingId, erpBuilding.BuildingName, err)
-			return
-		}
-
-		err = tx.Commit()
-		if err != nil {
-			service.Logger.WithError(err).WithFields(logrus.Fields{
-				"building_id":   erpBuilding.BuildingId,
-				"building_name": erpBuilding.BuildingName,
-			}).Error("Failed to commit transaction after create")
-			tx.Rollback()
-			counters.addError(erpBuilding.BuildingId, erpBuilding.BuildingName, err)
-			return
-		}
-
-		counters.incrementCreated()
-		counters.incrementSynced()
-	} else if err == nil {
-		// Use workflow_state as building_status
-		buildingStatus := workflowState
-
-		// Convert ERP image fields to JSON array format
-		images := []models.BuildingImage{}
-		if erpBuilding.FrontSidePhoto != "" {
-			images = append(images, models.BuildingImage{Name: "front_side", Path: erpBuilding.FrontSidePhoto})
-		}
-		if erpBuilding.BackSidePhoto != "" {
-			images = append(images, models.BuildingImage{Name: "back_side", Path: erpBuilding.BackSidePhoto})
-		}
-		if erpBuilding.LeftSidePhoto != "" {
-			images = append(images, models.BuildingImage{Name: "left_side", Path: erpBuilding.LeftSidePhoto})
-		}
-		if erpBuilding.RightSidePhoto != "" {
-			images = append(images, models.BuildingImage{Name: "right_side", Path: erpBuilding.RightSidePhoto})
-		}
-
-		// Update existing building (ERP fields only)
-		existingBuilding.ExternalBuildingId = erpBuilding.BuildingId
-		existingBuilding.IrisCode = erpBuilding.IrisCode
-		existingBuilding.Name = erpBuilding.BuildingName
-		existingBuilding.ProjectName = erpBuilding.BuildingProject
-		existingBuilding.Audience = erpBuilding.AudienceActual
-		existingBuilding.Impression = erpBuilding.AudienceProjection
-		existingBuilding.CbdArea = erpBuilding.CbdArea
-		existingBuilding.Subdistrict = erpBuilding.Subdistrict
-		existingBuilding.Citytown = erpBuilding.Citytown
-		existingBuilding.Province = erpBuilding.Province
-		existingBuilding.GradeResource = erpBuilding.GradeResource
-		existingBuilding.BuildingType = CanonicalizeBuildingType(erpBuilding.BuildingType)
-		existingBuilding.CompletionYear = erpBuilding.CompletionYear
-		// Zero-preservation logic: only update latitude/longitude if ERP provides non-zero values
-		if erpBuilding.Latitude != 0 {
-			existingBuilding.Latitude = erpBuilding.Latitude
-		}
-		if erpBuilding.Longitude != 0 {
-			existingBuilding.Longitude = erpBuilding.Longitude
-		}
-		existingBuilding.BuildingStatus = buildingStatus
-		existingBuilding.CompetitorLocation = erpBuilding.CompetitorPresence != 0
-		existingBuilding.CompetitorExclusive = erpBuilding.CompetitorExclusive != 0
-		existingBuilding.CompetitorPresence = erpBuilding.CompetitorPresence != 0
-		existingBuilding.LcdPresenceStatus = calculatedStatus
-		existingBuilding.Images = images
-		existingBuilding.SyncedAt = time.Now().Format(time.RFC3339)
-
-		_, err = service.RepositoryBuildingInterface.UpdateFromSync(ctx, tx, existingBuilding)
-		if err != nil {
-			service.Logger.WithError(err).WithFields(logrus.Fields{
-				"building_id":   erpBuilding.BuildingId,
-				"building_name": erpBuilding.BuildingName,
-			}).Error("Failed to update building")
-			tx.Rollback()
-			counters.addError(erpBuilding.BuildingId, erpBuilding.BuildingName, err)
-			return
-		}
-
-		err = tx.Commit()
-		if err != nil {
-			service.Logger.WithError(err).WithFields(logrus.Fields{
-				"building_id":   erpBuilding.BuildingId,
-				"building_name": erpBuilding.BuildingName,
-			}).Error("Failed to commit transaction after update")
-			tx.Rollback()
-			counters.addError(erpBuilding.BuildingId, erpBuilding.BuildingName, err)
-			return
-		}
-
-		counters.incrementUpdated()
-		counters.incrementSynced()
-	} else {
-		service.Logger.WithError(err).WithFields(logrus.Fields{
-			"building_id":   erpBuilding.BuildingId,
-			"building_name": erpBuilding.BuildingName,
-		}).Error("Failed to check building existence")
-		tx.Rollback()
-		counters.addError(erpBuilding.BuildingId, erpBuilding.BuildingName, err)
-		return
-	}
-}
-
-// worker processes buildings from a channel concurrently
-func (service *ServiceBuildingImpl) worker(
-	ctx context.Context,
-	buildingsChan <-chan erp.ERPBuilding,
-	workflowStateMap map[string]string,
-	screenCountMap map[string]int,
-	counters *syncCounters,
-	wg *sync.WaitGroup,
-) {
-	defer wg.Done()
-
-	for erpBuilding := range buildingsChan {
-		// Check for context cancellation
-		select {
-		case <-ctx.Done():
-			service.Logger.Warn("Context cancelled, worker stopping")
-			return
-		default:
-		}
-
-		service.processBuilding(ctx, erpBuilding, workflowStateMap, screenCountMap, counters)
-	}
-}
-
-// SyncFromERP fetches buildings from ERP and syncs them to the database
+// SyncFromERP refreshes building PHOTOS from ERP, and nothing else.
+//
+// Buildings are maintained here now, by spreadsheet. This feed used to write every
+// column on a timer; left that way it would quietly revert people's uploads between
+// runs, because it ran against a table they had started editing by hand.
+//
+// Photos are the exception: they are file paths served from ERP, and moving them
+// in-house is separate work. Until that happens the sync keeps them current and
+// touches `images` and `synced_at` only.
+//
+// A building ERP knows about but this database does not is SKIPPED, not created. The
+// spreadsheet owns which buildings exist; a feed that could still add rows would mean
+// two sources of truth for the roster, which is exactly what the cutover removes.
+//
+// Acquisitions and building proposals are no longer fetched. They supplied
+// building_status and a screen count, both of which now come from the spreadsheet.
 func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
-	service.Logger.Info("Starting building sync from ERP")
+	service.Logger.Info("Starting building photo sync from ERP")
 
-	// Fetch buildings from ERP
 	erpBuildings, err := service.ERPClient.FetchBuildings()
 	if err != nil {
 		service.Logger.WithError(err).Error("Failed to fetch buildings from ERP")
+
 		return err
 	}
 
 	service.Logger.WithField("count", len(erpBuildings)).Info("Fetched buildings from ERP")
 
-	// Fetch acquisitions from ERP
-	erpAcquisitions, err := service.ERPClient.FetchAcquisitions()
+	tx, err := service.DB.Begin()
 	if err != nil {
-		service.Logger.WithError(err).Error("Failed to fetch acquisitions from ERP")
 		return err
 	}
+	defer helpers.CommitOrRollback(tx)
 
-	service.Logger.WithField("count", len(erpAcquisitions)).Info("Fetched acquisitions from ERP")
+	var updated, unchanged, skipped, failed int
 
-	// Fetch building proposals from ERP
-	erpBuildingProposals, err := service.ERPClient.FetchBuildingProposals()
-	if err != nil {
-		service.Logger.WithError(err).Error("Failed to fetch building proposals from ERP")
-		return err
-	}
-
-	service.Logger.WithField("count", len(erpBuildingProposals)).Info("Fetched building proposals from ERP")
-
-	// Handle duplicate acquisitions: sort by modified timestamp (descending) and group by building_project
-	// Keep only the most recent acquisition for each building_project
-	workflowStateMap := make(map[string]string) // building_project -> workflow_state
-
-	// Sort acquisitions by modified timestamp (descending)
-	sort.Slice(erpAcquisitions, func(i, j int) bool {
-		timeI, errI := time.Parse("2006-01-02 15:04:05.999999", erpAcquisitions[i].Modified)
-		timeJ, errJ := time.Parse("2006-01-02 15:04:05.999999", erpAcquisitions[j].Modified)
-
-		// If parsing fails, treat as older
-		if errI != nil {
-			return false
-		}
-		if errJ != nil {
-			return true
-		}
-
-		return timeI.After(timeJ)
-	})
-
-	// Create map of building_project -> workflow_state (taking first/latest for each project)
-	for _, acquisition := range erpAcquisitions {
-		if acquisition.BuildingProject != "" {
-			// Only add if not already in map (since sorted, first one is latest)
-			if _, exists := workflowStateMap[acquisition.BuildingProject]; !exists {
-				workflowStateMap[acquisition.BuildingProject] = acquisition.WorkflowState
-			}
-		}
-	}
-
-	service.Logger.WithField("unique_projects", len(workflowStateMap)).Info("Processed acquisitions (deduplicated)")
-
-	// Handle duplicate building proposals: sort by modified timestamp (descending) and group by building_project
-	// Keep only the most recent proposal for each building_project
-	screenCountMap := make(map[string]int) // building_project -> number_of_screen
-
-	// Sort building proposals by modified timestamp (descending)
-	sort.Slice(erpBuildingProposals, func(i, j int) bool {
-		timeI, errI := time.Parse("2006-01-02 15:04:05.999999", erpBuildingProposals[i].Modified)
-		timeJ, errJ := time.Parse("2006-01-02 15:04:05.999999", erpBuildingProposals[j].Modified)
-
-		// If parsing fails, treat as older
-		if errI != nil {
-			return false
-		}
-		if errJ != nil {
-			return true
-		}
-
-		return timeI.After(timeJ)
-	})
-
-	// Create map of building_project -> number_of_screen (taking first/latest for each project)
-	for _, proposal := range erpBuildingProposals {
-		if proposal.BuildingProject != "" {
-			// Only add if not already in map (since sorted, first one is latest)
-			if _, exists := screenCountMap[proposal.BuildingProject]; !exists {
-				screenCountMap[proposal.BuildingProject] = proposal.NumberOfScreen
-			}
-		}
-	}
-
-	service.Logger.WithField("unique_projects", len(screenCountMap)).Info("Processed building proposals (deduplicated)")
-
-	// Initialize thread-safe counters
-	counters := &syncCounters{}
-
-	// Create buffered channel for buildings
-	buildingsChan := make(chan erp.ERPBuilding, len(erpBuildings))
-
-	// Create WaitGroup to wait for all workers to complete
-	var wg sync.WaitGroup
-
-	// Start worker pool
-	service.Logger.WithField("workers", maxWorkers).Info("Starting worker pool for building sync")
-	for i := 0; i < maxWorkers; i++ {
-		wg.Add(1)
-		go service.worker(ctx, buildingsChan, workflowStateMap, screenCountMap, counters, &wg)
-	}
-
-	// Send all buildings to channel
-	service.Logger.WithField("total_buildings", len(erpBuildings)).Info("Distributing buildings to workers")
 	for _, erpBuilding := range erpBuildings {
-		// Check for context cancellation before sending
 		select {
 		case <-ctx.Done():
-			service.Logger.Warn("Context cancelled, stopping building distribution")
-			close(buildingsChan)
-			wg.Wait()
 			return ctx.Err()
 		default:
-			buildingsChan <- erpBuilding
 		}
-	}
 
-	// Close channel to signal workers that no more buildings are coming
-	close(buildingsChan)
+		trimERPBuilding(&erpBuilding)
+		if erpBuilding.BuildingId == "" {
+			skipped++
 
-	// Wait for all workers to complete
-	service.Logger.Info("Waiting for workers to complete")
-	wg.Wait()
+			continue
+		}
 
-	// Log final summary with error details
-	service.Logger.WithFields(logrus.Fields{
-		"synced":  counters.syncedCount,
-		"created": counters.createdCount,
-		"updated": counters.updatedCount,
-		"errors":  counters.errorCount,
-		"total":   len(erpBuildings),
-	}).Info("Building sync completed")
+		existing, err := service.RepositoryBuildingInterface.FindByExternalId(ctx, tx, erpBuilding.BuildingId)
+		if err != nil {
+			// Not ours to create -- the spreadsheet decides which buildings exist.
+			skipped++
 
-	// Log individual errors if any
-	if counters.errorCount > 0 {
-		service.Logger.WithField("error_count", counters.errorCount).Warn("Some buildings failed to sync")
-		for _, errInfo := range counters.errors {
+			continue
+		}
+
+		images := erpImages(erpBuilding)
+		if sameImages(existing.Images, images) {
+			unchanged++
+
+			continue
+		}
+
+		encoded, err := json.Marshal(images)
+		if err != nil {
+			failed++
+
+			continue
+		}
+
+		if len(images) == 0 {
+			encoded = nil
+		}
+
+		if err := service.RepositoryBuildingInterface.UpdateImagesFromSync(ctx, tx, existing.Id, string(encoded)); err != nil {
 			service.Logger.WithFields(logrus.Fields{
-				"building_id":   errInfo.buildingID,
-				"building_name": errInfo.buildingName,
-				"error":         errInfo.error.Error(),
-			}).Error("Building sync error")
+				"building_id": erpBuilding.BuildingId,
+				"error":       err.Error(),
+			}).Error("Failed to update building photos")
+			failed++
+
+			continue
 		}
+
+		updated++
 	}
+
+	service.Logger.WithFields(logrus.Fields{
+		"updated":   updated,
+		"unchanged": unchanged,
+		"skipped":   skipped,
+		"failed":    failed,
+		"total":     len(erpBuildings),
+	}).Info("Building photo sync completed")
 
 	return nil
+}
+
+// erpImages collects the four photo paths ERP supplies, dropping the empty ones.
+func erpImages(b erp.ERPBuilding) []models.BuildingImage {
+	images := []models.BuildingImage{}
+	for _, photo := range []struct {
+		name string
+		path string
+	}{
+		{"front", b.FrontSidePhoto},
+		{"back", b.BackSidePhoto},
+		{"left", b.LeftSidePhoto},
+		{"right_side", b.RightSidePhoto},
+	} {
+		if photo.path != "" {
+			images = append(images, models.BuildingImage{Name: photo.name, Path: photo.path})
+		}
+	}
+
+	return images
+}
+
+// sameImages avoids writing a row whose photos have not moved. Without it every run
+// would bump updated_at on all 3,747 buildings and make "when did this last change"
+// meaningless on a table people now edit by hand.
+func sameImages(a, b []models.BuildingImage) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	for i := range a {
+		if a[i].Name != b[i].Name || a[i].Path != b[i].Path {
+			return false
+		}
+	}
+
+	return true
 }
 
 // GetFilterOptions returns distinct values for filter dropdowns

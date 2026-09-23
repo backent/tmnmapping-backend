@@ -846,14 +846,11 @@ func NewRouter(
 			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionDashboardView)(controllersBuilding.GetLCDPresenceSummary))))
 
 	// Dashboard report routes (protected)
-	router.GET("/dashboard/acquisition",
-		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionDashboardView)(controllersDashboard.GetAcquisitionReport))))
-
-	router.GET("/dashboard/building-proposal",
-		loggingMiddleware.Log(
-			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionDashboardView)(controllersDashboard.GetBuildingProposalReport))))
-
+	//
+	// The acquisition and building-proposal reports were removed with their ERP
+	// feeds on 2026-09-23: buildings are maintained by spreadsheet now, so those
+	// tables stopped being written and the tabs would have shown a frozen snapshot
+	// that looked live. LOI keeps syncing and keeps its report.
 	router.GET("/dashboard/loi",
 		loggingMiddleware.Log(
 			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionDashboardView)(controllersDashboard.GetLOIReport))))

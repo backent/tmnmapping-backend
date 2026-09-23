@@ -111,3 +111,8 @@ func (m *MockRepositoryBuilding) UpdateFromImport(ctx context.Context, tx *sql.T
 	args := m.Called(ctx, tx, building)
 	return args.Get(0).(models.Building), args.Error(1)
 }
+
+func (m *MockRepositoryBuilding) UpdateImagesFromSync(ctx context.Context, tx *sql.Tx, buildingId int, imagesJSON string) error {
+	args := m.Called(ctx, tx, buildingId, imagesJSON)
+	return args.Error(0)
+}
