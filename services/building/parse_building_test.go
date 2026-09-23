@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/malikabdulaziz/tmn-backend/models"
+	repositoriesBuilding "github.com/malikabdulaziz/tmn-backend/repositories/building"
 	"github.com/malikabdulaziz/tmn-backend/spreadsheets"
 )
 
@@ -366,4 +367,49 @@ func TestParseRow_RejectsAnUnreadableBoolean(t *testing.T) {
 
 	assert.Len(t, errs, 1)
 	assert.Equal(t, "Competitor Presence", errs[0].column)
+}
+
+// Every field the change log tracks must be a column the importer actually WRITES.
+//
+// This exists because it was not true: the importer first called Update(), which is
+// the building form's update and sets only sellable, connectivity and resource_type.
+// An upload logged "audience 8096 -> 4242" and changed nothing, which is worse than
+// not logging at all -- the audit trail claimed a change the database never received.
+// Caught on staging by restoring a building from its own export and finding nothing
+// to restore.
+func TestTrackedFieldsAreAllWrittenByTheImporter(t *testing.T) {
+	written := map[string]bool{}
+	for _, column := range repositoriesBuilding.ImportUpdateColumns() {
+		written[column] = true
+	}
+
+	for _, field := range trackedFields {
+		assert.True(t, written[field],
+			"%q is tracked in the change log but not written by UpdateFromImport: "+
+				"an upload would log a change the database never received", field)
+	}
+}
+
+// And the reverse, so a column is not written without anyone being able to see who
+// changed it. competitor_location is the one deliberate exception: it is kept equal
+// to competitor_presence rather than edited on its own.
+func TestImporterWritesNothingUntracked(t *testing.T) {
+	tracked := map[string]bool{}
+	for _, field := range trackedFields {
+		tracked[field] = true
+	}
+
+	allowedUntracked := map[string]bool{
+		"competitor_location": true, // mirrors competitor_presence
+		"lcd_presence_status": true, // derived from the three columns that are tracked
+	}
+
+	for _, column := range repositoriesBuilding.ImportUpdateColumns() {
+		if allowedUntracked[column] {
+			continue
+		}
+
+		assert.True(t, tracked[column],
+			"%q is written by the importer but not tracked, so a change to it is invisible", column)
+	}
 }

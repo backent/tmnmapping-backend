@@ -106,3 +106,8 @@ func (m *MockRepositoryBuilding) CountChanges(ctx context.Context, tx *sql.Tx, b
 	args := m.Called(ctx, tx, buildingId)
 	return args.Int(0), args.Error(1)
 }
+
+func (m *MockRepositoryBuilding) UpdateFromImport(ctx context.Context, tx *sql.Tx, building models.Building) (models.Building, error) {
+	args := m.Called(ctx, tx, building)
+	return args.Get(0).(models.Building), args.Error(1)
+}

@@ -38,6 +38,9 @@ type RepositoryBuildingInterface interface {
 	// Spreadsheet import and export, plus the change log that makes a destructive
 	// upload recoverable -- see migration 025.
 	FindAllForExport(ctx context.Context, tx *sql.Tx) ([]models.Building, error)
+	// UpdateFromImport writes every column the spreadsheet owns. Update() is the
+	// FORM's update and touches only three columns, so the importer must not use it.
+	UpdateFromImport(ctx context.Context, tx *sql.Tx, building models.Building) (models.Building, error)
 	RecordChanges(ctx context.Context, tx *sql.Tx, changes []models.BuildingChange) error
 	FindChanges(ctx context.Context, tx *sql.Tx, buildingId int, take int, skip int) ([]models.BuildingChange, error)
 	CountChanges(ctx context.Context, tx *sql.Tx, buildingId int) (int, error)

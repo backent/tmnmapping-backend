@@ -145,7 +145,10 @@ func (service *ServiceBuildingImpl) Import(ctx context.Context, fileBytes []byte
 			continue
 		}
 
-		_, err := service.RepositoryBuildingInterface.Update(ctx, tx, item.after)
+		// NOT Update(): that is the form's update and writes only sellable,
+		// connectivity and resource_type, so the change log would record edits the
+		// database never received.
+		_, err := service.RepositoryBuildingInterface.UpdateFromImport(ctx, tx, item.after)
 		helpers.PanicIfError(err)
 
 		helpers.PanicIfError(service.RepositoryBuildingInterface.RecordChanges(ctx, tx,
