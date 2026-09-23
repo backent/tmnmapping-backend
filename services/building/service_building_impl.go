@@ -230,6 +230,12 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 
 	service.Logger.WithField("count", len(erpBuildings)).Info("Fetched buildings from ERP")
 
+	erpBuildings, duplicates := dedupeERPBuildings(erpBuildings)
+	if duplicates > 0 {
+		service.Logger.WithField("duplicates", duplicates).
+			Warn("ERP returned more than one record for the same building_id")
+	}
+
 	tx, err := service.DB.Begin()
 	if err != nil {
 		return err
@@ -300,6 +306,42 @@ func (service *ServiceBuildingImpl) SyncFromERP(ctx context.Context) error {
 	}).Info("Building photo sync completed")
 
 	return nil
+}
+
+// dedupeERPBuildings keeps one record per building_id, the first ERP returns.
+//
+// ERP holds more than one Building row for the same building_id -- three of them, each
+// with a different set of photos. Processing both meant writing A, then B, then A
+// again on the next run: six rows rewritten every sync forever, with updated_at
+// bouncing on a table people now edit by hand.
+//
+// First-wins rather than newest-wins because the photo fields are what differ and
+// neither record is more correct; what matters is that the same one is chosen every
+// time. ERP's ordering is stable across calls, verified 2026-09-23.
+func dedupeERPBuildings(buildings []erp.ERPBuilding) ([]erp.ERPBuilding, int) {
+	seen := make(map[string]bool, len(buildings))
+	unique := make([]erp.ERPBuilding, 0, len(buildings))
+	duplicates := 0
+
+	for _, building := range buildings {
+		id := strings.TrimSpace(building.BuildingId)
+		if id == "" {
+			unique = append(unique, building)
+
+			continue
+		}
+
+		if seen[id] {
+			duplicates++
+
+			continue
+		}
+
+		seen[id] = true
+		unique = append(unique, building)
+	}
+
+	return unique, duplicates
 }
 
 // erpImages collects the four photo paths ERP supplies, dropping the empty ones.
