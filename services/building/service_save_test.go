@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/malikabdulaziz/tmn-backend/models"
 	webBuilding "github.com/malikabdulaziz/tmn-backend/web/building"
 )
 
@@ -76,4 +77,15 @@ func TestSaveRequest_CoversOnlyTrackedFields(t *testing.T) {
 	} {
 		assert.NotEmpty(t, values[field], "%q should be carried from the form request", field)
 	}
+}
+
+// A stub project raised while saving the building FORM must be recorded as a form
+// change, not an import. The database refuses the alternative -- a form row carries
+// no batch id, and building_project_changes pairs source and batch_id in a check
+// constraint -- so getting this wrong is a 500 on save, which is how it was found.
+func TestResolveProjectSource_FormAndImportAreDistinct(t *testing.T) {
+	assert.Equal(t, "form", models.BuildingProjectSourceForm)
+	assert.Equal(t, "import", models.BuildingProjectSourceImport)
+	assert.NotEqual(t, models.BuildingProjectSourceForm, models.BuildingProjectSourceImport,
+		"the two sources must stay distinct: the check constraint keys off them")
 }

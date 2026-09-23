@@ -255,8 +255,12 @@ func (service *ServiceBuildingImpl) resolveProject(ctx context.Context, tx *sql.
 		[]models.BuildingProjectChange{{
 			ProjectId: created.Id, ProjectIdIris: code,
 			ActorUserId: actor.UserId, ActorRole: actor.Role,
-			Action:  models.BuildingProjectActionCreated,
-			Source:  models.BuildingProjectSourceImport,
+			Action: models.BuildingProjectActionCreated,
+			// The caller's source, not a hardcoded one: a stub raised while saving
+			// the building FORM must not be recorded as an import, and the database
+			// refuses it anyway -- a form row has no batch id, and the check
+			// constraint pairs the two.
+			Source:  source,
 			BatchId: batchId, NewValue: code,
 		}}))
 
