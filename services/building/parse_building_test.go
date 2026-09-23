@@ -31,7 +31,7 @@ func TestParseRow_ReadsAFullRow(t *testing.T) {
 		"competitor_exclusive": "no", "audience": "4200", "sellable": "sell",
 	})
 
-	building, _, errs := parseRow(row, colMap)
+	building, _, errs, _ := parseRow(row, colMap)
 
 	assert.Empty(t, errs)
 	assert.Equal(t, "BLDG-1", building.ExternalBuildingId)
@@ -59,7 +59,7 @@ func TestParseRow_DerivesLcdPresence(t *testing.T) {
 			"competitor_presence": test.presence, "competitor_exclusive": test.exclusive,
 		})
 
-		building, _, errs := parseRow(row, colMap)
+		building, _, errs, _ := parseRow(row, colMap)
 
 		assert.Empty(t, errs)
 		assert.Equal(t, test.want, building.LcdPresenceStatus,
@@ -75,7 +75,7 @@ func TestParseRow_BastSignedSurvivesCasing(t *testing.T) {
 		"competitor_presence": "no", "competitor_exclusive": "no",
 	})
 
-	building, _, errs := parseRow(row, colMap)
+	building, _, errs, _ := parseRow(row, colMap)
 
 	assert.Empty(t, errs)
 	assert.Equal(t, "BAST Signed", building.BuildingStatus, "stored canonically")
@@ -85,10 +85,10 @@ func TestParseRow_BastSignedSurvivesCasing(t *testing.T) {
 func TestParseRow_CollectsEveryProblem(t *testing.T) {
 	row, colMap := rowFrom(map[string]string{
 		"latitude": "north", "audience": "many",
-		"building_status": "Almost Signed", "sellable": "maybe",
+		"sellable": "maybe",
 	})
 
-	_, _, errs := parseRow(row, colMap)
+	_, _, errs, _ := parseRow(row, colMap)
 
 	columns := map[string]bool{}
 	for _, err := range errs {
@@ -99,7 +99,6 @@ func TestParseRow_CollectsEveryProblem(t *testing.T) {
 	assert.True(t, columns["Building Name"])
 	assert.True(t, columns["Latitude"])
 	assert.True(t, columns["Audience"])
-	assert.True(t, columns["Building Status"])
 	assert.True(t, columns["Sellable"])
 }
 
@@ -110,7 +109,7 @@ func TestParseRow_RejectsImpossibleCoordinates(t *testing.T) {
 		"external_building_id": "B", "name": "N", "latitude": "200", "longitude": "500",
 	})
 
-	_, _, errs := parseRow(row, colMap)
+	_, _, errs, _ := parseRow(row, colMap)
 
 	assert.Len(t, errs, 2)
 }
@@ -235,7 +234,7 @@ func TestExportRoundTrip_ReImportingAnUnchangedExportChangesNothing(t *testing.T
 	assert.NoError(t, err)
 
 	colMap := spreadsheets.MapHeaderColumns(rows[0], BuildingColumns)
-	reparsed, _, errs := parseRow(rows[1], colMap)
+	reparsed, _, errs, _ := parseRow(rows[1], colMap)
 	assert.Empty(t, errs)
 
 	assert.Empty(t, DiffBuildings(original, reparsed, importActor, models.BuildingSourceImport, "b"),
@@ -263,7 +262,7 @@ func TestExportRoundTrip_EmptyValuesStayEmpty(t *testing.T) {
 	assert.NoError(t, err)
 
 	colMap := spreadsheets.MapHeaderColumns(rows[0], BuildingColumns)
-	reparsed, _, errs := parseRow(rows[1], colMap)
+	reparsed, _, errs, _ := parseRow(rows[1], colMap)
 
 	assert.Empty(t, errs)
 	assert.Equal(t, 0, reparsed.Audience)
@@ -280,7 +279,7 @@ func TestParseRow_BlankBuildingTypeStaysBlank(t *testing.T) {
 		"external_building_id": "B", "name": "N", "building_type": "   ",
 	})
 
-	building, _, errs := parseRow(row, colMap)
+	building, _, errs, _ := parseRow(row, colMap)
 
 	assert.Empty(t, errs)
 	assert.Equal(t, "", building.BuildingType)
@@ -293,8 +292,78 @@ func TestParseRow_UnknownBuildingTypeCollapsesToOther(t *testing.T) {
 		"external_building_id": "B", "name": "N", "building_type": "Submarine",
 	})
 
-	building, _, errs := parseRow(row, colMap)
+	building, _, errs, _ := parseRow(row, colMap)
 
 	assert.Empty(t, errs)
 	assert.Equal(t, "Other", building.BuildingType)
+}
+
+// ERP adds statuses without warning: "Building Onboarded" appeared on 9 live
+// buildings and was unknown to this application until a real export was re-imported.
+// Rejecting a row for a value ERP itself produced would block a legitimate file, so
+// an unknown status is accepted, stored as written, and flagged.
+func TestParseRow_UnknownStatusIsAcceptedAndFlagged(t *testing.T) {
+	row, colMap := rowFrom(map[string]string{
+		"external_building_id": "B", "name": "N", "building_status": "Building Onboarded",
+	})
+
+	building, _, errs, warnings := parseRow(row, colMap)
+
+	assert.Empty(t, errs, "an unknown status must not reject the row")
+	assert.Len(t, warnings, 1)
+	assert.Equal(t, "Building Onboarded", building.BuildingStatus, "stored as written")
+	assert.Contains(t, warnings[0].message, "not a status the map filters on")
+
+	// Not BAST Signed, so it is not TMN's.
+	assert.Equal(t, "Opportunity", building.LcdPresenceStatus)
+}
+
+func TestParseRow_KnownStatusIsCanonicalisedWithoutWarning(t *testing.T) {
+	row, colMap := rowFrom(map[string]string{
+		"external_building_id": "B", "name": "N", "building_status": "  surveyed ",
+	})
+
+	building, _, errs, warnings := parseRow(row, colMap)
+
+	assert.Empty(t, errs)
+	assert.Empty(t, warnings)
+	assert.Equal(t, "Surveyed", building.BuildingStatus)
+}
+
+// Excel writes TRUE/FALSE for a checkbox and 1/0 for a formula. None of those should
+// reject a row, and none should silently become "no" -- a wrong competitor flag
+// changes the building's LCD presence.
+func TestParseRow_ReadsEveryBooleanSpelling(t *testing.T) {
+	for _, yes := range []string{"yes", "Yes", "YES", "y", "true", "TRUE", "1"} {
+		row, colMap := rowFrom(map[string]string{
+			"external_building_id": "B", "name": "N", "competitor_presence": yes,
+		})
+
+		building, _, errs, _ := parseRow(row, colMap)
+
+		assert.Empty(t, errs, "%q should be read as yes", yes)
+		assert.True(t, building.CompetitorPresence, "%q should be read as yes", yes)
+	}
+
+	for _, no := range []string{"no", "N", "false", "FALSE", "0", ""} {
+		row, colMap := rowFrom(map[string]string{
+			"external_building_id": "B", "name": "N", "competitor_presence": no,
+		})
+
+		building, _, errs, _ := parseRow(row, colMap)
+
+		assert.Empty(t, errs, "%q should be read as no", no)
+		assert.False(t, building.CompetitorPresence, "%q should be read as no", no)
+	}
+}
+
+func TestParseRow_RejectsAnUnreadableBoolean(t *testing.T) {
+	row, colMap := rowFrom(map[string]string{
+		"external_building_id": "B", "name": "N", "competitor_presence": "maybe",
+	})
+
+	_, _, errs, _ := parseRow(row, colMap)
+
+	assert.Len(t, errs, 1)
+	assert.Equal(t, "Competitor Presence", errs[0].column)
 }

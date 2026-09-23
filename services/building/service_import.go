@@ -62,11 +62,16 @@ func (service *ServiceBuildingImpl) Import(ctx context.Context, fileBytes []byte
 
 		result.Rows++
 
-		building, _, rowErrs := parseRow(row, colMap)
+		building, _, rowErrs, rowWarnings := parseRow(row, colMap)
 		if len(rowErrs) > 0 {
 			addRowErrors(result, rowNumber, rowErrs)
 
 			continue
+		}
+
+		// Accepted, but the operator should see it before applying.
+		for _, warning := range rowWarnings {
+			result.AddNotice(rowNumber, warning.column, warning.value, warning.message)
 		}
 
 		if firstRow, duplicate := seenCode[building.ExternalBuildingId]; duplicate {

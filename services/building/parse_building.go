@@ -24,8 +24,9 @@ type rowError struct {
 //
 // It returns the project code separately -- the building model has no field for it,
 // and resolving it to a project id needs a database lookup the parser does not do.
-func parseRow(row []string, colMap map[string]int) (models.Building, string, []rowError) {
+func parseRow(row []string, colMap map[string]int) (models.Building, string, []rowError, []rowError) {
 	var errs []rowError
+	var warnings []rowError
 
 	text := func(key string) string {
 		return spreadsheets.ColValue(row, colMap, key)
@@ -85,12 +86,36 @@ func parseRow(row []string, colMap map[string]int) (models.Building, string, []r
 		return parsed
 	}
 
-	// yes/no arrives as yes, no, true, false, 1 or 0 depending on who wrote the file.
+	// yes/no arrives as yes, no, TRUE, FALSE, 1 or 0 depending on who wrote the file
+	// and which tool produced it.
 	yesNo := func(key string) bool {
-		canonicalised := vocabulary(key)
+		raw := text(key)
 
-		return strings.EqualFold(canonicalised, "yes")
+		canonicalised, ok := CanonicalYesNo(raw)
+		if !ok {
+			errs = append(errs, rowError{headerFor(key), raw,
+				headerFor(key) + " must be yes or no"})
+
+			return false
+		}
+
+		return canonicalised == "yes"
 	}
+
+	// A status this application does not know is ACCEPTED and flagged. ERP adds
+	// statuses without warning, and rejecting a row for a value ERP itself produced
+	// would block a legitimate file; only the map's progress filter is affected.
+	buildingStatus := func() string {
+		raw := text("building_status")
+
+		canonicalised, known := CanonicalBuildingStatus(raw)
+		if !known {
+			warnings = append(warnings, rowError{headerFor("building_status"), raw,
+				"\"" + canonicalised + "\" is not a status the map filters on. It is stored as written."})
+		}
+
+		return canonicalised
+	}()
 
 	building := models.Building{
 		ExternalBuildingId: text("external_building_id"),
@@ -111,7 +136,7 @@ func parseRow(row []string, colMap map[string]int) (models.Building, string, []r
 		BuildingType:        canonicalTypeOrBlank(text("building_type")),
 		GradeResource:       text("grade_resource"),
 		CompletionYear:      number("completion_year"),
-		BuildingStatus:      vocabulary("building_status"),
+		BuildingStatus:      buildingStatus,
 		CompetitorPresence:  yesNo("competitor_presence"),
 		CompetitorExclusive: yesNo("competitor_exclusive"),
 		Audience:            number("audience"),
@@ -137,7 +162,7 @@ func parseRow(row []string, colMap map[string]int) (models.Building, string, []r
 		errs = append(errs, rowError{headerFor("name"), "", "Building Name is required"})
 	}
 
-	return building, text("project_id_iris"), errs
+	return building, text("project_id_iris"), errs, warnings
 }
 
 // canonicalTypeOrBlank canonicalises a building type, leaving an empty cell empty.

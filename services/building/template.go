@@ -11,13 +11,19 @@ const BuildingSheetName = "Buildings"
 
 // Vocabularies for the columns that have one.
 //
-// building_status is CLOSED because LCD presence is derived from it: "BAST Signed"
-// must keep that exact spelling or a building silently stops counting as TMN's. The
-// other two are closed because the building form already restricts them.
+// building_status is NOT closed, despite LCD presence being derived from it. ERP
+// introduces statuses without warning -- "Building Onboarded" appeared on 9 buildings
+// and was unknown to this list until a real export was re-imported on 2026-09-23 --
+// and rejecting a row for a value ERP itself produced would block a legitimate file.
+// A known status is canonicalised so "bast signed" still reads as "BAST Signed";
+// anything else passes through with a notice. Only the progress filter is affected.
 //
-// Grade stays open -- a new one must not need a deploy. Building type is not open
-// either, but it is not listed here: unknown values collapse to "Other" rather than
-// rejecting the row, because the map's filter chips are built from a fixed list.
+// sellable and connectivity ARE closed: they come from this application, not ERP.
+// The yes/no pair is closed because a mistyped value silently becoming "no" would
+// change a building's LCD presence.
+//
+// Grade stays open. Building type is neither: unknown values collapse to "Other",
+// because the map's filter chips are built from a fixed list.
 var (
 	BuildingStatuses = []string{
 		"BAST Signed", "Surveyed", "Building Proposal Approved",
@@ -29,11 +35,51 @@ var (
 )
 
 var closedVocabularies = map[string][]string{
-	"building_status":      BuildingStatuses,
 	"sellable":             SellableValues,
 	"connectivity":         ConnectivityValues,
 	"competitor_presence":  YesNoValues,
 	"competitor_exclusive": YesNoValues,
+}
+
+// yesNoAliases are the other spellings a spreadsheet produces for a boolean. Excel
+// writes TRUE/FALSE for a checkbox and 1/0 for a formula, and a person writes Y or N;
+// none of those should be a rejected row.
+var yesNoAliases = map[string]string{
+	"yes": "yes", "y": "yes", "true": "yes", "1": "yes",
+	"no": "no", "n": "no", "false": "no", "0": "no",
+}
+
+// CanonicalYesNo reads whatever a sheet holds for a boolean column.
+func CanonicalYesNo(value string) (string, bool) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return "no", true
+	}
+
+	canonical, ok := yesNoAliases[strings.ToLower(trimmed)]
+
+	return canonical, ok
+}
+
+// CanonicalBuildingStatus canonicalises a known status and passes anything else
+// through unchanged, reporting whether it was recognised so the caller can warn.
+//
+// "BAST Signed" must survive whatever casing a person types: LCD presence keys off
+// that exact spelling, and a building whose status stops matching silently stops
+// counting as TMN's.
+func CanonicalBuildingStatus(value string) (string, bool) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return "", true
+	}
+
+	for _, candidate := range BuildingStatuses {
+		if strings.EqualFold(candidate, trimmed) {
+			return candidate, true
+		}
+	}
+
+	return trimmed, false
 }
 
 // BuildingColumns defines the upload, and is the single source of truth for the
@@ -105,16 +151,16 @@ var BuildingColumns = []spreadsheets.SheetColumn{
 	{
 		Key: "building_status", Header: "Building Status", Required: false,
 		Example: "BAST Signed",
-		Note: "One of: " + strings.Join(BuildingStatuses, ", ") +
-			". IMPORTANT: LCD presence is derived from this plus the two competitor columns, so 'BAST Signed' must keep that exact spelling or the building stops counting as TMN's.",
+		Note: "Usually one of: " + strings.Join(BuildingStatuses, ", ") +
+			". Another value is accepted and flagged -- only the map's progress filter is affected. IMPORTANT: LCD presence is derived from this plus the two competitor columns, so a building must keep 'BAST Signed' to count as TMN's.",
 	},
 	{
 		Key: "competitor_presence", Header: "Competitor Presence", Required: false,
-		Example: "no", Note: "yes or no. Feeds the derived LCD presence.",
+		Example: "no", Note: "yes or no. TRUE/FALSE and 1/0 are read too. Blank counts as no. Feeds the derived LCD presence.",
 	},
 	{
 		Key: "competitor_exclusive", Header: "Competitor Exclusive", Required: false,
-		Example: "no", Note: "yes or no. Feeds the derived LCD presence.",
+		Example: "no", Note: "yes or no. TRUE/FALSE and 1/0 are read too. Blank counts as no. Feeds the derived LCD presence.",
 	},
 	{
 		Key: "audience", Header: "Audience", Required: false,
