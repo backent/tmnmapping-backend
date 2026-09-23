@@ -20,6 +20,11 @@ import (
 // FindAll builds its WHERE with unprefixed column names, and both buildings and
 // building_projects have a `name`, so a join would make those filters ambiguous and
 // break the list screen. The subqueries are a primary-key lookup each.
+//
+// Both subqueries MUST be aliased. Without `AS project_display_name` the second one
+// takes its inner column name and the result set has two columns called `name`, which
+// makes `ORDER BY name` -- resolved against output names before table columns --
+// ambiguous, and the buildings list returns 500.
 var buildingColumns = `b.id, b.external_building_id, b.iris_code, b.name, b.project_name,
 	b.audience, b.impression, b.cbd_area, b.building_status,
 	b.competitor_location, b.competitor_exclusive, b.competitor_presence,
@@ -28,8 +33,8 @@ var buildingColumns = `b.id, b.external_building_id, b.iris_code, b.name, b.proj
 	b.completion_year, b.latitude, b.longitude, b.images, b.lcd_presence_status,
 	b.synced_at, b.created_at, b.updated_at,
 	b.project_id,
-	(SELECT p.project_id_iris FROM ` + models.BuildingProjectTable + ` p WHERE p.id = b.project_id),
-	(SELECT p.name FROM ` + models.BuildingProjectTable + ` p WHERE p.id = b.project_id)`
+	(SELECT p.project_id_iris FROM ` + models.BuildingProjectTable + ` p WHERE p.id = b.project_id) AS project_id_iris,
+	(SELECT p.name FROM ` + models.BuildingProjectTable + ` p WHERE p.id = b.project_id) AS project_display_name`
 
 // buildingFrom pairs with buildingColumns. The alias is required: every column above
 // is prefixed, while the filters callers append are not.
