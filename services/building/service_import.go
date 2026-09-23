@@ -103,7 +103,8 @@ func (service *ServiceBuildingImpl) Import(ctx context.Context, fileBytes []byte
 		// two files can be uploaded in either order. The stub is deliberately thin:
 		// it carries the code and nothing else, and the projects import fills it in.
 		if projectCode != "" {
-			projectId, created := service.resolveProject(ctx, tx, projectCode, projectCache, actor, batchId, dryRun)
+			projectId, created := service.resolveProject(ctx, tx, projectCode, projectCache,
+				actor, models.BuildingProjectSourceImport, batchId, dryRun)
 			building.ProjectId = projectId
 			building.ProjectIdIris = projectCode
 
@@ -225,7 +226,7 @@ func (service *ServiceBuildingImpl) Export(ctx context.Context) ([]byte, error) 
 //
 // On a dry run nothing is created: the preview reports what WOULD be created and
 // returns 0, so a preview never leaves rows behind.
-func (service *ServiceBuildingImpl) resolveProject(ctx context.Context, tx *sql.Tx, code string, cache map[string]int, actor Actor, batchId string, dryRun bool) (int, bool) {
+func (service *ServiceBuildingImpl) resolveProject(ctx context.Context, tx *sql.Tx, code string, cache map[string]int, actor Actor, source string, batchId string, dryRun bool) (int, bool) {
 	if id, seen := cache[code]; seen {
 		return id, false
 	}

@@ -108,6 +108,19 @@ func NewRouter(
 			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionBuildingsManage)(
 				buildingMiddleware.ValidateUpdate(controllersBuilding.Update)))))
 
+	// The building form's full-record path. PUT /buildings/:id below is the older,
+	// narrow update the mapping screen uses -- it writes three columns and leaves the
+	// rest alone, which is right for an inline edit and wrong for a form.
+	router.POST("/buildings",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionBuildingsManage)(
+				buildingMiddleware.ValidateSave(controllersBuilding.Create)))))
+
+	router.PUT("/buildings/:id/save",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionBuildingsManage)(
+				buildingMiddleware.ValidateSave(controllersBuilding.Save)))))
+
 	router.POST("/buildings/sync",
 		loggingMiddleware.Log(
 			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionBuildingsManage)(controllersBuilding.SyncManual))))

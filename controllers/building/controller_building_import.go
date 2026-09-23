@@ -12,6 +12,7 @@ import (
 	servicesBuilding "github.com/malikabdulaziz/tmn-backend/services/building"
 	"github.com/malikabdulaziz/tmn-backend/spreadsheets"
 	"github.com/malikabdulaziz/tmn-backend/web"
+	webBuilding "github.com/malikabdulaziz/tmn-backend/web/building"
 )
 
 // actorOf reads the caller's identity and role, both put on the context by
@@ -76,4 +77,24 @@ func (controller *ControllerBuildingImpl) FindChanges(w http.ResponseWriter, r *
 	list, total := controller.service.FindChanges(r.Context(), id, take, skip)
 	pagination := web.Pagination{Take: take, Skip: skip, Total: total}
 	helpers.ReturnReponseJSON(w, web.WebResponse{Status: "OK", Code: http.StatusOK, Data: list, Extras: pagination})
+}
+
+// Create raises a building from the form.
+func (controller *ControllerBuildingImpl) Create(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	request := r.Context().Value(helpers.ContextKey("buildingSaveRequest")).(webBuilding.SaveBuildingRequest)
+	resp := controller.service.Create(r.Context(), request, actorOf(r))
+	helpers.ReturnReponseJSON(w, web.WebResponse{Status: "OK", Code: http.StatusCreated, Data: resp})
+}
+
+// Save replaces a building from the form. Distinct from Update, which writes only the
+// three columns the mapping screen's inline edit offers.
+func (controller *ControllerBuildingImpl) Save(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	id, err := strconv.Atoi(p.ByName("id"))
+	if err != nil {
+		panic(exceptions.NewBadRequest("invalid building id"))
+	}
+
+	request := r.Context().Value(helpers.ContextKey("buildingSaveRequest")).(webBuilding.SaveBuildingRequest)
+	resp := controller.service.Save(r.Context(), request, id, actorOf(r))
+	helpers.ReturnReponseJSON(w, web.WebResponse{Status: "OK", Code: http.StatusOK, Data: resp})
 }

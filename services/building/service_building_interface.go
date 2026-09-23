@@ -12,6 +12,12 @@ type ServiceBuildingInterface interface {
 	FindById(ctx context.Context, id int) webBuilding.BuildingResponse
 	FindAll(ctx context.Context, request webBuilding.BuildingRequestFindAll) ([]webBuilding.BuildingResponse, int)
 	Update(ctx context.Context, request webBuilding.UpdateBuildingRequest, id int) webBuilding.BuildingResponse
+
+	// Create and Save are the form's full-record path. Update above is the older,
+	// narrow one that writes three columns; it stays for the mapping screen's inline
+	// edit, which offers only those three.
+	Create(ctx context.Context, request webBuilding.SaveBuildingRequest, actor Actor) webBuilding.BuildingResponse
+	Save(ctx context.Context, request webBuilding.SaveBuildingRequest, id int, actor Actor) webBuilding.BuildingResponse
 	SyncFromERP(ctx context.Context) error
 	GetFilterOptions(ctx context.Context) map[string][]string
 	FindAllForMapping(ctx context.Context, request webBuilding.MappingBuildingRequest) webBuilding.MappingBuildingsResponse

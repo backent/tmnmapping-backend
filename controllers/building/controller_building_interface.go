@@ -21,4 +21,6 @@ type ControllerBuildingInterface interface {
 	Export(w http.ResponseWriter, r *http.Request, p httprouter.Params)
 	Template(w http.ResponseWriter, r *http.Request, p httprouter.Params)
 	FindChanges(w http.ResponseWriter, r *http.Request, p httprouter.Params)
+	Create(w http.ResponseWriter, r *http.Request, p httprouter.Params)
+	Save(w http.ResponseWriter, r *http.Request, p httprouter.Params)
 }
