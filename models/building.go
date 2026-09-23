@@ -103,6 +103,8 @@ func NullAbleBuildingToBuilding(nullable NullAbleBuilding) Building {
 		IrisCode:            nullable.IrisCode.String,
 		Name:                nullable.Name.String,
 		ProjectName:         nullable.ProjectName.String,
+		ProjectId:           int(nullable.ProjectId.Int64),
+		ProjectIdIris:       nullable.ProjectIdIris.String,
 		Audience:            int(nullable.Audience.Int64),
 		Impression:          int(nullable.Impression.Int64),
 		CbdArea:             nullable.CbdArea.String,
