@@ -202,10 +202,16 @@ func (repository *RepositoryBuildingImpl) FindByIds(ctx context.Context, tx *sql
 
 // FindByExternalId retrieves a building by external ERP ID
 func (repository *RepositoryBuildingImpl) FindByExternalId(ctx context.Context, tx *sql.Tx, externalId string) (models.Building, error) {
-	SQL := `SELECT id, external_building_id, iris_code, name, project_name, audience, 
-		impression, cbd_area, building_status, competitor_location, competitor_exclusive, competitor_presence, sellable, connectivity, 
-		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, latitude, longitude, images, lcd_presence_status, synced_at, created_at, updated_at 
-		FROM ` + models.BuildingTable + ` WHERE external_building_id = $1`
+	// Joins the project because the spreadsheet importer diffs against this row:
+	// without project_id_iris the comparison reads every linked building as newly
+	// linked and reports a change on every upload.
+	SQL := `SELECT b.id, b.external_building_id, b.iris_code, b.name, b.project_name, b.audience, 
+		b.impression, b.cbd_area, b.building_status, b.competitor_location, b.competitor_exclusive, b.competitor_presence, b.sellable, b.connectivity, 
+		b.resource_type, b.subdistrict, b.citytown, b.province, b.grade_resource, b.building_type, b.completion_year, b.latitude, b.longitude, b.images, b.lcd_presence_status, b.synced_at, b.created_at, b.updated_at,
+		b.project_id, p.project_id_iris
+		FROM ` + models.BuildingTable + ` b
+		LEFT JOIN ` + models.BuildingProjectTable + ` p ON p.id = b.project_id
+		WHERE b.external_building_id = $1`
 
 	rows, err := tx.QueryContext(ctx, SQL, externalId)
 	if err != nil {
@@ -244,6 +250,8 @@ func (repository *RepositoryBuildingImpl) FindByExternalId(ctx context.Context, 
 			&building.SyncedAt,
 			&building.CreatedAt,
 			&building.UpdatedAt,
+			&building.ProjectId,
+			&building.ProjectIdIris,
 		)
 		if err != nil {
 			return models.Building{}, err
