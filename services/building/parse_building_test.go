@@ -8,6 +8,7 @@ import (
 	"github.com/malikabdulaziz/tmn-backend/models"
 	repositoriesBuilding "github.com/malikabdulaziz/tmn-backend/repositories/building"
 	"github.com/malikabdulaziz/tmn-backend/spreadsheets"
+	"github.com/malikabdulaziz/tmn-backend/web"
 )
 
 func rowFrom(values map[string]string) ([]string, map[string]int) {
@@ -497,4 +498,29 @@ func TestClearedFields_BlankProjectCodeClearsTheLink(t *testing.T) {
 	assert.Len(t, cleared, 1)
 	assert.Equal(t, "project_id_iris", cleared[0].Field)
 	assert.Equal(t, "PRJ-0001", cleared[0].Old)
+}
+
+// A preview must not show an accepted-but-flagged row under "what will be cleared".
+// They shared one list until 2026-09-23, and the dialog listed nine "Building
+// Onboarded" statuses as pending clears while the cleared count read zero.
+func TestImportResult_ClearsAndNoticesAreSeparate(t *testing.T) {
+	result := web.NewImportResult()
+
+	result.AddNotice(4, "Building Status", "Building Onboarded", "not a status the map filters on")
+	result.AddClear(9, "City / Town", "Jakarta Utara", "This upload clears City / Town")
+
+	assert.Len(t, result.Notices, 1)
+	assert.Len(t, result.Clears, 1)
+	assert.Equal(t, "City / Town", result.Clears[0].Column)
+	assert.Equal(t, "Building Status", result.Notices[0].Column)
+}
+
+// Both start non-nil so the JSON carries [] rather than null, which the dialog
+// iterates without a guard.
+func TestImportResult_ListsAreNeverNull(t *testing.T) {
+	result := web.NewImportResult()
+
+	assert.NotNil(t, result.Errors)
+	assert.NotNil(t, result.Notices)
+	assert.NotNil(t, result.Clears)
 }

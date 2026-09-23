@@ -146,7 +146,7 @@ func (service *ServiceBuildingImpl) Import(ctx context.Context, fileBytes []byte
 
 		for _, cleared := range ClearedFields(existing, building) {
 			result.Cleared++
-			result.AddNotice(rowNumber, headerFor(cleared.Field), cleared.Old,
+			result.AddClear(rowNumber, headerFor(cleared.Field), cleared.Old,
 				"This upload clears "+headerFor(cleared.Field))
 		}
 

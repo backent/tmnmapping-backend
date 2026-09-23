@@ -119,7 +119,7 @@ func (s *ServiceBuildingProjectImpl) Import(ctx context.Context, fileBytes []byt
 				value = ""
 			}
 
-			result.AddNotice(rowNumber, headerFor(cleared.Field), value,
+			result.AddClear(rowNumber, headerFor(cleared.Field), value,
 				"This upload clears "+headerFor(cleared.Field))
 		}
 

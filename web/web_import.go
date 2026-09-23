@@ -32,8 +32,19 @@ type ImportResult struct {
 	Imported bool          `json:"imported"`
 	Errors   []ImportError `json:"errors"`
 
-	// Notices are per-row facts worth showing that do not reject the row -- above
-	// all, which fields an upload is about to clear and what they hold today.
+	// Clears name the fields an upload will empty, one per field, with what each
+	// holds TODAY -- after the upload that value exists nowhere but the change log.
+	//
+	// Separate from Notices because they answer different questions and a preview
+	// must not confuse them: everything here is about to be destroyed, while a
+	// notice is merely worth reading. They shared one list until 2026-09-23, and the
+	// dialog showed nine accepted-status warnings under "What will be cleared" while
+	// the cleared count was zero.
+	Clears []ImportError `json:"clears"`
+
+	// Notices are per-row facts worth seeing that do NOT reject the row and do not
+	// destroy anything: a status this application does not know but still stores, or
+	// a project code that will raise an empty project.
 	Notices []ImportError `json:"notices"`
 }
 
@@ -49,7 +60,7 @@ type ImportError struct {
 // NewImportResult starts an empty result with a non-nil Errors slice, so the JSON
 // response carries [] rather than null.
 func NewImportResult() *ImportResult {
-	return &ImportResult{Errors: []ImportError{}, Notices: []ImportError{}}
+	return &ImportResult{Errors: []ImportError{}, Notices: []ImportError{}, Clears: []ImportError{}}
 }
 
 // AddError records a rejection. Callers keep validating after the first failure so
@@ -58,9 +69,14 @@ func (r *ImportResult) AddError(row int, column string, value string, message st
 	r.Errors = append(r.Errors, ImportError{Row: row, Column: column, Value: value, Message: message})
 }
 
-// AddNotice records something the operator should see before applying, such as a
-// field about to be cleared. Value carries what the field holds TODAY, because after
-// the upload that is the one thing no longer visible anywhere but the change log.
+// AddClear records a field this upload will empty. Value carries what it holds
+// TODAY, because after the upload that is the one thing no longer visible anywhere
+// but the change log.
+func (r *ImportResult) AddClear(row int, column string, value string, message string) {
+	r.Clears = append(r.Clears, ImportError{Row: row, Column: column, Value: value, Message: message})
+}
+
+// AddNotice records something worth reading that destroys nothing.
 func (r *ImportResult) AddNotice(row int, column string, value string, message string) {
 	r.Notices = append(r.Notices, ImportError{Row: row, Column: column, Value: value, Message: message})
 }
