@@ -184,6 +184,25 @@ func calculateLcdPresenceStatus(competitorPresence, competitorExclusive bool, wo
 	return "Opportunity"
 }
 
+// trimERPBuilding strips surrounding whitespace from every text field ERP supplies.
+//
+// It is deliberately applied to all of them rather than only the field known to be
+// dirty: whitespace in a name breaks a search, in a citytown breaks a map filter, and
+// in an IRIS code breaks the price import's lookup. None of those are worth finding
+// one at a time.
+func trimERPBuilding(b *erp.ERPBuilding) {
+	b.BuildingId = strings.TrimSpace(b.BuildingId)
+	b.IrisCode = strings.TrimSpace(b.IrisCode)
+	b.BuildingName = strings.TrimSpace(b.BuildingName)
+	b.BuildingProject = strings.TrimSpace(b.BuildingProject)
+	b.CbdArea = strings.TrimSpace(b.CbdArea)
+	b.Subdistrict = strings.TrimSpace(b.Subdistrict)
+	b.Citytown = strings.TrimSpace(b.Citytown)
+	b.Province = strings.TrimSpace(b.Province)
+	b.GradeResource = strings.TrimSpace(b.GradeResource)
+	b.BuildingType = strings.TrimSpace(b.BuildingType)
+}
+
 // processBuilding handles the processing of a single building (create or update)
 func (service *ServiceBuildingImpl) processBuilding(
 	ctx context.Context,
@@ -192,6 +211,12 @@ func (service *ServiceBuildingImpl) processBuilding(
 	screenCountMap map[string]int,
 	counters *syncCounters,
 ) {
+	// ERP hands back values with stray whitespace -- two IRIS codes arrive with a
+	// trailing tab, which makes "B003027\t" a different string from "B003027"
+	// everywhere it is compared. Trimming in the database does not hold: the next
+	// sync writes the untrimmed value straight back. It has to happen here.
+	trimERPBuilding(&erpBuilding)
+
 	// Check for context cancellation
 	select {
 	case <-ctx.Done():
