@@ -15,6 +15,7 @@ import (
 	"github.com/malikabdulaziz/tmn-backend/helpers"
 	"github.com/malikabdulaziz/tmn-backend/models"
 	repositoriesBuilding "github.com/malikabdulaziz/tmn-backend/repositories/building"
+	repositoriesBuildingProject "github.com/malikabdulaziz/tmn-backend/repositories/buildingproject"
 	repositoriesPOI "github.com/malikabdulaziz/tmn-backend/repositories/poi"
 	"github.com/malikabdulaziz/tmn-backend/services/erp"
 	webBuilding "github.com/malikabdulaziz/tmn-backend/web/building"
@@ -31,8 +32,11 @@ type ServiceBuildingImpl struct {
 	DB                          *sql.DB
 	RepositoryBuildingInterface repositoriesBuilding.RepositoryBuildingInterface
 	RepositoryPOIInterface      repositoriesPOI.RepositoryPOIInterface
-	ERPClient                   *erp.ERPClient
-	Logger                      *logrus.Logger
+	// Needed by the spreadsheet import, which resolves a Project ID IRIS to a
+	// project and creates an empty one when the code is not known yet.
+	RepositoryBuildingProject repositoriesBuildingProject.RepositoryBuildingProjectInterface
+	ERPClient                 *erp.ERPClient
+	Logger                    *logrus.Logger
 }
 
 // syncCounters holds thread-safe counters for sync operations
@@ -88,6 +92,7 @@ func (c *syncCounters) addError(buildingID, buildingName string, err error) {
 func NewServiceBuildingImpl(
 	db *sql.DB,
 	repositoryBuilding repositoriesBuilding.RepositoryBuildingInterface,
+	repositoryBuildingProject repositoriesBuildingProject.RepositoryBuildingProjectInterface,
 	repositoryPOI repositoriesPOI.RepositoryPOIInterface,
 	erpClient *erp.ERPClient,
 	logger *logrus.Logger,
@@ -95,6 +100,7 @@ func NewServiceBuildingImpl(
 	return &ServiceBuildingImpl{
 		DB:                          db,
 		RepositoryBuildingInterface: repositoryBuilding,
+		RepositoryBuildingProject:   repositoryBuildingProject,
 		RepositoryPOIInterface:      repositoryPOI,
 		ERPClient:                   erpClient,
 		Logger:                      logger,

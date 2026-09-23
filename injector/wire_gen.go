@@ -114,9 +114,10 @@ func InitializeRouter() *httprouter.Router {
 	quotationMiddleware := middlewares.NewQuotationMiddleware(validate, db, repositoryQuotationInterface)
 	serviceAuthInterface := auth2.NewServiceAuthImpl(db, repositoryAuthInterface, repositoryUserInterface)
 	controllerAuthInterface := auth3.NewControllerAuthImpl(db, serviceAuthInterface, repositoryUserInterface)
+	repositoryBuildingProjectInterface := buildingproject.NewRepositoryBuildingProjectImpl()
 	erpClient := libs.ProvideERPClient()
 	logger := libs.NewLogger()
-	serviceBuildingInterface := building2.NewServiceBuildingImpl(db, repositoryBuildingInterface, repositoryPOIInterface, erpClient, logger)
+	serviceBuildingInterface := building2.NewServiceBuildingImpl(db, repositoryBuildingInterface, repositoryBuildingProjectInterface, repositoryPOIInterface, erpClient, logger)
 	controllerBuildingInterface := building3.NewControllerBuildingImpl(serviceBuildingInterface)
 	controllerImageInterface := image.NewControllerImageImpl()
 	servicePOIInterface := poi2.NewServicePOIImpl(db, repositoryPOIInterface, repositoryCategoryInterface, repositorySubCategoryInterface, repositoryMotherBrandInterface, repositoryBranchInterface)
@@ -155,7 +156,6 @@ func InitializeRouter() *httprouter.Router {
 	serviceBuildingPriceInterface := buildingprice2.NewServiceBuildingPriceImpl(db, repositoryBuildingPriceInterface, repositoryBuildingInterface)
 	controllerBuildingPriceInterface := buildingprice3.NewControllerBuildingPriceImpl(serviceBuildingPriceInterface)
 	buildingProjectMiddleware := middlewares.NewBuildingProjectMiddleware(validate)
-	repositoryBuildingProjectInterface := buildingproject.NewRepositoryBuildingProjectImpl()
 	serviceBuildingProjectInterface := buildingproject2.NewServiceBuildingProjectImpl(db, repositoryBuildingProjectInterface)
 	controllerBuildingProjectInterface := buildingproject3.NewControllerBuildingProjectImpl(serviceBuildingProjectInterface)
 	router := libs.NewRouter(authMiddleware, buildingMiddleware, poiMiddleware, salesPackageMiddleware, buildingRestrictionMiddleware, savedPolygonMiddleware, loggingMiddleware, categoryMiddleware, subCategoryMiddleware, motherBrandMiddleware, branchMiddleware, userMiddleware, customerMiddleware, brandMiddleware, salesAssignmentMiddleware, rateCardMiddleware, quotationMiddleware, controllerAuthInterface, controllerBuildingInterface, controllerImageInterface, controllerPOIInterface, controllerSalesPackageInterface, controllerBuildingRestrictionInterface, controllerSavedPolygonInterface, controllerDashboardInterface, controllerCategoryInterface, controllerSubCategoryInterface, controllerMotherBrandInterface, controllerBranchInterface, controllerUserInterface, controllerCustomerInterface, controllerBrandInterface, controllerSalesAssignmentInterface, controllerRateCardInterface, controllerQuotationInterface, buildingPriceMiddleware, controllerBuildingPriceInterface, buildingProjectMiddleware, controllerBuildingProjectInterface)
@@ -165,10 +165,11 @@ func InitializeRouter() *httprouter.Router {
 func InitializeBuildingService() building2.ServiceBuildingInterface {
 	db := libs.NewDatabase()
 	repositoryBuildingInterface := building.NewRepositoryBuildingImpl()
+	repositoryBuildingProjectInterface := buildingproject.NewRepositoryBuildingProjectImpl()
 	repositoryPOIInterface := poi.NewRepositoryPOIImpl()
 	erpClient := libs.ProvideERPClient()
 	logger := libs.NewLogger()
-	serviceBuildingInterface := building2.NewServiceBuildingImpl(db, repositoryBuildingInterface, repositoryPOIInterface, erpClient, logger)
+	serviceBuildingInterface := building2.NewServiceBuildingImpl(db, repositoryBuildingInterface, repositoryBuildingProjectInterface, repositoryPOIInterface, erpClient, logger)
 	return serviceBuildingInterface
 }
 

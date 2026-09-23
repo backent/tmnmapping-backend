@@ -2,6 +2,7 @@ package building
 
 import (
 	"context"
+	"database/sql"
 	"strconv"
 	"strings"
 
@@ -53,6 +54,10 @@ func (service *ServiceBuildingImpl) Import(ctx context.Context, fileBytes []byte
 	}
 	var queue []pending
 
+	// Projects already resolved in this file, so a sheet naming the same project on
+	// 31 towers costs one lookup rather than 31.
+	projectCache := map[string]int{}
+
 	for i, row := range rows[1:] {
 		rowNumber := i + 2
 
@@ -62,7 +67,7 @@ func (service *ServiceBuildingImpl) Import(ctx context.Context, fileBytes []byte
 
 		result.Rows++
 
-		building, _, rowErrs, rowWarnings := parseRow(row, colMap)
+		building, projectCode, rowErrs, rowWarnings := parseRow(row, colMap)
 		if len(rowErrs) > 0 {
 			addRowErrors(result, rowNumber, rowErrs)
 
@@ -94,6 +99,20 @@ func (service *ServiceBuildingImpl) Import(ctx context.Context, fileBytes []byte
 			seenIris[building.IrisCode] = rowNumber
 		}
 
+		// An unknown project code creates a stub rather than rejecting the row, so the
+		// two files can be uploaded in either order. The stub is deliberately thin:
+		// it carries the code and nothing else, and the projects import fills it in.
+		if projectCode != "" {
+			projectId, created := service.resolveProject(ctx, tx, projectCode, projectCache, actor, batchId, dryRun)
+			building.ProjectId = projectId
+			building.ProjectIdIris = projectCode
+
+			if created {
+				result.AddNotice(rowNumber, headerFor("project_id_iris"), projectCode,
+					"No project with this code yet, so an empty one will be created")
+			}
+		}
+
 		existing, err := service.RepositoryBuildingInterface.FindByExternalId(ctx, tx, building.ExternalBuildingId)
 		isNew := err != nil
 
@@ -105,11 +124,18 @@ func (service *ServiceBuildingImpl) Import(ctx context.Context, fileBytes []byte
 		}
 
 		building.Id = existing.Id
-		// Photos and the project link are not columns in this sheet. Carrying them
-		// across means an upload cannot blank what it never offered to edit -- the
-		// photo sync keeps writing images, and project_id is set elsewhere.
+		// Photos are not a column in this sheet, so carrying them across means an
+		// upload cannot blank what it never offered to edit. project_name likewise:
+		// it is the ERP correlation key the LOI dashboard joins on, and the sheet
+		// speaks in project CODES instead.
 		building.Images = existing.Images
 		building.ProjectName = existing.ProjectName
+
+		// A blank Project ID IRIS clears the link, like every other blank cell.
+		if projectCode == "" {
+			building.ProjectId = 0
+			building.ProjectIdIris = ""
+		}
 
 		changes := DiffBuildings(existing, building, actor, models.BuildingSourceImport, batchId)
 		if len(changes) == 0 {
@@ -179,11 +205,9 @@ func (service *ServiceBuildingImpl) Export(ctx context.Context) ([]byte, error) 
 	for i, b := range list {
 		rows[i] = []interface{}{
 			b.ExternalBuildingId, b.Name, b.IrisCode,
-			// Project ID IRIS is not stored on the building yet -- project_id arrives
-			// in migration 024 and is not backfilled. Written empty rather than
-			// omitted, so the round trip keeps its column and a filled-in value
-			// still imports.
-			"",
+			// Joined from building_projects, so an export can be edited and
+			// re-uploaded without losing the link.
+			b.ProjectIdIris,
 			blankIfZeroFloat(b.Latitude), blankIfZeroFloat(b.Longitude),
 			b.Subdistrict, b.Citytown, b.Province, b.CbdArea,
 			b.BuildingType, b.GradeResource, blankIfZero(b.CompletionYear),
@@ -194,6 +218,50 @@ func (service *ServiceBuildingImpl) Export(ctx context.Context) ([]byte, error) 
 	}
 
 	return spreadsheets.BuildExport(BuildingSheetName, TemplateHeaders(), rows)
+}
+
+// resolveProject turns a project code into an id, creating an empty project when the
+// code is unknown. Returns the id and whether it had to create one.
+//
+// On a dry run nothing is created: the preview reports what WOULD be created and
+// returns 0, so a preview never leaves rows behind.
+func (service *ServiceBuildingImpl) resolveProject(ctx context.Context, tx *sql.Tx, code string, cache map[string]int, actor Actor, batchId string, dryRun bool) (int, bool) {
+	if id, seen := cache[code]; seen {
+		return id, false
+	}
+
+	existing, err := service.RepositoryBuildingProject.FindByIris(ctx, tx, code, false)
+	if err == nil {
+		cache[code] = existing.Id
+
+		return existing.Id, false
+	}
+
+	if dryRun {
+		return 0, true
+	}
+
+	created, err := service.RepositoryBuildingProject.Create(ctx, tx, models.BuildingProject{
+		ProjectIdIris: code,
+		// Named after the code until the projects file fills it in. A blank name
+		// would fail the NOT NULL check, and inventing a plausible name would be
+		// worse -- it would look like real data.
+		Name: code,
+	})
+	helpers.PanicIfError(err)
+
+	helpers.PanicIfError(service.RepositoryBuildingProject.RecordChanges(ctx, tx,
+		[]models.BuildingProjectChange{{
+			ProjectId: created.Id, ProjectIdIris: code,
+			ActorUserId: actor.UserId, ActorRole: actor.Role,
+			Action:  models.BuildingProjectActionCreated,
+			Source:  models.BuildingProjectSourceImport,
+			BatchId: batchId, NewValue: code,
+		}}))
+
+	cache[code] = created.Id
+
+	return created.Id, true
 }
 
 // Template is the empty workbook the operator downloads before filling one in.

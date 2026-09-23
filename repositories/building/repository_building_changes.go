@@ -121,13 +121,15 @@ func (r *RepositoryBuildingImpl) CountChanges(ctx context.Context, tx *sql.Tx, b
 // FindAllForExport reads every building in key order, so an export is stable between
 // runs and a diff between two exports shows real changes rather than reordering.
 func (r *RepositoryBuildingImpl) FindAllForExport(ctx context.Context, tx *sql.Tx) ([]models.Building, error) {
-	SQL := `SELECT id, external_building_id, iris_code, name, project_name, audience,
-		impression, cbd_area, building_status, competitor_location, competitor_exclusive,
-		competitor_presence, sellable, connectivity, resource_type, subdistrict, citytown,
-		province, grade_resource, building_type, completion_year, latitude, longitude,
-		lcd_presence_status
-		FROM ` + models.BuildingTable + `
-		ORDER BY external_building_id NULLS LAST, id`
+	SQL := `SELECT b.id, b.external_building_id, b.iris_code, b.name, b.project_name,
+		b.project_id, p.project_id_iris, b.audience,
+		b.impression, b.cbd_area, b.building_status, b.competitor_location, b.competitor_exclusive,
+		b.competitor_presence, b.sellable, b.connectivity, b.resource_type, b.subdistrict, b.citytown,
+		b.province, b.grade_resource, b.building_type, b.completion_year, b.latitude, b.longitude,
+		b.lcd_presence_status
+		FROM ` + models.BuildingTable + ` b
+		LEFT JOIN ` + models.BuildingProjectTable + ` p ON p.id = b.project_id
+		ORDER BY b.external_building_id NULLS LAST, b.id`
 
 	rows, err := tx.QueryContext(ctx, SQL)
 	if err != nil {
@@ -139,7 +141,7 @@ func (r *RepositoryBuildingImpl) FindAllForExport(ctx context.Context, tx *sql.T
 	for rows.Next() {
 		var n models.NullAbleBuilding
 		if err := rows.Scan(&n.Id, &n.ExternalBuildingId, &n.IrisCode, &n.Name, &n.ProjectName,
-			&n.Audience, &n.Impression, &n.CbdArea, &n.BuildingStatus, &n.CompetitorLocation,
+			&n.ProjectId, &n.ProjectIdIris, &n.Audience, &n.Impression, &n.CbdArea, &n.BuildingStatus, &n.CompetitorLocation,
 			&n.CompetitorExclusive, &n.CompetitorPresence, &n.Sellable, &n.Connectivity,
 			&n.ResourceType, &n.Subdistrict, &n.Citytown, &n.Province, &n.GradeResource,
 			&n.BuildingType, &n.CompletionYear, &n.Latitude, &n.Longitude,
@@ -150,6 +152,7 @@ func (r *RepositoryBuildingImpl) FindAllForExport(ctx context.Context, tx *sql.T
 		buildings = append(buildings, models.Building{
 			Id: int(n.Id.Int64), ExternalBuildingId: n.ExternalBuildingId.String,
 			IrisCode: n.IrisCode.String, Name: n.Name.String, ProjectName: n.ProjectName.String,
+			ProjectId: int(n.ProjectId.Int64), ProjectIdIris: n.ProjectIdIris.String,
 			Audience: int(n.Audience.Int64), Impression: int(n.Impression.Int64),
 			CbdArea: n.CbdArea.String, BuildingStatus: n.BuildingStatus.String,
 			CompetitorLocation: n.CompetitorLocation.Bool, CompetitorExclusive: n.CompetitorExclusive.Bool,
@@ -174,7 +177,7 @@ func (r *RepositoryBuildingImpl) FindAllForExport(ctx context.Context, tx *sql.T
 // Deliberately absent: images and synced_at, which the ERP photo sync owns;
 // project_id, set by the project link rather than this sheet; and created_at.
 var importUpdateColumns = []string{
-	"external_building_id", "iris_code", "name", "project_name",
+	"external_building_id", "iris_code", "name", "project_name", "project_id",
 	"latitude", "longitude", "subdistrict", "citytown", "province", "cbd_area",
 	"building_type", "grade_resource", "completion_year", "building_status",
 	"competitor_presence", "competitor_exclusive", "competitor_location",
@@ -203,6 +206,7 @@ func ImportUpdateColumns() []string {
 func (repository *RepositoryBuildingImpl) UpdateFromImport(ctx context.Context, tx *sql.Tx, building models.Building) (models.Building, error) {
 	SQL := `UPDATE ` + models.BuildingTable + ` SET
 		external_building_id = $1, iris_code = $2, name = $3, project_name = $4,
+		project_id = $25,
 		latitude = $5, longitude = $6,
 		location = CASE
 			WHEN $5::DOUBLE PRECISION IS NOT NULL AND $6::DOUBLE PRECISION IS NOT NULL
@@ -232,6 +236,7 @@ func (repository *RepositoryBuildingImpl) UpdateFromImport(ctx context.Context, 
 		changeNullIfEmpty(building.ResourceType),
 		changeNullIfEmpty(building.LcdPresenceStatus),
 		building.Id,
+		changeNullIfZero(int64(building.ProjectId)),
 	)
 	if err != nil {
 		return models.Building{}, err

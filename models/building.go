@@ -16,6 +16,13 @@ type Building struct {
 	IrisCode            string          `json:"iris_code"`
 	Name                string          `json:"name"`
 	ProjectName         string          `json:"project_name"`
+
+	// ProjectId links the building to a building_projects row (migration 024).
+	// ProjectIdIris is the project's key, joined rather than stored: the change log
+	// and the spreadsheet both speak in codes, because "PRJ-0001 -> PRJ-0002" is
+	// readable and "7 -> 8" is not.
+	ProjectId     int    `json:"project_id"`
+	ProjectIdIris string `json:"project_id_iris"`
 	Audience            int             `json:"audience"`
 	Impression          int             `json:"impression"`
 	CbdArea             string          `json:"cbd_area"`
@@ -43,6 +50,8 @@ type Building struct {
 
 type NullAbleBuilding struct {
 	Id                  sql.NullInt64
+	ProjectId           sql.NullInt64
+	ProjectIdIris       sql.NullString
 	ExternalBuildingId  sql.NullString
 	IrisCode            sql.NullString
 	Name                sql.NullString

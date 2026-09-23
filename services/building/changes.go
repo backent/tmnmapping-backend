@@ -32,6 +32,7 @@ var trackedFields = []string{
 	"iris_code",
 	"name",
 	"project_name",
+	"project_id_iris",
 	"latitude",
 	"longitude",
 	"subdistrict",
@@ -60,6 +61,9 @@ func fieldValues(b models.Building) map[string]string {
 		"iris_code":            b.IrisCode,
 		"name":                 b.Name,
 		"project_name":         b.ProjectName,
+		// The CODE, not the id: "PRJ-0001 -> PRJ-0002" is readable in a history
+		// panel and "7 -> 8" is not.
+		"project_id_iris":      b.ProjectIdIris,
 		"latitude":             floatToLog(b.Latitude),
 		"longitude":            floatToLog(b.Longitude),
 		"subdistrict":          b.Subdistrict,

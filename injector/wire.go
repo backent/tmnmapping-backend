@@ -243,6 +243,7 @@ func InitializeBuildingService() servicesBuilding.ServiceBuildingInterface {
 		libs.NewLogger,
 		libs.ProvideERPClient,
 		repositoriesBuilding.NewRepositoryBuildingImpl,
+		repositoriesBuildingProject.NewRepositoryBuildingProjectImpl,
 		repositoriesPOI.NewRepositoryPOIImpl,
 		servicesBuilding.NewServiceBuildingImpl,
 	)

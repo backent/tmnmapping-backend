@@ -384,7 +384,7 @@ func TestTrackedFieldsAreAllWrittenByTheImporter(t *testing.T) {
 	}
 
 	for _, field := range trackedFields {
-		assert.True(t, written[field],
+		assert.True(t, written[columnFor(field)],
 			"%q is tracked in the change log but not written by UpdateFromImport: "+
 				"an upload would log a change the database never received", field)
 	}
@@ -409,7 +409,92 @@ func TestImporterWritesNothingUntracked(t *testing.T) {
 			continue
 		}
 
-		assert.True(t, tracked[column],
+		assert.True(t, tracked[fieldFor(column)],
 			"%q is written by the importer but not tracked, so a change to it is invisible", column)
 	}
+}
+
+// The change log speaks in project CODES and the table stores an id, so the two names
+// differ for exactly one field. Keeping the mapping here rather than loosening the
+// guards means a second divergence would still fail.
+var trackedFieldToColumn = map[string]string{
+	"project_id_iris": "project_id",
+}
+
+func columnFor(field string) string {
+	if column, aliased := trackedFieldToColumn[field]; aliased {
+		return column
+	}
+
+	return field
+}
+
+func fieldFor(column string) string {
+	for field, mapped := range trackedFieldToColumn {
+		if mapped == column {
+			return field
+		}
+	}
+
+	return column
+}
+
+// The project link is carried by CODE through the whole round trip, so an export can
+// be edited and re-uploaded without the building silently losing its project.
+func TestExportRoundTrip_KeepsTheProjectCode(t *testing.T) {
+	original := models.Building{
+		ExternalBuildingId: "BLDG-1", Name: "Tower 1",
+		ProjectId: 7, ProjectIdIris: "PRJ-0001",
+	}
+
+	exported := [][]interface{}{{
+		original.ExternalBuildingId, original.Name, "", original.ProjectIdIris,
+		blankIfZeroFloat(0), blankIfZeroFloat(0), "", "", "", "", "", "",
+		blankIfZero(0), "", yesNoCell(false), yesNoCell(false),
+		blankIfZero(0), blankIfZero(0), "", "", "",
+	}}
+
+	fileBytes, err := spreadsheets.BuildExport(BuildingSheetName, TemplateHeaders(), exported)
+	assert.NoError(t, err)
+
+	rows, err := spreadsheets.ParseSpreadsheet(fileBytes, "xlsx")
+	assert.NoError(t, err)
+
+	colMap := spreadsheets.MapHeaderColumns(rows[0], BuildingColumns)
+	reparsed, projectCode, errs, _ := parseRow(rows[1], colMap)
+
+	assert.Empty(t, errs)
+	assert.Equal(t, "PRJ-0001", projectCode, "the code is returned for the service to resolve")
+
+	// The service sets these after resolving; the parser does not touch them.
+	reparsed.ProjectId = original.ProjectId
+	reparsed.ProjectIdIris = projectCode
+
+	assert.Empty(t, DiffBuildings(original, reparsed, importActor, models.BuildingSourceImport, "b"))
+}
+
+// A change of project reads as codes, not ids: "PRJ-0001 -> PRJ-0002" means something
+// in a history panel and "7 -> 8" does not.
+func TestDiffBuildings_ProjectChangeReadsAsCodes(t *testing.T) {
+	before := models.Building{ExternalBuildingId: "B", Name: "N", ProjectId: 7, ProjectIdIris: "PRJ-0001"}
+	after := models.Building{ExternalBuildingId: "B", Name: "N", ProjectId: 8, ProjectIdIris: "PRJ-0002"}
+
+	changes := DiffBuildings(before, after, importActor, models.BuildingSourceImport, "b")
+
+	assert.Len(t, changes, 1)
+	assert.Equal(t, "project_id_iris", changes[0].Field)
+	assert.Equal(t, "PRJ-0001", changes[0].OldValue)
+	assert.Equal(t, "PRJ-0002", changes[0].NewValue)
+}
+
+// A blank Project ID IRIS clears the link, like every other blank cell on this import.
+func TestClearedFields_BlankProjectCodeClearsTheLink(t *testing.T) {
+	before := models.Building{ExternalBuildingId: "B", Name: "N", ProjectId: 7, ProjectIdIris: "PRJ-0001"}
+	after := models.Building{ExternalBuildingId: "B", Name: "N"}
+
+	cleared := ClearedFields(before, after)
+
+	assert.Len(t, cleared, 1)
+	assert.Equal(t, "project_id_iris", cleared[0].Field)
+	assert.Equal(t, "PRJ-0001", cleared[0].Old)
 }
