@@ -210,3 +210,41 @@ const (
 )
 
 var BuildingChangeTable string = "building_changes"
+
+// BuildingImage stored here rather than fetched from ERP.
+//
+// Separate from the BuildingImage entries in buildings.images, which are ERP file
+// paths owned by the photo sync. The serving route prefers one of these and falls
+// back to ERP, so a building keeps its ERP photo until someone replaces it.
+type HostedBuildingImage struct {
+	Id         int `json:"id"`
+	BuildingId int `json:"building_id"`
+	// front, back, left or right_side -- the same four names ERP uses, so the
+	// fallback is one-for-one.
+	Slot        string `json:"slot"`
+	Path        string `json:"path"`
+	ContentType string `json:"content_type"`
+	SizeBytes   int64  `json:"size_bytes"`
+
+	UploadedByUserId int    `json:"uploaded_by_user_id"`
+	UploadedByName   string `json:"uploaded_by_name"`
+	CreatedAt        string `json:"created_at"`
+	UpdatedAt        string `json:"updated_at"`
+}
+
+// BuildingImageSlots is the fixed set, matching migration 027's check constraint and
+// the four photos ERP supplies.
+var BuildingImageSlots = []string{"front", "back", "left", "right_side"}
+
+// IsValidBuildingImageSlot reports whether slot is one this application accepts.
+func IsValidBuildingImageSlot(slot string) bool {
+	for _, candidate := range BuildingImageSlots {
+		if candidate == slot {
+			return true
+		}
+	}
+
+	return false
+}
+
+var BuildingImageTable string = "building_images"
