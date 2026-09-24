@@ -10,6 +10,7 @@ import (
 	controllersBranch "github.com/malikabdulaziz/tmn-backend/controllers/branch"
 	controllersBrandAdv "github.com/malikabdulaziz/tmn-backend/controllers/brand"
 	controllersBuilding "github.com/malikabdulaziz/tmn-backend/controllers/building"
+	controllersBuildingImage "github.com/malikabdulaziz/tmn-backend/controllers/buildingimage"
 	controllersBuildingPrice "github.com/malikabdulaziz/tmn-backend/controllers/buildingprice"
 	controllersBuildingProject "github.com/malikabdulaziz/tmn-backend/controllers/buildingproject"
 	controllersBuildingRestriction "github.com/malikabdulaziz/tmn-backend/controllers/buildingrestriction"
@@ -32,6 +33,7 @@ import (
 	repositoriesBranch "github.com/malikabdulaziz/tmn-backend/repositories/branch"
 	repositoriesBrandAdv "github.com/malikabdulaziz/tmn-backend/repositories/brand"
 	repositoriesBuilding "github.com/malikabdulaziz/tmn-backend/repositories/building"
+	repositoriesBuildingImage "github.com/malikabdulaziz/tmn-backend/repositories/buildingimage"
 	repositoriesBuildingPrice "github.com/malikabdulaziz/tmn-backend/repositories/buildingprice"
 	repositoriesBuildingProject "github.com/malikabdulaziz/tmn-backend/repositories/buildingproject"
 	repositoriesBuildingRestriction "github.com/malikabdulaziz/tmn-backend/repositories/buildingrestriction"
@@ -141,6 +143,15 @@ var buildingPriceSet = wire.NewSet(
 	controllersBuildingPrice.NewControllerBuildingPriceImpl,
 )
 
+// Building photos this application hosts, with ERP's used as the fallback --
+// see migration 027. The service is assembled by a provider rather than listed
+// directly, because it needs the storage root and the ERP fallback wired in.
+var buildingImageSet = wire.NewSet(
+	repositoriesBuildingImage.NewRepositoryBuildingImageImpl,
+	provideBuildingImageService,
+	controllersBuildingImage.NewControllerBuildingImageImpl,
+)
+
 // Building projects: the landlord side of a building -- see migration 023.
 var buildingProjectSet = wire.NewSet(
 	repositoriesBuildingProject.NewRepositoryBuildingProjectImpl,
@@ -224,6 +235,7 @@ func InitializeRouter() *httprouter.Router {
 		quotationSet,
 		buildingPriceSet,
 		buildingProjectSet,
+		buildingImageSet,
 		poiSet,
 		salespackageSet,
 		buildingrestrictionSet,

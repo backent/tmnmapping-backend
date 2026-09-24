@@ -13,6 +13,7 @@ import (
 	branch3 "github.com/malikabdulaziz/tmn-backend/controllers/branch"
 	brand3 "github.com/malikabdulaziz/tmn-backend/controllers/brand"
 	building3 "github.com/malikabdulaziz/tmn-backend/controllers/building"
+	buildingimage2 "github.com/malikabdulaziz/tmn-backend/controllers/buildingimage"
 	buildingprice3 "github.com/malikabdulaziz/tmn-backend/controllers/buildingprice"
 	buildingproject3 "github.com/malikabdulaziz/tmn-backend/controllers/buildingproject"
 	buildingrestriction3 "github.com/malikabdulaziz/tmn-backend/controllers/buildingrestriction"
@@ -35,6 +36,7 @@ import (
 	"github.com/malikabdulaziz/tmn-backend/repositories/branch"
 	"github.com/malikabdulaziz/tmn-backend/repositories/brand"
 	"github.com/malikabdulaziz/tmn-backend/repositories/building"
+	"github.com/malikabdulaziz/tmn-backend/repositories/buildingimage"
 	"github.com/malikabdulaziz/tmn-backend/repositories/buildingprice"
 	"github.com/malikabdulaziz/tmn-backend/repositories/buildingproject"
 	"github.com/malikabdulaziz/tmn-backend/repositories/buildingrestriction"
@@ -156,7 +158,10 @@ func InitializeRouter() *httprouter.Router {
 	buildingProjectMiddleware := middlewares.NewBuildingProjectMiddleware(validate)
 	serviceBuildingProjectInterface := buildingproject2.NewServiceBuildingProjectImpl(db, repositoryBuildingProjectInterface)
 	controllerBuildingProjectInterface := buildingproject3.NewControllerBuildingProjectImpl(serviceBuildingProjectInterface)
-	router := libs.NewRouter(authMiddleware, buildingMiddleware, poiMiddleware, salesPackageMiddleware, buildingRestrictionMiddleware, savedPolygonMiddleware, loggingMiddleware, categoryMiddleware, subCategoryMiddleware, motherBrandMiddleware, branchMiddleware, userMiddleware, customerMiddleware, brandMiddleware, salesAssignmentMiddleware, rateCardMiddleware, quotationMiddleware, controllerAuthInterface, controllerBuildingInterface, controllerImageInterface, controllerPOIInterface, controllerSalesPackageInterface, controllerBuildingRestrictionInterface, controllerSavedPolygonInterface, controllerDashboardInterface, controllerCategoryInterface, controllerSubCategoryInterface, controllerMotherBrandInterface, controllerBranchInterface, controllerUserInterface, controllerCustomerInterface, controllerBrandInterface, controllerSalesAssignmentInterface, controllerRateCardInterface, controllerQuotationInterface, buildingPriceMiddleware, controllerBuildingPriceInterface, buildingProjectMiddleware, controllerBuildingProjectInterface)
+	repositoryBuildingImageInterface := buildingimage.NewRepositoryBuildingImageImpl()
+	serviceBuildingImageInterface := provideBuildingImageService(db, repositoryBuildingImageInterface, repositoryBuildingInterface)
+	controllerBuildingImageInterface := buildingimage2.NewControllerBuildingImageImpl(serviceBuildingImageInterface)
+	router := libs.NewRouter(authMiddleware, buildingMiddleware, poiMiddleware, salesPackageMiddleware, buildingRestrictionMiddleware, savedPolygonMiddleware, loggingMiddleware, categoryMiddleware, subCategoryMiddleware, motherBrandMiddleware, branchMiddleware, userMiddleware, customerMiddleware, brandMiddleware, salesAssignmentMiddleware, rateCardMiddleware, quotationMiddleware, controllerAuthInterface, controllerBuildingInterface, controllerImageInterface, controllerPOIInterface, controllerSalesPackageInterface, controllerBuildingRestrictionInterface, controllerSavedPolygonInterface, controllerDashboardInterface, controllerCategoryInterface, controllerSubCategoryInterface, controllerMotherBrandInterface, controllerBranchInterface, controllerUserInterface, controllerCustomerInterface, controllerBrandInterface, controllerSalesAssignmentInterface, controllerRateCardInterface, controllerQuotationInterface, buildingPriceMiddleware, controllerBuildingPriceInterface, buildingProjectMiddleware, controllerBuildingProjectInterface, controllerBuildingImageInterface)
 	return router
 }
 
@@ -203,6 +208,11 @@ var rateCardSet = wire.NewSet(ratecard.NewRepositoryRateCardImpl, ratecard2.NewS
 
 // Building prices: one per building, no versions -- see migration 021.
 var buildingPriceSet = wire.NewSet(buildingprice.NewRepositoryBuildingPriceImpl, buildingprice2.NewServiceBuildingPriceImpl, buildingprice3.NewControllerBuildingPriceImpl)
+
+// Building photos this application hosts, with ERP's used as the fallback --
+// see migration 027. The service is assembled by a provider rather than listed
+// directly, because it needs the storage root and the ERP fallback wired in.
+var buildingImageSet = wire.NewSet(buildingimage.NewRepositoryBuildingImageImpl, provideBuildingImageService, buildingimage2.NewControllerBuildingImageImpl)
 
 // Building projects: the landlord side of a building -- see migration 023.
 var buildingProjectSet = wire.NewSet(buildingproject.NewRepositoryBuildingProjectImpl, buildingproject2.NewServiceBuildingProjectImpl, buildingproject3.NewControllerBuildingProjectImpl)

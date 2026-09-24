@@ -8,6 +8,7 @@ import (
 	controllersBranch "github.com/malikabdulaziz/tmn-backend/controllers/branch"
 	controllersBrand "github.com/malikabdulaziz/tmn-backend/controllers/brand"
 	controllersBuilding "github.com/malikabdulaziz/tmn-backend/controllers/building"
+	controllersBuildingImage "github.com/malikabdulaziz/tmn-backend/controllers/buildingimage"
 	controllersBuildingPrice "github.com/malikabdulaziz/tmn-backend/controllers/buildingprice"
 	controllersBuildingProject "github.com/malikabdulaziz/tmn-backend/controllers/buildingproject"
 	controllersBuildingRestriction "github.com/malikabdulaziz/tmn-backend/controllers/buildingrestriction"
@@ -69,6 +70,7 @@ func NewRouter(
 	controllersBuildingPrice controllersBuildingPrice.ControllerBuildingPriceInterface,
 	buildingProjectMiddleware *middlewares.BuildingProjectMiddleware,
 	controllersBuildingProject controllersBuildingProject.ControllerBuildingProjectInterface,
+	controllersBuildingImage controllersBuildingImage.ControllerBuildingImageInterface,
 ) *httprouter.Router {
 	router := httprouter.New()
 
@@ -120,6 +122,37 @@ func NewRouter(
 		loggingMiddleware.Log(
 			authMiddleware.RequireAuth(authMiddleware.RequirePermission(models.PermissionBuildingsManage)(
 				buildingMiddleware.ValidateSave(controllersBuilding.Save)))))
+
+	// Building photos this application hosts. The ERP sync still writes the paths on
+	// the building row; these are ours, and they win when present.
+	//
+	// Serving is deliberately open to anyone who can view a building: a photo behind
+	// a stricter gate than the building it belongs to would just render as a broken
+	// image on a page they are allowed to see.
+	router.GET("/building-images/:id/:slot",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBuildingsView)(controllersBuildingImage.Serve))))
+
+	router.GET("/buildings/:id/images",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBuildingsView)(controllersBuildingImage.FindByBuilding))))
+
+	// Upload and delete sit under /building-images rather than /buildings/:id/... :
+	// POST /buildings/sync is a static segment where httprouter would need a
+	// wildcard, and the two cannot coexist. Caught by TestRouterHasNoConflictingRoutes.
+	router.POST("/building-images/:id/:slot",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBuildingsManage)(controllersBuildingImage.Upload))))
+
+	// Removes OUR photo. ERP's becomes visible again, so this is "stop overriding",
+	// not "remove the picture".
+	router.DELETE("/building-images/:id/:slot",
+		loggingMiddleware.Log(
+			authMiddleware.RequireAuth(
+				authMiddleware.RequirePermission(models.PermissionBuildingsManage)(controllersBuildingImage.Delete))))
 
 	router.POST("/buildings/sync",
 		loggingMiddleware.Log(
