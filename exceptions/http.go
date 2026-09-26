@@ -1,6 +1,7 @@
 package exceptions
 
 import (
+	"fmt"
 	"net/http"
 	"runtime/debug"
 
@@ -49,6 +50,14 @@ func RouterPanicHandler(w http.ResponseWriter, r *http.Request, i interface{}) {
 			Status: "Unauthorized",
 			Data:   err.Error,
 		}
+	} else if err, ok := i.(ForbiddenError); ok {
+		requestFields["status_code"] = http.StatusForbidden
+		logger.WithFields(requestFields).WithField("error", err.Error).Warn("Forbidden error")
+		response = web.WebResponse{
+			Code:   http.StatusForbidden,
+			Status: "FORBIDDEN",
+			Data:   err.Error,
+		}
 	} else if err, ok := i.(NotFoundError); ok {
 		requestFields["status_code"] = http.StatusNotFound
 		logger.WithFields(requestFields).WithField("error", err.Error).Warn("Not found error")
@@ -58,23 +67,38 @@ func RouterPanicHandler(w http.ResponseWriter, r *http.Request, i interface{}) {
 			Data:   err.Error,
 		}
 	} else if err, ok := i.(error); ok {
+		reference := NewErrorReference()
 		requestFields["status_code"] = http.StatusInternalServerError
+		requestFields["error_reference"] = reference
 		logger.WithFields(requestFields).WithField("error", err.Error()).Error("Internal server error")
-		response = web.WebResponse{
-			Code:   http.StatusInternalServerError,
-			Status: "INTERNAL SERVER ERROR",
-			Data:   err.Error(),
-		}
+		response = serverErrorResponse(reference, err.Error())
 	} else {
+		reference := NewErrorReference()
 		requestFields["status_code"] = http.StatusInternalServerError
+		requestFields["error_reference"] = reference
 		logger.WithFields(requestFields).WithField("panic_data", i).Error("Unknown panic occurred")
-		response = web.WebResponse{
-			Code:   http.StatusInternalServerError,
-			Status: "INTERNAL SERVER ERROR",
-			Data:   i,
-		}
+		response = serverErrorResponse(reference, fmt.Sprintf("%v", i))
 	}
 
 	helpers.ReturnReponseJSON(w, response)
 }
 
+// serverErrorResponse builds the 500 an operator sees: a sentence they can act on
+// and a reference they can quote, never the underlying error text.
+//
+// detail is the real error. It rides along under Extras only when DEBUG_ERRORS is
+// explicitly on, which is for local work; staging and production leave it unset and
+// the detail stays in the log.
+func serverErrorResponse(reference string, detail string) web.WebResponse {
+	extras := map[string]interface{}{"reference": reference}
+	if debugErrorsEnabled() {
+		extras["debug_detail"] = detail
+	}
+
+	return web.WebResponse{
+		Code:   http.StatusInternalServerError,
+		Status: "INTERNAL SERVER ERROR",
+		Data:   GenericServerMessage(reference),
+		Extras: extras,
+	}
+}

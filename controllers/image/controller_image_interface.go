@@ -9,4 +9,3 @@ import (
 type ControllerImageInterface interface {
 	ProxyImage(w http.ResponseWriter, r *http.Request, p httprouter.Params)
 }
-

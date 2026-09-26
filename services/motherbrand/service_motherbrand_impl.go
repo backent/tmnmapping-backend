@@ -17,7 +17,7 @@ import (
 )
 
 type ServiceMotherBrandImpl struct {
-	DB                               *sql.DB
+	DB                             *sql.DB
 	RepositoryMotherBrandInterface repositoriesMotherBrand.RepositoryMotherBrandInterface
 }
 
@@ -26,7 +26,7 @@ func NewServiceMotherBrandImpl(
 	repoMotherBrand repositoriesMotherBrand.RepositoryMotherBrandInterface,
 ) ServiceMotherBrandInterface {
 	return &ServiceMotherBrandImpl{
-		DB:                               db,
+		DB:                             db,
 		RepositoryMotherBrandInterface: repoMotherBrand,
 	}
 }

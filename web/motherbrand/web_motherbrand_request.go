@@ -18,11 +18,11 @@ type MotherBrandRequestFindAll struct {
 	search         string
 }
 
-func (r *MotherBrandRequestFindAll) SetSkip(skip int)                        { r.skip = skip }
-func (r *MotherBrandRequestFindAll) SetTake(take int)                        { r.take = take }
-func (r *MotherBrandRequestFindAll) GetSkip() int                            { return r.skip }
-func (r *MotherBrandRequestFindAll) GetTake() int                            { return r.take }
-func (r *MotherBrandRequestFindAll) SetOrderBy(orderBy string)               { r.orderBy = orderBy }
+func (r *MotherBrandRequestFindAll) SetSkip(skip int)          { r.skip = skip }
+func (r *MotherBrandRequestFindAll) SetTake(take int)          { r.take = take }
+func (r *MotherBrandRequestFindAll) GetSkip() int              { return r.skip }
+func (r *MotherBrandRequestFindAll) GetTake() int              { return r.take }
+func (r *MotherBrandRequestFindAll) SetOrderBy(orderBy string) { r.orderBy = orderBy }
 func (r *MotherBrandRequestFindAll) SetOrderDirection(orderDirection string) {
 	r.orderDirection = strings.ToUpper(orderDirection)
 }

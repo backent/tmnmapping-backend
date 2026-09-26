@@ -11,53 +11,77 @@ import (
 	"github.com/julienschmidt/httprouter"
 	auth3 "github.com/malikabdulaziz/tmn-backend/controllers/auth"
 	branch3 "github.com/malikabdulaziz/tmn-backend/controllers/branch"
+	brand3 "github.com/malikabdulaziz/tmn-backend/controllers/brand"
 	building3 "github.com/malikabdulaziz/tmn-backend/controllers/building"
+	buildingimage2 "github.com/malikabdulaziz/tmn-backend/controllers/buildingimage"
+	buildingprice3 "github.com/malikabdulaziz/tmn-backend/controllers/buildingprice"
+	buildingproject3 "github.com/malikabdulaziz/tmn-backend/controllers/buildingproject"
 	buildingrestriction3 "github.com/malikabdulaziz/tmn-backend/controllers/buildingrestriction"
 	category3 "github.com/malikabdulaziz/tmn-backend/controllers/category"
+	customer3 "github.com/malikabdulaziz/tmn-backend/controllers/customer"
 	dashboard3 "github.com/malikabdulaziz/tmn-backend/controllers/dashboard"
 	"github.com/malikabdulaziz/tmn-backend/controllers/image"
 	motherbrand3 "github.com/malikabdulaziz/tmn-backend/controllers/motherbrand"
 	poi3 "github.com/malikabdulaziz/tmn-backend/controllers/poi"
+	quotation3 "github.com/malikabdulaziz/tmn-backend/controllers/quotation"
+	ratecard3 "github.com/malikabdulaziz/tmn-backend/controllers/ratecard"
+	salesassignment3 "github.com/malikabdulaziz/tmn-backend/controllers/salesassignment"
 	salespackage3 "github.com/malikabdulaziz/tmn-backend/controllers/salespackage"
 	savedpolygon3 "github.com/malikabdulaziz/tmn-backend/controllers/savedpolygon"
 	subcategory3 "github.com/malikabdulaziz/tmn-backend/controllers/subcategory"
+	user3 "github.com/malikabdulaziz/tmn-backend/controllers/user"
 	"github.com/malikabdulaziz/tmn-backend/libs"
 	"github.com/malikabdulaziz/tmn-backend/middlewares"
 	"github.com/malikabdulaziz/tmn-backend/repositories/auth"
 	"github.com/malikabdulaziz/tmn-backend/repositories/branch"
+	"github.com/malikabdulaziz/tmn-backend/repositories/brand"
 	"github.com/malikabdulaziz/tmn-backend/repositories/building"
+	"github.com/malikabdulaziz/tmn-backend/repositories/buildingimage"
+	"github.com/malikabdulaziz/tmn-backend/repositories/buildingprice"
+	"github.com/malikabdulaziz/tmn-backend/repositories/buildingproject"
 	"github.com/malikabdulaziz/tmn-backend/repositories/buildingrestriction"
 	"github.com/malikabdulaziz/tmn-backend/repositories/category"
+	"github.com/malikabdulaziz/tmn-backend/repositories/customer"
 	"github.com/malikabdulaziz/tmn-backend/repositories/dashboard"
 	"github.com/malikabdulaziz/tmn-backend/repositories/motherbrand"
 	"github.com/malikabdulaziz/tmn-backend/repositories/poi"
+	"github.com/malikabdulaziz/tmn-backend/repositories/quotation"
+	"github.com/malikabdulaziz/tmn-backend/repositories/ratecard"
+	"github.com/malikabdulaziz/tmn-backend/repositories/salesassignment"
 	"github.com/malikabdulaziz/tmn-backend/repositories/salespackage"
 	"github.com/malikabdulaziz/tmn-backend/repositories/savedpolygon"
 	"github.com/malikabdulaziz/tmn-backend/repositories/subcategory"
 	"github.com/malikabdulaziz/tmn-backend/repositories/user"
-	"github.com/malikabdulaziz/tmn-backend/services/acquisition"
 	auth2 "github.com/malikabdulaziz/tmn-backend/services/auth"
 	branch2 "github.com/malikabdulaziz/tmn-backend/services/branch"
+	brand2 "github.com/malikabdulaziz/tmn-backend/services/brand"
 	building2 "github.com/malikabdulaziz/tmn-backend/services/building"
-	"github.com/malikabdulaziz/tmn-backend/services/buildingproposal"
+	buildingprice2 "github.com/malikabdulaziz/tmn-backend/services/buildingprice"
+	buildingproject2 "github.com/malikabdulaziz/tmn-backend/services/buildingproject"
 	buildingrestriction2 "github.com/malikabdulaziz/tmn-backend/services/buildingrestriction"
 	category2 "github.com/malikabdulaziz/tmn-backend/services/category"
+	customer2 "github.com/malikabdulaziz/tmn-backend/services/customer"
 	dashboard2 "github.com/malikabdulaziz/tmn-backend/services/dashboard"
 	"github.com/malikabdulaziz/tmn-backend/services/loi"
 	motherbrand2 "github.com/malikabdulaziz/tmn-backend/services/motherbrand"
 	poi2 "github.com/malikabdulaziz/tmn-backend/services/poi"
+	quotation2 "github.com/malikabdulaziz/tmn-backend/services/quotation"
+	ratecard2 "github.com/malikabdulaziz/tmn-backend/services/ratecard"
+	salesassignment2 "github.com/malikabdulaziz/tmn-backend/services/salesassignment"
 	salespackage2 "github.com/malikabdulaziz/tmn-backend/services/salespackage"
 	savedpolygon2 "github.com/malikabdulaziz/tmn-backend/services/savedpolygon"
 	subcategory2 "github.com/malikabdulaziz/tmn-backend/services/subcategory"
+	user2 "github.com/malikabdulaziz/tmn-backend/services/user"
 )
 
 // Injectors from wire.go:
 
 func InitializeRouter() *httprouter.Router {
 	validate := libs.NewValidator()
-	repositoryAuthInterface := auth.NewRepositoryAuthJWTImpl()
-	authMiddleware := middlewares.NewAuthMiddleware(validate, repositoryAuthInterface)
 	db := libs.NewDatabase()
+	repositoryAuthInterface := auth.NewRepositoryAuthJWTImpl()
+	repositoryUserInterface := user.NewRepositoryUserImpl()
+	authMiddleware := middlewares.NewAuthMiddleware(validate, db, repositoryAuthInterface, repositoryUserInterface)
 	repositoryBuildingInterface := building.NewRepositoryBuildingImpl()
 	buildingMiddleware := middlewares.NewBuildingMiddleware(validate, db, repositoryBuildingInterface)
 	repositoryPOIInterface := poi.NewRepositoryPOIImpl()
@@ -77,12 +101,23 @@ func InitializeRouter() *httprouter.Router {
 	motherBrandMiddleware := middlewares.NewMotherBrandMiddleware(validate, db, repositoryMotherBrandInterface)
 	repositoryBranchInterface := branch.NewRepositoryBranchImpl()
 	branchMiddleware := middlewares.NewBranchMiddleware(validate, db, repositoryBranchInterface)
-	repositoryUserInterface := user.NewRepositoryUserImpl()
+	userMiddleware := middlewares.NewUserMiddleware(validate, db, repositoryUserInterface)
+	repositoryCustomerInterface := customer.NewRepositoryCustomerImpl()
+	customerMiddleware := middlewares.NewCustomerMiddleware(validate, db, repositoryCustomerInterface)
+	repositoryBrandInterface := brand.NewRepositoryBrandImpl()
+	brandMiddleware := middlewares.NewBrandMiddleware(validate, db, repositoryBrandInterface)
+	repositorySalesAssignmentInterface := salesassignment.NewRepositorySalesAssignmentImpl()
+	salesAssignmentMiddleware := middlewares.NewSalesAssignmentMiddleware(validate, db, repositorySalesAssignmentInterface)
+	repositoryRateCardInterface := ratecard.NewRepositoryRateCardImpl()
+	rateCardMiddleware := middlewares.NewRateCardMiddleware(validate, db, repositoryRateCardInterface)
+	repositoryQuotationInterface := quotation.NewRepositoryQuotationImpl()
+	quotationMiddleware := middlewares.NewQuotationMiddleware(validate, db, repositoryQuotationInterface)
 	serviceAuthInterface := auth2.NewServiceAuthImpl(db, repositoryAuthInterface, repositoryUserInterface)
 	controllerAuthInterface := auth3.NewControllerAuthImpl(db, serviceAuthInterface, repositoryUserInterface)
+	repositoryBuildingProjectInterface := buildingproject.NewRepositoryBuildingProjectImpl()
 	erpClient := libs.ProvideERPClient()
 	logger := libs.NewLogger()
-	serviceBuildingInterface := building2.NewServiceBuildingImpl(db, repositoryBuildingInterface, repositoryPOIInterface, erpClient, logger)
+	serviceBuildingInterface := building2.NewServiceBuildingImpl(db, repositoryBuildingInterface, repositoryBuildingProjectInterface, repositoryPOIInterface, erpClient, logger)
 	controllerBuildingInterface := building3.NewControllerBuildingImpl(serviceBuildingInterface)
 	controllerImageInterface := image.NewControllerImageImpl()
 	servicePOIInterface := poi2.NewServicePOIImpl(db, repositoryPOIInterface, repositoryCategoryInterface, repositorySubCategoryInterface, repositoryMotherBrandInterface, repositoryBranchInterface)
@@ -104,34 +139,41 @@ func InitializeRouter() *httprouter.Router {
 	controllerMotherBrandInterface := motherbrand3.NewControllerMotherBrandImpl(serviceMotherBrandInterface)
 	serviceBranchInterface := branch2.NewServiceBranchImpl(db, repositoryBranchInterface)
 	controllerBranchInterface := branch3.NewControllerBranchImpl(serviceBranchInterface)
-	router := libs.NewRouter(authMiddleware, buildingMiddleware, poiMiddleware, salesPackageMiddleware, buildingRestrictionMiddleware, savedPolygonMiddleware, loggingMiddleware, categoryMiddleware, subCategoryMiddleware, motherBrandMiddleware, branchMiddleware, controllerAuthInterface, controllerBuildingInterface, controllerImageInterface, controllerPOIInterface, controllerSalesPackageInterface, controllerBuildingRestrictionInterface, controllerSavedPolygonInterface, controllerDashboardInterface, controllerCategoryInterface, controllerSubCategoryInterface, controllerMotherBrandInterface, controllerBranchInterface)
+	serviceUserInterface := user2.NewServiceUserImpl(db, repositoryUserInterface, repositorySalesAssignmentInterface)
+	controllerUserInterface := user3.NewControllerUserImpl(serviceUserInterface)
+	serviceCustomerInterface := customer2.NewServiceCustomerImpl(db, repositoryCustomerInterface)
+	controllerCustomerInterface := customer3.NewControllerCustomerImpl(serviceCustomerInterface)
+	serviceBrandInterface := brand2.NewServiceBrandImpl(db, repositoryBrandInterface, repositoryCustomerInterface)
+	controllerBrandInterface := brand3.NewControllerBrandImpl(serviceBrandInterface)
+	serviceSalesAssignmentInterface := salesassignment2.NewServiceSalesAssignmentImpl(db, repositorySalesAssignmentInterface, repositoryCustomerInterface, repositoryBrandInterface, repositoryUserInterface)
+	controllerSalesAssignmentInterface := salesassignment3.NewControllerSalesAssignmentImpl(serviceSalesAssignmentInterface)
+	serviceRateCardInterface := ratecard2.NewServiceRateCardImpl(db, repositoryRateCardInterface, repositoryBuildingInterface, repositorySalesPackageInterface)
+	controllerRateCardInterface := ratecard3.NewControllerRateCardImpl(serviceRateCardInterface)
+	repositoryBuildingPriceInterface := buildingprice.NewRepositoryBuildingPriceImpl()
+	serviceQuotationInterface := quotation2.NewServiceQuotationImpl(db, repositoryQuotationInterface, repositoryBuildingPriceInterface, repositoryBuildingInterface, repositoryCustomerInterface, repositoryBrandInterface, repositoryUserInterface, repositorySalesAssignmentInterface, repositorySalesPackageInterface)
+	controllerQuotationInterface := quotation3.NewControllerQuotationImpl(serviceQuotationInterface)
+	buildingPriceMiddleware := middlewares.NewBuildingPriceMiddleware(validate)
+	serviceBuildingPriceInterface := buildingprice2.NewServiceBuildingPriceImpl(db, repositoryBuildingPriceInterface, repositoryBuildingInterface)
+	controllerBuildingPriceInterface := buildingprice3.NewControllerBuildingPriceImpl(serviceBuildingPriceInterface)
+	buildingProjectMiddleware := middlewares.NewBuildingProjectMiddleware(validate)
+	serviceBuildingProjectInterface := buildingproject2.NewServiceBuildingProjectImpl(db, repositoryBuildingProjectInterface)
+	controllerBuildingProjectInterface := buildingproject3.NewControllerBuildingProjectImpl(serviceBuildingProjectInterface)
+	repositoryBuildingImageInterface := buildingimage.NewRepositoryBuildingImageImpl()
+	serviceBuildingImageInterface := provideBuildingImageService(db, repositoryBuildingImageInterface, repositoryBuildingInterface)
+	controllerBuildingImageInterface := buildingimage2.NewControllerBuildingImageImpl(serviceBuildingImageInterface)
+	router := libs.NewRouter(authMiddleware, buildingMiddleware, poiMiddleware, salesPackageMiddleware, buildingRestrictionMiddleware, savedPolygonMiddleware, loggingMiddleware, categoryMiddleware, subCategoryMiddleware, motherBrandMiddleware, branchMiddleware, userMiddleware, customerMiddleware, brandMiddleware, salesAssignmentMiddleware, rateCardMiddleware, quotationMiddleware, controllerAuthInterface, controllerBuildingInterface, controllerImageInterface, controllerPOIInterface, controllerSalesPackageInterface, controllerBuildingRestrictionInterface, controllerSavedPolygonInterface, controllerDashboardInterface, controllerCategoryInterface, controllerSubCategoryInterface, controllerMotherBrandInterface, controllerBranchInterface, controllerUserInterface, controllerCustomerInterface, controllerBrandInterface, controllerSalesAssignmentInterface, controllerRateCardInterface, controllerQuotationInterface, buildingPriceMiddleware, controllerBuildingPriceInterface, buildingProjectMiddleware, controllerBuildingProjectInterface, controllerBuildingImageInterface)
 	return router
 }
 
 func InitializeBuildingService() building2.ServiceBuildingInterface {
 	db := libs.NewDatabase()
 	repositoryBuildingInterface := building.NewRepositoryBuildingImpl()
+	repositoryBuildingProjectInterface := buildingproject.NewRepositoryBuildingProjectImpl()
 	repositoryPOIInterface := poi.NewRepositoryPOIImpl()
 	erpClient := libs.ProvideERPClient()
 	logger := libs.NewLogger()
-	serviceBuildingInterface := building2.NewServiceBuildingImpl(db, repositoryBuildingInterface, repositoryPOIInterface, erpClient, logger)
+	serviceBuildingInterface := building2.NewServiceBuildingImpl(db, repositoryBuildingInterface, repositoryBuildingProjectInterface, repositoryPOIInterface, erpClient, logger)
 	return serviceBuildingInterface
-}
-
-func InitializeAcquisitionService() acquisition.ServiceAcquisitionInterface {
-	db := libs.NewDatabase()
-	erpClient := libs.ProvideERPClient()
-	logger := libs.NewLogger()
-	serviceAcquisitionInterface := acquisition.NewServiceAcquisitionImpl(db, erpClient, logger)
-	return serviceAcquisitionInterface
-}
-
-func InitializeBuildingProposalService() buildingproposal.ServiceBuildingProposalInterface {
-	db := libs.NewDatabase()
-	erpClient := libs.ProvideERPClient()
-	logger := libs.NewLogger()
-	serviceBuildingProposalInterface := buildingproposal.NewServiceBuildingProposalImpl(db, erpClient, logger)
-	return serviceBuildingProposalInterface
 }
 
 func InitializeLOIService() loi.ServiceLOIInterface {
@@ -158,6 +200,25 @@ var motherBrandSet = wire.NewSet(motherbrand.NewRepositoryMotherBrandImpl, mothe
 
 var branchSet = wire.NewSet(branch.NewRepositoryBranchImpl, branch2.NewServiceBranchImpl, branch3.NewControllerBranchImpl)
 
+var advertiserSet = wire.NewSet(customer.NewRepositoryCustomerImpl, brand.NewRepositoryBrandImpl, salesassignment.NewRepositorySalesAssignmentImpl, customer2.NewServiceCustomerImpl, brand2.NewServiceBrandImpl, salesassignment2.NewServiceSalesAssignmentImpl, customer3.NewControllerCustomerImpl, brand3.NewControllerBrandImpl, salesassignment3.NewControllerSalesAssignmentImpl)
+
+var quotationSet = wire.NewSet(quotation.NewRepositoryQuotationImpl, quotation2.NewServiceQuotationImpl, quotation3.NewControllerQuotationImpl)
+
+var rateCardSet = wire.NewSet(ratecard.NewRepositoryRateCardImpl, ratecard2.NewServiceRateCardImpl, ratecard3.NewControllerRateCardImpl)
+
+// Building prices: one per building, no versions -- see migration 021.
+var buildingPriceSet = wire.NewSet(buildingprice.NewRepositoryBuildingPriceImpl, buildingprice2.NewServiceBuildingPriceImpl, buildingprice3.NewControllerBuildingPriceImpl)
+
+// Building photos this application hosts, with ERP's used as the fallback --
+// see migration 027. The service is assembled by a provider rather than listed
+// directly, because it needs the storage root and the ERP fallback wired in.
+var buildingImageSet = wire.NewSet(buildingimage.NewRepositoryBuildingImageImpl, provideBuildingImageService, buildingimage2.NewControllerBuildingImageImpl)
+
+// Building projects: the landlord side of a building -- see migration 023.
+var buildingProjectSet = wire.NewSet(buildingproject.NewRepositoryBuildingProjectImpl, buildingproject2.NewServiceBuildingProjectImpl, buildingproject3.NewControllerBuildingProjectImpl)
+
+var userSet = wire.NewSet(user2.NewServiceUserImpl, user3.NewControllerUserImpl)
+
 var poiSet = wire.NewSet(poi.NewRepositoryPOIImpl, poi2.NewServicePOIImpl, poi3.NewControllerPOIImpl)
 
 var salespackageSet = wire.NewSet(salespackage.NewRepositorySalesPackageImpl, salespackage2.NewServiceSalesPackageImpl, salespackage3.NewControllerSalesPackageImpl)
@@ -168,4 +229,4 @@ var savedpolygonSet = wire.NewSet(savedpolygon.NewRepositorySavedPolygonImpl, sa
 
 var dashboardSet = wire.NewSet(dashboard.NewRepositoryDashboardImpl, dashboard2.NewServiceDashboardImpl, dashboard3.NewControllerDashboardImpl)
 
-var middlewareSet = wire.NewSet(middlewares.NewAuthMiddleware, middlewares.NewBuildingMiddleware, middlewares.NewPOIMiddleware, middlewares.NewSalesPackageMiddleware, middlewares.NewBuildingRestrictionMiddleware, middlewares.NewSavedPolygonMiddleware, middlewares.NewLoggingMiddleware, middlewares.NewCategoryMiddleware, middlewares.NewSubCategoryMiddleware, middlewares.NewMotherBrandMiddleware, middlewares.NewBranchMiddleware)
+var middlewareSet = wire.NewSet(middlewares.NewAuthMiddleware, middlewares.NewBuildingMiddleware, middlewares.NewPOIMiddleware, middlewares.NewSalesPackageMiddleware, middlewares.NewBuildingRestrictionMiddleware, middlewares.NewSavedPolygonMiddleware, middlewares.NewLoggingMiddleware, middlewares.NewCategoryMiddleware, middlewares.NewSubCategoryMiddleware, middlewares.NewMotherBrandMiddleware, middlewares.NewBranchMiddleware, middlewares.NewUserMiddleware, middlewares.NewCustomerMiddleware, middlewares.NewBrandMiddleware, middlewares.NewSalesAssignmentMiddleware, middlewares.NewRateCardMiddleware, middlewares.NewQuotationMiddleware, middlewares.NewBuildingPriceMiddleware, middlewares.NewBuildingProjectMiddleware)

@@ -1,0 +1,202 @@
+package models
+
+import "sort"
+
+// Permission keys.
+//
+// This file is the single place that decides who may do what. Adding a feature
+// means adding keys here and listing the roles that hold them — the role
+// vocabulary and the route definitions stay untouched.
+//
+// Naming: "<area>.view" reads, "<area>.manage" writes.
+const (
+	PermissionDashboardView = "dashboard.view"
+
+	PermissionBuildingsView   = "buildings.view"
+	PermissionBuildingsManage = "buildings.manage"
+
+	PermissionMappingView = "mapping.view"
+
+	PermissionPOIsView   = "pois.view"
+	PermissionPOIsManage = "pois.manage"
+
+	PermissionSalesPackagesView   = "sales-packages.view"
+	PermissionSalesPackagesManage = "sales-packages.manage"
+
+	PermissionBuildingRestrictionsView   = "building-restrictions.view"
+	PermissionBuildingRestrictionsManage = "building-restrictions.manage"
+
+	PermissionSavedPolygonsView   = "saved-polygons.view"
+	PermissionSavedPolygonsManage = "saved-polygons.manage"
+
+	PermissionMasterDataView   = "master-data.view"
+	PermissionMasterDataManage = "master-data.manage"
+
+	PermissionUsersView   = "users.view"
+	PermissionUsersManage = "users.manage"
+
+	// Phase 1 advertiser master data. Sales need to read customers and brands to
+	// raise a quotation; only admin maintains them.
+	PermissionCustomersView   = "customers.view"
+	PermissionCustomersManage = "customers.manage"
+
+	PermissionBrandsView   = "brands.view"
+	PermissionBrandsManage = "brands.manage"
+
+	PermissionSalesAssignmentsView   = "sales-assignments.view"
+	PermissionSalesAssignmentsManage = "sales-assignments.manage"
+
+	// The rate card. Everyone reads it -- a quotation cannot be priced otherwise --
+	// but only admin edits a draft, and publishing is its own permission because it
+	// changes what every future quotation is priced against.
+	PermissionRateCardsView    = "rate-cards.view"
+	PermissionRateCardsManage  = "rate-cards.manage"
+	PermissionRateCardsPublish = "rate-cards.publish"
+
+	// Building prices: what one week on one building costs. Everyone reads them --
+	// a quotation cannot be priced otherwise -- only admin edits. One price per
+	// building, no versions and no publish step; see migration 021.
+	PermissionBuildingPricesView   = "building-prices.view"
+	PermissionBuildingPricesManage = "building-prices.manage"
+
+	// Building projects: the landlord side of a building. Reads are open like the
+	// other master data, writes are admin, but the contract money is its own
+	// permission -- see the .finance note below.
+	PermissionBuildingProjectsView   = "building-projects.view"
+	PermissionBuildingProjectsManage = "building-projects.manage"
+
+	// What TMN PAYS the landlord, as opposed to what an advertiser pays TMN. Every
+	// other figure in this application is revenue; this is cost, and it sits in the
+	// same row as the name and status that everyone needs to read. Splitting it out
+	// is the only way to let sales see a project without seeing its rental.
+	PermissionBuildingProjectsFinance = "building-projects.finance"
+
+	// Quotations. Reading and writing are open to every role because the service
+	// scopes them per user: a salesperson only ever sees their own pipeline, and an
+	// approver only their queue. Restricting the endpoint by role instead would
+	// stop approvers reading the quotations they must decide on.
+	PermissionQuotationsView   = "quotations.view"
+	PermissionQuotationsManage = "quotations.manage"
+
+	// Acting on an approval is separate: only the three approver roles may.
+	PermissionQuotationsApprove = "quotations.approve"
+
+	// Navigation-only permissions. No route enforces these; they decide which
+	// sections the frontend shows. They live here so that the whole policy is
+	// readable in one file, and so the frontend does not need a second copy of it.
+	//
+	// They exist because some screens are administration tooling even though the
+	// data behind them is readable by everyone: the mapping page loads categories,
+	// mother brands and restrictions for every role, so the reads must stay open
+	// while the management screens stay hidden.
+	PermissionMasterDataScreen           = "master-data.screen"
+	PermissionBuildingRestrictionsScreen = "building-restrictions.screen"
+	PermissionAdvertiserScreen           = "advertiser.screen"
+)
+
+// Permissions maps each permission to the roles that hold it.
+//
+// Every authenticated role can read; only admin can write. The two deliberate
+// exceptions are documented inline.
+var Permissions = map[string][]string{
+	PermissionDashboardView: Roles,
+
+	PermissionBuildingsView:   Roles,
+	PermissionBuildingsManage: {RoleAdmin},
+
+	PermissionMappingView: Roles,
+
+	PermissionPOIsView:   Roles,
+	PermissionPOIsManage: {RoleAdmin},
+
+	PermissionSalesPackagesView:   Roles,
+	PermissionSalesPackagesManage: {RoleAdmin},
+
+	PermissionBuildingRestrictionsView:   Roles,
+	PermissionBuildingRestrictionsManage: {RoleAdmin},
+
+	// Saved polygons are a working tool on the map, not master data, and the table
+	// is not user-scoped. Restricting writes would break the mapping page for
+	// every non-admin.
+	PermissionSavedPolygonsView:   Roles,
+	PermissionSavedPolygonsManage: Roles,
+
+	PermissionMasterDataView:   Roles,
+	PermissionMasterDataManage: {RoleAdmin},
+
+	// Unlike the other list screens, /users has no mapping-page dependency forcing
+	// its reads open, so it is admin-only end to end.
+	PermissionUsersView:   {RoleAdmin},
+	PermissionUsersManage: {RoleAdmin},
+
+	PermissionCustomersView:   Roles,
+	PermissionCustomersManage: {RoleAdmin},
+
+	PermissionBrandsView:   Roles,
+	PermissionBrandsManage: {RoleAdmin},
+
+	PermissionSalesAssignmentsView:   Roles,
+	PermissionSalesAssignmentsManage: {RoleAdmin},
+
+	PermissionRateCardsView:    Roles,
+	PermissionRateCardsManage:  {RoleAdmin},
+	PermissionRateCardsPublish: {RoleAdmin},
+
+	PermissionBuildingPricesView:   Roles,
+	PermissionBuildingPricesManage: {RoleAdmin},
+
+	PermissionBuildingProjectsView:   Roles,
+	PermissionBuildingProjectsManage: {RoleAdmin},
+
+	// Landlord contract values follow the finance hierarchy, not the sales one:
+	// business control owns cost, and the CEO sees everything. head_of_sales is
+	// deliberately absent -- revisit if margin per building becomes a sales tool.
+	PermissionBuildingProjectsFinance: {RoleAdmin, RoleHeadOfBusinessControl, RoleCEO},
+
+	PermissionQuotationsView:   Roles,
+	PermissionQuotationsManage: Roles,
+
+	// admin is deliberately absent: approval authority follows the sales
+	// hierarchy, not system administration.
+	PermissionQuotationsApprove: {RoleHeadOfSales, RoleHeadOfBusinessControl, RoleCEO},
+
+	PermissionMasterDataScreen:           {RoleAdmin},
+	PermissionBuildingRestrictionsScreen: {RoleAdmin},
+	PermissionAdvertiserScreen:           {RoleAdmin},
+}
+
+// RoleCan reports whether role holds permission.
+// An empty role, or an unknown permission, holds nothing.
+func RoleCan(role string, permission string) bool {
+	allowed, ok := Permissions[permission]
+	if !ok {
+		return false
+	}
+
+	return HasRole(role, allowed...)
+}
+
+// IsValidPermission reports whether permission is one this application defines.
+// RequirePermission uses it to fail at startup on a typo rather than silently
+// rejecting every request to that route.
+func IsValidPermission(permission string) bool {
+	_, ok := Permissions[permission]
+
+	return ok
+}
+
+// PermissionsForRole lists everything role holds, sorted for a stable API response.
+// The frontend uses this instead of keeping its own copy of the policy.
+func PermissionsForRole(role string) []string {
+	held := make([]string, 0, len(Permissions))
+
+	for permission, allowed := range Permissions {
+		if HasRole(role, allowed...) {
+			held = append(held, permission)
+		}
+	}
+
+	sort.Strings(held)
+
+	return held
+}

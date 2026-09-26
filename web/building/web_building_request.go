@@ -15,24 +15,66 @@ type UpdateBuildingRequest struct {
 	ResourceType string `json:"resource_type"`
 }
 
+// SaveBuildingRequest is the form payload for both create and update.
+//
+// One struct for both, because the form REPLACES the record: every column it owns is
+// sent and a blank clears it -- the same rule the spreadsheet import follows, so the
+// two ways of editing a building cannot mean different things by an empty field.
+//
+// It covers exactly the columns the spreadsheet owns. Photos are absent because the
+// ERP sync still writes them, and lcd_presence_status and location are absent because
+// both are derived -- one from status and the competitor flags, the other from the
+// coordinates.
+type SaveBuildingRequest struct {
+	ExternalBuildingId string `json:"external_building_id" validate:"required,max=100"`
+	Name               string `json:"name" validate:"required,max=255"`
+	IrisCode           string `json:"iris_code" validate:"omitempty,max=100"`
+
+	// The project's code, not its id. Resolved to a project, and an unknown code
+	// raises an empty one rather than rejecting the save -- as the import does.
+	ProjectIdIris string `json:"project_id_iris" validate:"omitempty,max=100"`
+
+	Latitude    float64 `json:"latitude" validate:"omitempty,gte=-90,lte=90"`
+	Longitude   float64 `json:"longitude" validate:"omitempty,gte=-180,lte=180"`
+	Subdistrict string  `json:"subdistrict" validate:"omitempty,max=255"`
+	Citytown    string  `json:"citytown" validate:"omitempty,max=255"`
+	Province    string  `json:"province" validate:"omitempty,max=255"`
+	CbdArea     string  `json:"cbd_area" validate:"omitempty,max=255"`
+
+	BuildingType   string `json:"building_type" validate:"omitempty,max=255"`
+	GradeResource  string `json:"grade_resource" validate:"omitempty,max=255"`
+	CompletionYear int    `json:"completion_year" validate:"omitempty,gte=0"`
+
+	BuildingStatus      string `json:"building_status" validate:"omitempty,max=255"`
+	CompetitorPresence  bool   `json:"competitor_presence"`
+	CompetitorExclusive bool   `json:"competitor_exclusive"`
+
+	Audience   int `json:"audience" validate:"omitempty,gte=0"`
+	Impression int `json:"impression" validate:"omitempty,gte=0"`
+
+	Sellable     string `json:"sellable" validate:"omitempty,oneof=sell not_sell"`
+	Connectivity string `json:"connectivity" validate:"omitempty,oneof=online manual not_yet_checked"`
+	ResourceType string `json:"resource_type" validate:"omitempty,max=255"`
+}
+
 type BuildingRequestFindAll struct {
-	take              int
-	skip              int
-	orderBy           string
-	orderDirection    string
-	search            string
-	buildingStatus    string
-	sellable          string
-	connectivity      string
-	resourceType      string
+	take               int
+	skip               int
+	orderBy            string
+	orderDirection     string
+	search             string
+	buildingStatus     string
+	sellable           string
+	connectivity       string
+	resourceType       string
 	competitorLocation *bool
-	cbdArea           string
-	subdistrict       string
-	citytown        string
-	province        string
-	gradeResource   string
-	buildingType    string
-	excludeIds      string
+	cbdArea            string
+	subdistrict        string
+	citytown           string
+	province           string
+	gradeResource      string
+	buildingType       string
+	excludeIds         string
 }
 
 func (r *BuildingRequestFindAll) SetSkip(skip int) {
@@ -196,21 +238,21 @@ type ExportMappingByFilterRequest struct {
 
 // ExportMappingFilters mirrors frontend MappingFilters for export
 type ExportMappingFilters struct {
-	DistrictSubdistrict   []string `json:"district_subdistrict"`
-	BuildingType          []string `json:"building_type"`
-	BuildingGrade         []string `json:"building_grade"`
-	Progress              []string `json:"progress"`
-	LcdPresence           []string `json:"lcd_presence"`
-	Sellable              []string `json:"sellable"`
-	Connectivity          []string `json:"connectivity"`
-	Year                  [2]int   `json:"year"` // [min, max]
-	SalesPackageIds       []int    `json:"sales_package_ids"`
-	BuildingRestrictionIds []int   `json:"building_restriction_ids"`
-	Lat                   *float64 `json:"lat"`
-	Lng                   *float64 `json:"lng"`
-	Radius                *float64 `json:"radius"` // km; backend expects meters
-	PoiIDs                []int    `json:"poi_ids"` // POI category ids; multi-select (matches frontend MappingFilters.poi_ids)
-	Polygon []struct {
+	DistrictSubdistrict    []string `json:"district_subdistrict"`
+	BuildingType           []string `json:"building_type"`
+	BuildingGrade          []string `json:"building_grade"`
+	Progress               []string `json:"progress"`
+	LcdPresence            []string `json:"lcd_presence"`
+	Sellable               []string `json:"sellable"`
+	Connectivity           []string `json:"connectivity"`
+	Year                   [2]int   `json:"year"` // [min, max]
+	SalesPackageIds        []int    `json:"sales_package_ids"`
+	BuildingRestrictionIds []int    `json:"building_restriction_ids"`
+	Lat                    *float64 `json:"lat"`
+	Lng                    *float64 `json:"lng"`
+	Radius                 *float64 `json:"radius"`  // km; backend expects meters
+	PoiIDs                 []int    `json:"poi_ids"` // POI category ids; multi-select (matches frontend MappingFilters.poi_ids)
+	Polygon                []struct {
 		Lat float64 `json:"lat"`
 		Lng float64 `json:"lng"`
 	} `json:"polygon"`
@@ -325,4 +367,3 @@ func intSliceToComma(ids []int) string {
 
 var _ web.RequestPagination = (*BuildingRequestFindAll)(nil)
 var _ web.RequestOrder = (*BuildingRequestFindAll)(nil)
-

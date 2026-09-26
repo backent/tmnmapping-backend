@@ -13,6 +13,9 @@ type BuildingResponse struct {
 	IrisCode            string                  `json:"iris_code"`
 	Name                string                  `json:"name"`
 	ProjectName         string                  `json:"project_name"`
+	ProjectId           int                     `json:"project_id"`
+	ProjectIdIris       string                  `json:"project_id_iris"`
+	ProjectDisplayName  string                  `json:"project_display_name"`
 	Audience            int                     `json:"audience"`
 	Impression          int                     `json:"impression"`
 	CbdArea             string                  `json:"cbd_area"`
@@ -54,6 +57,9 @@ func BuildingModelToBuildingResponse(building models.Building) BuildingResponse 
 		IrisCode:            building.IrisCode,
 		Name:                building.Name,
 		ProjectName:         building.ProjectName,
+		ProjectId:           building.ProjectId,
+		ProjectIdIris:       building.ProjectIdIris,
+		ProjectDisplayName:  building.ProjectDisplayName,
 		Audience:            building.Audience,
 		Impression:          building.Impression,
 		CbdArea:             building.CbdArea,

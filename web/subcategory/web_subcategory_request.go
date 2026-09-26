@@ -18,11 +18,11 @@ type SubCategoryRequestFindAll struct {
 	search         string
 }
 
-func (r *SubCategoryRequestFindAll) SetSkip(skip int)                        { r.skip = skip }
-func (r *SubCategoryRequestFindAll) SetTake(take int)                        { r.take = take }
-func (r *SubCategoryRequestFindAll) GetSkip() int                            { return r.skip }
-func (r *SubCategoryRequestFindAll) GetTake() int                            { return r.take }
-func (r *SubCategoryRequestFindAll) SetOrderBy(orderBy string)               { r.orderBy = orderBy }
+func (r *SubCategoryRequestFindAll) SetSkip(skip int)          { r.skip = skip }
+func (r *SubCategoryRequestFindAll) SetTake(take int)          { r.take = take }
+func (r *SubCategoryRequestFindAll) GetSkip() int              { return r.skip }
+func (r *SubCategoryRequestFindAll) GetTake() int              { return r.take }
+func (r *SubCategoryRequestFindAll) SetOrderBy(orderBy string) { r.orderBy = orderBy }
 func (r *SubCategoryRequestFindAll) SetOrderDirection(orderDirection string) {
 	r.orderDirection = strings.ToUpper(orderDirection)
 }

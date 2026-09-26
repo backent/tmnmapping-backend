@@ -9,4 +9,3 @@ import (
 type ServiceAuthInterface interface {
 	Login(ctx context.Context, username, password, ipAddress string, remember bool) (webAuth.LoginResponse, string, int)
 }
-
