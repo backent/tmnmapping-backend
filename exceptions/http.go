@@ -26,12 +26,14 @@ func RouterPanicHandler(w http.ResponseWriter, r *http.Request, i interface{}) {
 	}
 
 	if err, ok := i.(validator.ValidationErrors); ok {
+		message, fields := ValidationMessage(err)
 		requestFields["status_code"] = http.StatusBadRequest
 		logger.WithFields(requestFields).WithField("error", err.Error()).Warn("Validation error")
 		response = web.WebResponse{
 			Code:   http.StatusBadRequest,
 			Status: "BAD REQUEST",
-			Data:   err.Error(),
+			Data:   message,
+			Extras: map[string]interface{}{"fields": fields},
 		}
 	} else if err, ok := i.(BadRequestError); ok {
 		requestFields["status_code"] = http.StatusBadRequest
