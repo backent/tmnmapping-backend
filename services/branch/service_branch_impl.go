@@ -17,7 +17,7 @@ import (
 )
 
 type ServiceBranchImpl struct {
-	DB                          *sql.DB
+	DB                        *sql.DB
 	RepositoryBranchInterface repositoriesBranch.RepositoryBranchInterface
 }
 
@@ -26,7 +26,7 @@ func NewServiceBranchImpl(
 	repoBranch repositoriesBranch.RepositoryBranchInterface,
 ) ServiceBranchInterface {
 	return &ServiceBranchImpl{
-		DB:                          db,
+		DB:                        db,
 		RepositoryBranchInterface: repoBranch,
 	}
 }

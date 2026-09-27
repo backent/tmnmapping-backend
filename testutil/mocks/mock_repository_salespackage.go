@@ -8,7 +8,8 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// MockRepositorySalesPackage implements repositories/salespackage.RepositorySalesPackageInterface
+// MockRepositorySalesPackage implements
+// repositories/salespackage.RepositorySalesPackageInterface
 type MockRepositorySalesPackage struct {
 	mock.Mock
 }

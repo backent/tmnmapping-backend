@@ -18,4 +18,3 @@ func ProvideERPClient() *erp.ERPClient {
 
 	return erp.NewERPClient(baseURL, apiKey, apiSecret)
 }
-

@@ -62,4 +62,3 @@ func (implementation *RepositoryAuthJWTImpl) Validate(tokenString string) (int, 
 		return 0, false
 	}
 }
-

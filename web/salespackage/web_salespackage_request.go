@@ -5,13 +5,39 @@ import (
 )
 
 type CreateSalesPackageRequest struct {
+	PackageCode string `json:"package_code" validate:"required,max=50"`
 	Name        string `json:"name" validate:"required"`
-	BuildingIds []int  `json:"building_ids" validate:"required,min=1"`
+	Description string `json:"description" validate:"omitempty,max=1000"`
+	Status      string `json:"status" validate:"required,oneof=active inactive"`
+
+	// Set independently rather than summed from the member buildings: a package is
+	// a priced resource in its own right. See docs/QUOTATION_DOCUMENT_ANALYSIS.md §4.1.
+	ScreenCount int `json:"screen_count" validate:"gte=0"`
+	Traffic     int `json:"traffic" validate:"gte=0"`
+	Impressions int `json:"impressions" validate:"gte=0"`
+
+	// What the advertiser pays for one week of the whole package. Zero means
+	// "not priced yet"; the quotation service refuses to quote it.
+	PriceIdrPerWeek int64 `json:"price_idr_per_week" validate:"gte=0"`
+	BuildingIds     []int `json:"building_ids" validate:"required,min=1"`
 }
 
 type UpdateSalesPackageRequest struct {
+	PackageCode string `json:"package_code" validate:"required,max=50"`
 	Name        string `json:"name" validate:"required"`
-	BuildingIds []int  `json:"building_ids" validate:"required,min=1"`
+	Description string `json:"description" validate:"omitempty,max=1000"`
+	Status      string `json:"status" validate:"required,oneof=active inactive"`
+
+	// Set independently rather than summed from the member buildings: a package is
+	// a priced resource in its own right. See docs/QUOTATION_DOCUMENT_ANALYSIS.md §4.1.
+	ScreenCount int `json:"screen_count" validate:"gte=0"`
+	Traffic     int `json:"traffic" validate:"gte=0"`
+	Impressions int `json:"impressions" validate:"gte=0"`
+
+	// What the advertiser pays for one week of the whole package. Zero means
+	// "not priced yet"; the quotation service refuses to quote it.
+	PriceIdrPerWeek int64 `json:"price_idr_per_week" validate:"gte=0"`
+	BuildingIds     []int `json:"building_ids" validate:"required,min=1"`
 }
 
 type SalesPackageRequestFindAll struct {

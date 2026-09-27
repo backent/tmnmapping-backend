@@ -39,16 +39,6 @@ func dedupKeyFor(envKey string) string {
 	return "building_project"
 }
 
-func (s *ServiceDashboardImpl) GetAcquisitionReport(ctx context.Context, pic, dateFrom, dateTo string) webDashboard.DashboardReport {
-	dedupField := dedupKeyFor("DASHBOARD_DEDUP_KEY_ACQUISITION")
-	return s.buildReport(ctx, models.AcquisitionTable, dedupField, pic, dateFrom, dateTo)
-}
-
-func (s *ServiceDashboardImpl) GetBuildingProposalReport(ctx context.Context, pic, dateFrom, dateTo string) webDashboard.DashboardReport {
-	dedupField := dedupKeyFor("DASHBOARD_DEDUP_KEY_PROPOSAL")
-	return s.buildReport(ctx, models.BuildingProposalTable, dedupField, pic, dateFrom, dateTo)
-}
-
 func (s *ServiceDashboardImpl) GetLOIReport(ctx context.Context, pic, dateFrom, dateTo string) webDashboard.DashboardReport {
 	dedupField := dedupKeyFor("DASHBOARD_DEDUP_KEY_LOI")
 	return s.buildReport(ctx, models.LetterOfIntentTable, dedupField, pic, dateFrom, dateTo)

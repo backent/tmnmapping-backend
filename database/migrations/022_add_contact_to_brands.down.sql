@@ -1,0 +1,4 @@
+ALTER TABLE brands DROP COLUMN IF EXISTS attention_to;
+ALTER TABLE brands DROP COLUMN IF EXISTS job_title;
+ALTER TABLE brands DROP COLUMN IF EXISTS contact_phone;
+ALTER TABLE brands DROP COLUMN IF EXISTS contact_email;

@@ -18,11 +18,11 @@ type BranchRequestFindAll struct {
 	search         string
 }
 
-func (r *BranchRequestFindAll) SetSkip(skip int)                        { r.skip = skip }
-func (r *BranchRequestFindAll) SetTake(take int)                        { r.take = take }
-func (r *BranchRequestFindAll) GetSkip() int                            { return r.skip }
-func (r *BranchRequestFindAll) GetTake() int                            { return r.take }
-func (r *BranchRequestFindAll) SetOrderBy(orderBy string)               { r.orderBy = orderBy }
+func (r *BranchRequestFindAll) SetSkip(skip int)          { r.skip = skip }
+func (r *BranchRequestFindAll) SetTake(take int)          { r.take = take }
+func (r *BranchRequestFindAll) GetSkip() int              { return r.skip }
+func (r *BranchRequestFindAll) GetTake() int              { return r.take }
+func (r *BranchRequestFindAll) SetOrderBy(orderBy string) { r.orderBy = orderBy }
 func (r *BranchRequestFindAll) SetOrderDirection(orderDirection string) {
 	r.orderDirection = strings.ToUpper(orderDirection)
 }

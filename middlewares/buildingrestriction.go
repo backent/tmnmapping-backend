@@ -26,8 +26,8 @@ func NewBuildingRestrictionMiddleware(
 	repoBuildingRestriction repositoriesBuildingRestriction.RepositoryBuildingRestrictionInterface,
 ) *BuildingRestrictionMiddleware {
 	return &BuildingRestrictionMiddleware{
-		Validate:                              validate,
-		DB:                                    db,
+		Validate:                               validate,
+		DB:                                     db,
 		RepositoryBuildingRestrictionInterface: repoBuildingRestriction,
 	}
 }

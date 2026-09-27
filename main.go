@@ -8,9 +8,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/malikabdulaziz/tmn-backend/helpers"
 	"github.com/malikabdulaziz/tmn-backend/injector"
-	servicesAcquisition "github.com/malikabdulaziz/tmn-backend/services/acquisition"
 	servicesBuilding "github.com/malikabdulaziz/tmn-backend/services/building"
-	servicesBuildingProposal "github.com/malikabdulaziz/tmn-backend/services/buildingproposal"
 	servicesLOI "github.com/malikabdulaziz/tmn-backend/services/loi"
 )
 
@@ -50,11 +48,6 @@ func main() {
 	servicesBuilding.StartBuildingSyncScheduler(buildingService, helpers.Logger, syncInterval)
 
 	// Initialize acquisition, building proposal, and LOI sync schedulers
-	acquisitionService := injector.InitializeAcquisitionService()
-	servicesAcquisition.StartAcquisitionSyncScheduler(acquisitionService, helpers.Logger, syncInterval)
-
-	buildingProposalService := injector.InitializeBuildingProposalService()
-	servicesBuildingProposal.StartBuildingProposalSyncScheduler(buildingProposalService, helpers.Logger, syncInterval)
 
 	loiService := injector.InitializeLOIService()
 	servicesLOI.StartLOISyncScheduler(loiService, helpers.Logger, syncInterval)

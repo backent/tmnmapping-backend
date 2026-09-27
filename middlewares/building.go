@@ -26,9 +26,9 @@ func NewBuildingMiddleware(
 	repositoriesBuilding repositoriesBuilding.RepositoryBuildingInterface,
 ) *BuildingMiddleware {
 	return &BuildingMiddleware{
-		Validate:                        validate,
-		DB:                              db,
-		RepositoryBuildingInterface:     repositoriesBuilding,
+		Validate:                    validate,
+		DB:                          db,
+		RepositoryBuildingInterface: repositoriesBuilding,
 	}
 }
 
@@ -67,3 +67,15 @@ func (m *BuildingMiddleware) ValidateUpdate(next httprouter.Handle) httprouter.H
 	}
 }
 
+// ValidateSave serves create and update alike: the building form REPLACES the record,
+// so both send every column it owns and a blank clears it.
+func (m *BuildingMiddleware) ValidateSave(next httprouter.Handle) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+		var req webBuilding.SaveBuildingRequest
+		helpers.DecodeRequest(r, &req)
+		helpers.PanicIfError(m.Validate.Struct(req))
+
+		ctx := context.WithValue(r.Context(), helpers.ContextKey("buildingSaveRequest"), req)
+		next(w, r.WithContext(ctx), p)
+	}
+}

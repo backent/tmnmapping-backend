@@ -17,7 +17,7 @@ import (
 )
 
 type ServiceSubCategoryImpl struct {
-	DB                               *sql.DB
+	DB                             *sql.DB
 	RepositorySubCategoryInterface repositoriesSubCategory.RepositorySubCategoryInterface
 }
 
@@ -26,7 +26,7 @@ func NewServiceSubCategoryImpl(
 	repoSubCategory repositoriesSubCategory.RepositorySubCategoryInterface,
 ) ServiceSubCategoryInterface {
 	return &ServiceSubCategoryImpl{
-		DB:                               db,
+		DB:                             db,
 		RepositorySubCategoryInterface: repoSubCategory,
 	}
 }

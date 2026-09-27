@@ -7,9 +7,9 @@ type SavedPolygonPointResponse struct {
 }
 
 type SavedPolygonResponse struct {
-	Id        int                        `json:"id"`
-	Name      string                     `json:"name"`
+	Id        int                         `json:"id"`
+	Name      string                      `json:"name"`
 	Points    []SavedPolygonPointResponse `json:"points"`
-	CreatedAt string                     `json:"created_at"`
-	UpdatedAt string                     `json:"updated_at"`
+	CreatedAt string                      `json:"created_at"`
+	UpdatedAt string                      `json:"updated_at"`
 }

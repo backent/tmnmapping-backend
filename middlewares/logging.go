@@ -67,4 +67,3 @@ func (m *LoggingMiddleware) Log(next httprouter.Handle) httprouter.Handle {
 		}
 	}
 }
-
