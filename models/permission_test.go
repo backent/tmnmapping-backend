@@ -47,12 +47,25 @@ func TestPermissions_NamingConvention(t *testing.T) {
 	}
 }
 
-// Writes are admin-only across the board today. If that ever stops being true this
-// test should be updated deliberately, not deleted.
+// Writes are admin-only apart from the exceptions below. If that ever stops being
+// true this test should be updated deliberately, not deleted.
 func TestPermissions_WritesAreAdminOnly(t *testing.T) {
 	exceptions := map[string]bool{
 		// Saved polygons are a map working tool, not master data.
 		models.PermissionSavedPolygonsManage: true,
+
+		// The commercial master data a salesperson maintains to raise a quotation:
+		// the advertiser, its brands, the packages sold and what a building costs.
+		// Admin-only meant a salesperson had to ask someone else to add a customer
+		// before they could quote for it, and nobody but admin could see an Import
+		// button. Note this also grants DELETE on these four -- the same permission
+		// gates create, update, delete and import. Submitted quotations are
+		// unaffected either way because they snapshot the name and price they were
+		// raised with.
+		models.PermissionCustomersManage:      true,
+		models.PermissionBrandsManage:         true,
+		models.PermissionSalesPackagesManage:  true,
+		models.PermissionBuildingPricesManage: true,
 
 		// Quotations are open to every role because the SERVICE scopes them per
 		// user: a salesperson only ever sees and edits their own, and an approver
@@ -69,6 +82,34 @@ func TestPermissions_WritesAreAdminOnly(t *testing.T) {
 
 		assert.Equal(t, []string{models.RoleAdmin}, roles,
 			"%q should be admin-only", permission)
+	}
+}
+
+// Sales maintains the commercial master data it needs to raise a quotation. This
+// pins the grant so it cannot be dropped by accident -- the four moved together and
+// are only useful together.
+func TestSalesManagesCommercialMasterData(t *testing.T) {
+	for _, permission := range []string{
+		models.PermissionCustomersManage,
+		models.PermissionBrandsManage,
+		models.PermissionSalesPackagesManage,
+		models.PermissionBuildingPricesManage,
+	} {
+		assert.True(t, models.RoleCan(models.RoleSales, permission),
+			"sales should hold %q", permission)
+	}
+}
+
+// Everything sales must NOT gain from that change: the map, the building records
+// themselves and their landlord contracts stay with admin.
+func TestSalesDoesNotManageOperationalData(t *testing.T) {
+	for _, permission := range []string{
+		models.PermissionBuildingsManage,
+		models.PermissionBuildingProjectsManage,
+		models.PermissionPOIsManage,
+	} {
+		assert.False(t, models.RoleCan(models.RoleSales, permission),
+			"sales should NOT hold %q", permission)
 	}
 }
 

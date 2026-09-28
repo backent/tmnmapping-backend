@@ -110,7 +110,7 @@ var Permissions = map[string][]string{
 	PermissionPOIsManage: {RoleAdmin},
 
 	PermissionSalesPackagesView:   Roles,
-	PermissionSalesPackagesManage: {RoleAdmin},
+	PermissionSalesPackagesManage: {RoleAdmin, RoleSales},
 
 	PermissionBuildingRestrictionsView:   Roles,
 	PermissionBuildingRestrictionsManage: {RoleAdmin},
@@ -130,10 +130,10 @@ var Permissions = map[string][]string{
 	PermissionUsersManage: {RoleAdmin},
 
 	PermissionCustomersView:   Roles,
-	PermissionCustomersManage: {RoleAdmin},
+	PermissionCustomersManage: {RoleAdmin, RoleSales},
 
 	PermissionBrandsView:   Roles,
-	PermissionBrandsManage: {RoleAdmin},
+	PermissionBrandsManage: {RoleAdmin, RoleSales},
 
 	PermissionSalesAssignmentsView:   Roles,
 	PermissionSalesAssignmentsManage: {RoleAdmin},
@@ -143,7 +143,7 @@ var Permissions = map[string][]string{
 	PermissionRateCardsPublish: {RoleAdmin},
 
 	PermissionBuildingPricesView:   Roles,
-	PermissionBuildingPricesManage: {RoleAdmin},
+	PermissionBuildingPricesManage: {RoleAdmin, RoleSales},
 
 	PermissionBuildingProjectsView:   Roles,
 	PermissionBuildingProjectsManage: {RoleAdmin},
