@@ -397,6 +397,18 @@ func (r *RepositoryQuotationImpl) NextQuoteNumber(ctx context.Context, tx *sql.T
 	return fmt.Sprintf("%s%04d", prefix, count+1), nil
 }
 
+// CountByUser backs the guard that stops a user being deleted while quotations still
+// name them. quotations.sales_user_id and created_by_user_id are both ON DELETE
+// RESTRICT, so without this the operator would see a 500 instead of a readable message.
+func (r *RepositoryQuotationImpl) CountByUser(ctx context.Context, tx *sql.Tx, userId int) (int, error) {
+	var total int
+	err := tx.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM "+models.QuotationTable+" WHERE sales_user_id = $1 OR created_by_user_id = $1",
+		userId).Scan(&total)
+
+	return total, err
+}
+
 func (r *RepositoryQuotationImpl) CountByStatusForOwner(ctx context.Context, tx *sql.Tx, ownerUserId int) (map[string]int, error) {
 	rows, err := tx.QueryContext(ctx,
 		"SELECT status, COUNT(*) FROM "+models.QuotationTable+" WHERE sales_user_id = $1 GROUP BY status",

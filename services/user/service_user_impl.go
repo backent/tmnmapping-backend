@@ -8,6 +8,7 @@ import (
 	"github.com/malikabdulaziz/tmn-backend/exceptions"
 	"github.com/malikabdulaziz/tmn-backend/helpers"
 	"github.com/malikabdulaziz/tmn-backend/models"
+	repositoriesQuotation "github.com/malikabdulaziz/tmn-backend/repositories/quotation"
 	repositoriesSalesAssignment "github.com/malikabdulaziz/tmn-backend/repositories/salesassignment"
 	repositoriesUser "github.com/malikabdulaziz/tmn-backend/repositories/user"
 	webUser "github.com/malikabdulaziz/tmn-backend/web/user"
@@ -17,17 +18,20 @@ type ServiceUserImpl struct {
 	DB *sql.DB
 	repositoriesUser.RepositoryUserInterface
 	RepositorySalesAssignment repositoriesSalesAssignment.RepositorySalesAssignmentInterface
+	RepositoryQuotation       repositoriesQuotation.RepositoryQuotationInterface
 }
 
 func NewServiceUserImpl(
 	db *sql.DB,
 	repoUser repositoriesUser.RepositoryUserInterface,
 	repoSalesAssignment repositoriesSalesAssignment.RepositorySalesAssignmentInterface,
+	repoQuotation repositoriesQuotation.RepositoryQuotationInterface,
 ) ServiceUserInterface {
 	return &ServiceUserImpl{
 		DB:                        db,
 		RepositoryUserInterface:   repoUser,
 		RepositorySalesAssignment: repoSalesAssignment,
+		RepositoryQuotation:       repoQuotation,
 	}
 }
 
@@ -173,6 +177,17 @@ func (s *ServiceUserImpl) Delete(ctx context.Context, id int, actorId int) {
 		panic(exceptions.NewBadRequestError(
 			"this user is the sales PIC for " + strconv.Itoa(assignments) +
 				" customer/brand assignment(s); reassign them first"))
+	}
+
+	// quotations.sales_user_id and created_by_user_id are ON DELETE RESTRICT as well.
+	// Unlike an assignment there is nothing to reassign: a quotation records who sold
+	// it and who entered it, and that history is why the delete is refused.
+	quotations, err := s.RepositoryQuotation.CountByUser(ctx, tx, id)
+	helpers.PanicIfError(err)
+	if quotations > 0 {
+		panic(exceptions.NewBadRequestError(
+			"this user owns or entered " + strconv.Itoa(quotations) +
+				" quotation(s), which keep their name on record, so the account cannot be deleted"))
 	}
 
 	helpers.PanicIfError(s.RepositoryUserInterface.Delete(ctx, tx, id))

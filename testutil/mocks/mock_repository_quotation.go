@@ -83,3 +83,8 @@ func (m *MockRepositoryQuotation) CountByStatusForOwner(ctx context.Context, tx 
 	args := m.Called(ctx, tx, ownerUserId)
 	return args.Get(0).(map[string]int), args.Error(1)
 }
+
+func (m *MockRepositoryQuotation) CountByUser(ctx context.Context, tx *sql.Tx, userId int) (int, error) {
+	args := m.Called(ctx, tx, userId)
+	return args.Int(0), args.Error(1)
+}

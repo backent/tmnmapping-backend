@@ -39,4 +39,8 @@ type RepositoryQuotationInterface interface {
 
 	// CountByStatusForOwner backs the sales dashboard counts.
 	CountByStatusForOwner(ctx context.Context, tx *sql.Tx, ownerUserId int) (map[string]int, error)
+
+	// CountByUser counts the quotations a user owns or entered, which is what stops
+	// that user being deleted.
+	CountByUser(ctx context.Context, tx *sql.Tx, userId int) (int, error)
 }

@@ -139,7 +139,7 @@ func InitializeRouter() *httprouter.Router {
 	controllerMotherBrandInterface := motherbrand3.NewControllerMotherBrandImpl(serviceMotherBrandInterface)
 	serviceBranchInterface := branch2.NewServiceBranchImpl(db, repositoryBranchInterface)
 	controllerBranchInterface := branch3.NewControllerBranchImpl(serviceBranchInterface)
-	serviceUserInterface := user2.NewServiceUserImpl(db, repositoryUserInterface, repositorySalesAssignmentInterface)
+	serviceUserInterface := user2.NewServiceUserImpl(db, repositoryUserInterface, repositorySalesAssignmentInterface, repositoryQuotationInterface)
 	controllerUserInterface := user3.NewControllerUserImpl(serviceUserInterface)
 	serviceCustomerInterface := customer2.NewServiceCustomerImpl(db, repositoryCustomerInterface)
 	controllerCustomerInterface := customer3.NewControllerCustomerImpl(serviceCustomerInterface)
