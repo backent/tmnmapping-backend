@@ -19,6 +19,13 @@ func NewRepositoryQuotationImpl() RepositoryQuotationInterface {
 
 // Every read resolves the people and the customer, because no quotation screen is
 // useful without them.
+// validUntilColumn reads the validity date as YYYY-MM-DD.
+//
+// valid_until is a DATE, but the driver scans a DATE into a string as a full RFC 3339
+// timestamp ("2026-11-16T00:00:00Z"). That leaked a midnight UTC time onto a value
+// that has none, and did not match the YYYY-MM-DD the API accepts on the way in.
+const validUntilColumn = "to_char(q.valid_until, 'YYYY-MM-DD')"
+
 var quotationSelect = `SELECT q.id, q.quote_number,
 	q.sales_user_id, su.username, su.name,
 	q.created_by_user_id, cu.name,
@@ -26,7 +33,7 @@ var quotationSelect = `SELECT q.id, q.quote_number,
 	q.brand_id, b.code, b.name,
 	q.rate_card_version_id, rc.version_code,
 	q.attention_to, q.job_title, q.contact_phone, q.contact_email,
-	q.campaign_year, q.valid_until,
+	q.campaign_year, ` + validUntilColumn + `,
 	q.discount, q.tax_rate, q.status, q.required_approver_user_id, au.name, q.version,
 	q.placement_gross, q.placement_discount_amount, q.placement_net,
 	q.bonus_gross, q.bonus_net, q.total_gross, q.total_net,
@@ -82,6 +89,8 @@ func scanQuotation(rows *sql.Rows) (models.Quotation, error) {
 	return models.NullAbleQuotationToQuotation(n), nil
 }
 
+const pendingStatusClause = "q.status IN ('pending_manager','pending_business_control','pending_ceo')"
+
 // buildScope turns a ListScope into a WHERE clause and its arguments.
 //
 // The scope is what keeps a salesperson from reading someone else's pipeline, so it
@@ -106,9 +115,13 @@ func buildScope(scope ListScope, startAt int) (string, []interface{}) {
 	}
 	if scope.AwaitingApprovalByUserId > 0 {
 		clauses = append(clauses, "q.required_approver_user_id = "+bind(scope.AwaitingApprovalByUserId))
-		clauses = append(clauses, "q.status IN ('pending_manager','pending_business_control','pending_ceo')")
+		clauses = append(clauses, pendingStatusClause)
 	}
-	if scope.Status != "" {
+	switch scope.Status {
+	case "":
+	case StatusFilterPending:
+		clauses = append(clauses, pendingStatusClause)
+	default:
 		clauses = append(clauses, "q.status = "+bind(scope.Status))
 	}
 	if scope.Search != "" {

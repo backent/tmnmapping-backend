@@ -13,10 +13,17 @@ type ListScope struct {
 	OwnedByUserId int
 	// AwaitingApprovalByUserId limits results to this user's approval queue.
 	AwaitingApprovalByUserId int
-	// Status filters by a single status when set.
+	// Status filters by a single status when set, or by every pending status when it
+	// is StatusFilterPending.
 	Status string
 	Search string
 }
+
+// StatusFilterPending selects all three pending statuses at once.
+//
+// The list's Pending tab means "with an approver", whichever approver that is. With
+// only exact statuses accepted, the tab sent no filter and showed every quotation.
+const StatusFilterPending = "pending"
 
 type RepositoryQuotationInterface interface {
 	Create(ctx context.Context, tx *sql.Tx, quotation models.Quotation) (models.Quotation, error)

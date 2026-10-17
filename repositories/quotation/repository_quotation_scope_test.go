@@ -27,15 +27,17 @@ func referenced(where string) map[int]bool {
 // it only shows up for scoped queries, which is every list a non-admin loads.
 func TestBuildScopeNumbersEveryArgumentContiguously(t *testing.T) {
 	cases := map[string]ListScope{
-		"unscoped":            {},
-		"owner":               {OwnedByUserId: 7},
-		"queue":               {AwaitingApprovalByUserId: 9},
-		"status":              {Status: "approved"},
-		"search":              {Search: "acme"},
-		"owner+status":        {OwnedByUserId: 7, Status: "draft"},
-		"owner+search":        {OwnedByUserId: 7, Search: "acme"},
-		"queue+status+search": {AwaitingApprovalByUserId: 9, Status: "pending_ceo", Search: "acme"},
-		"everything":          {OwnedByUserId: 7, AwaitingApprovalByUserId: 9, Status: "draft", Search: "acme"},
+		"unscoped":             {},
+		"owner":                {OwnedByUserId: 7},
+		"queue":                {AwaitingApprovalByUserId: 9},
+		"status":               {Status: "approved"},
+		"pending":              {Status: StatusFilterPending},
+		"owner+pending+search": {OwnedByUserId: 7, Status: StatusFilterPending, Search: "acme"},
+		"search":               {Search: "acme"},
+		"owner+status":         {OwnedByUserId: 7, Status: "draft"},
+		"owner+search":         {OwnedByUserId: 7, Search: "acme"},
+		"queue+status+search":  {AwaitingApprovalByUserId: 9, Status: "pending_ceo", Search: "acme"},
+		"everything":           {OwnedByUserId: 7, AwaitingApprovalByUserId: 9, Status: "draft", Search: "acme"},
 	}
 
 	for name, scope := range cases {
@@ -87,4 +89,31 @@ func TestBuildScopeSearchReusesOnePlaceholder(t *testing.T) {
 	assert.Equal(t, []interface{}{"%acme%"}, args)
 	assert.Equal(t, 3, len(placeholderPattern.FindAllString(where, -1)))
 	assert.Equal(t, map[int]bool{1: true}, referenced(where))
+}
+
+// "pending" is a group, not a status: it must match all three pending statuses and
+// bind nothing, rather than look for a status literally called "pending".
+func TestBuildScopePendingMatchesEveryPendingStatus(t *testing.T) {
+	where, args := buildScope(ListScope{Status: StatusFilterPending}, 1)
+
+	assert.Empty(t, args)
+	assert.Contains(t, where, "'pending_manager'")
+	assert.Contains(t, where, "'pending_business_control'")
+	assert.Contains(t, where, "'pending_ceo'")
+	assert.NotContains(t, where, "q.status = ")
+}
+
+func TestBuildScopeExactStatusStillBinds(t *testing.T) {
+	where, args := buildScope(ListScope{Status: "approved"}, 1)
+
+	assert.Equal(t, []interface{}{"approved"}, args)
+	assert.Contains(t, where, "q.status = $1")
+}
+
+// A DATE scanned into a string comes back as "2026-11-16T00:00:00Z", which is not the
+// YYYY-MM-DD the API accepts. The select formats it in SQL so the API hands back the
+// same shape it takes.
+func TestQuotationSelectReadsValidUntilAsDate(t *testing.T) {
+	assert.Contains(t, quotationSelect, "to_char(q.valid_until, 'YYYY-MM-DD')")
+	assert.NotContains(t, quotationSelect, "campaign_year, q.valid_until")
 }
