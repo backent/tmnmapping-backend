@@ -79,6 +79,17 @@ type Quotation struct {
 	ApprovedAt string `json:"approved_at"`
 }
 
+// QuotationCampaignLine is one selection reduced to what the quotation list shows:
+// what was chosen and for how long, without its buildings or prices.
+type QuotationCampaignLine struct {
+	QuotationId      int
+	Kind             string
+	Mode             string
+	SalesPackageName string
+	Weeks            int
+	BuildingCount    int
+}
+
 // QuotationSelection is one side of a quotation: Placement or Bonus.
 type QuotationSelection struct {
 	Id          int    `json:"id"`

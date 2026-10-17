@@ -422,8 +422,28 @@ func toResponse(q models.Quotation, approvals []models.QuotationApproval) webQuo
 			Tax:                     q.Tax, TotalIncludingTax: q.TotalIncludingTax,
 		},
 		Selections: selections, Approvals: events,
+		Campaign:  campaignFromSelections(q.Selections),
 		CreatedAt: q.CreatedAt, UpdatedAt: q.UpdatedAt, ApprovedAt: q.ApprovedAt,
 	}
+}
+
+// campaignFromSelections gives a fully loaded quotation the same summary a list row
+// carries. A list row has no selections loaded, so FindAll fills it from
+// FindCampaignLines instead.
+func campaignFromSelections(selections []models.QuotationSelection) []webQuotation.CampaignLineResponse {
+	if len(selections) == 0 {
+		return nil
+	}
+
+	lines := make([]webQuotation.CampaignLineResponse, len(selections))
+	for i, s := range selections {
+		lines[i] = webQuotation.CampaignLineResponse{
+			Kind: s.Kind, Mode: s.Mode, PackageName: s.SalesPackageName,
+			BuildingCount: len(s.Items), Weeks: s.Weeks,
+		}
+	}
+
+	return lines
 }
 
 // ---------------------------------------------------------------------------

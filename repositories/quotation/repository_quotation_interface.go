@@ -37,6 +37,10 @@ type RepositoryQuotationInterface interface {
 	ReplaceSelections(ctx context.Context, tx *sql.Tx, quotationId int, selections []models.QuotationSelection) error
 	FindSelections(ctx context.Context, tx *sql.Tx, quotationId int) ([]models.QuotationSelection, error)
 
+	// FindCampaignLines summarises the selections of many quotations in one query,
+	// for the list, without loading their buildings.
+	FindCampaignLines(ctx context.Context, tx *sql.Tx, quotationIds []int) ([]models.QuotationCampaignLine, error)
+
 	CreateVersionSnapshot(ctx context.Context, tx *sql.Tx, quotationId int, version int, snapshot []byte, approverUserId int) error
 	CreateApproval(ctx context.Context, tx *sql.Tx, approval models.QuotationApproval) error
 	FindApprovals(ctx context.Context, tx *sql.Tx, quotationId int) ([]models.QuotationApproval, error)

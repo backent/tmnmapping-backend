@@ -6,9 +6,11 @@ import (
 
 	"github.com/malikabdulaziz/tmn-backend/exceptions"
 	"github.com/malikabdulaziz/tmn-backend/models"
+	repositoriesQuotation "github.com/malikabdulaziz/tmn-backend/repositories/quotation"
 	service "github.com/malikabdulaziz/tmn-backend/services/quotation"
 	"github.com/malikabdulaziz/tmn-backend/testutil"
 	"github.com/malikabdulaziz/tmn-backend/testutil/mocks"
+	webQuotation "github.com/malikabdulaziz/tmn-backend/web/quotation"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -344,6 +346,8 @@ func TestDashboardCounts_GroupsThePendingStatuses(t *testing.T) {
 			service.StatusReturned:               4,
 			service.StatusApproved:               5,
 		}, nil)
+	d.quotation.On("CountAll", mock.Anything, mock.Anything,
+		repositoriesQuotation.ListScope{AwaitingApprovalByUserId: 111}).Return(0, nil)
 
 	counts := svc.DashboardCounts(context.Background(), salesActor(111))
 
@@ -352,5 +356,53 @@ func TestDashboardCounts_GroupsThePendingStatuses(t *testing.T) {
 	assert.Equal(t, 4, counts.Returned)
 	assert.Equal(t, 5, counts.Approved)
 	assert.Equal(t, 16, counts.All)
+	assertMock()
+}
+
+// The approver's queue holds other people's quotations, so it cannot come from the
+// owner counts: it is the same scope the "Awaiting my approval" tab lists.
+func TestDashboardCounts_CountsTheApproverQueue(t *testing.T) {
+	svc, d, assertMock := newQuotationService(t, true)
+
+	d.quotation.On("CountByStatusForOwner", mock.Anything, mock.Anything, 222).
+		Return(map[string]int{}, nil)
+	d.quotation.On("CountAll", mock.Anything, mock.Anything,
+		repositoriesQuotation.ListScope{AwaitingApprovalByUserId: 222}).Return(3, nil)
+
+	counts := svc.DashboardCounts(context.Background(), service.Actor{UserId: 222, Role: models.RoleHeadOfSales})
+
+	assert.Equal(t, 3, counts.AwaitingMe)
+	assert.Equal(t, 0, counts.All, "the queue is not part of the approver's own pipeline")
+	assertMock()
+}
+
+// ---------------------------------------------------------------------------
+// List
+// ---------------------------------------------------------------------------
+
+func TestFindAll_SummarisesEachRowsCampaign(t *testing.T) {
+	svc, d, assertMock := newQuotationService(t, true)
+
+	d.quotation.On("FindAll", mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything, mock.Anything).
+		Return([]models.Quotation{draftQuotation(1, 111), draftQuotation(2, 111)}, nil)
+	d.quotation.On("CountAll", mock.Anything, mock.Anything, mock.Anything).Return(2, nil)
+	d.quotation.On("FindCampaignLines", mock.Anything, mock.Anything, []int{1, 2}).
+		Return([]models.QuotationCampaignLine{
+			{QuotationId: 1, Kind: "placement", Mode: "building", Weeks: 4, BuildingCount: 42},
+			{QuotationId: 1, Kind: "bonus", Mode: "package", SalesPackageName: "Jakarta CBD", Weeks: 2},
+		}, nil)
+
+	list, total := svc.FindAll(context.Background(), webQuotation.QuotationRequestFindAll{}, salesActor(111))
+
+	assert.Equal(t, 2, total)
+	assert.Equal(t, []webQuotation.CampaignLineResponse{
+		{Kind: "placement", Mode: "building", BuildingCount: 42, Weeks: 4},
+		{Kind: "bonus", Mode: "package", PackageName: "Jakarta CBD", Weeks: 2},
+	}, list[0].Campaign)
+
+	// Nothing selected is an empty list, not a missing one.
+	assert.NotNil(t, list[1].Campaign)
+	assert.Empty(t, list[1].Campaign)
 	assertMock()
 }

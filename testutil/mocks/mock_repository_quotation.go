@@ -59,6 +59,11 @@ func (m *MockRepositoryQuotation) FindSelections(ctx context.Context, tx *sql.Tx
 	return args.Get(0).([]models.QuotationSelection), args.Error(1)
 }
 
+func (m *MockRepositoryQuotation) FindCampaignLines(ctx context.Context, tx *sql.Tx, quotationIds []int) ([]models.QuotationCampaignLine, error) {
+	args := m.Called(ctx, tx, quotationIds)
+	return args.Get(0).([]models.QuotationCampaignLine), args.Error(1)
+}
+
 func (m *MockRepositoryQuotation) CreateVersionSnapshot(ctx context.Context, tx *sql.Tx, quotationId int, version int, snapshot []byte, approverUserId int) error {
 	args := m.Called(ctx, tx, quotationId, version, snapshot, approverUserId)
 	return args.Error(0)

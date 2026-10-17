@@ -121,6 +121,15 @@ type PricingPreviewResponse struct {
 	Sections []SelectionResponse `json:"sections"`
 }
 
+// CampaignLineResponse summarises one selection for a list row.
+type CampaignLineResponse struct {
+	Kind          string `json:"kind"`
+	Mode          string `json:"mode"`
+	PackageName   string `json:"package_name"`
+	BuildingCount int    `json:"building_count"`
+	Weeks         int    `json:"weeks"`
+}
+
 type ApprovalResponse struct {
 	Version   int    `json:"version"`
 	ActorName string `json:"actor_name"`
@@ -165,6 +174,10 @@ type QuotationResponse struct {
 	Selections []SelectionResponse `json:"selections"`
 	Approvals  []ApprovalResponse  `json:"approvals"`
 
+	// Campaign summarises the selections. List rows carry it in place of
+	// Selections, which they do not load.
+	Campaign []CampaignLineResponse `json:"campaign,omitempty"`
+
 	CreatedAt  string `json:"created_at"`
 	UpdatedAt  string `json:"updated_at"`
 	ApprovedAt string `json:"approved_at"`
@@ -176,6 +189,10 @@ type DashboardCounts struct {
 	Returned int `json:"returned"`
 	Approved int `json:"approved"`
 	All      int `json:"all"`
+
+	// AwaitingMe counts the quotations waiting on this user's approval, whoever owns
+	// them. The other counts are for the user's own pipeline only.
+	AwaitingMe int `json:"awaiting_me"`
 }
 
 type QuotationRequestFindAll struct {

@@ -92,9 +92,31 @@ func (s *ServiceQuotationImpl) FindAll(ctx context.Context, request webQuotation
 	total, err := s.RepositoryQuotationInterface.CountAll(ctx, tx, scope)
 	helpers.PanicIfError(err)
 
+	ids := make([]int, len(list))
+	for i, item := range list {
+		ids[i] = item.Id
+	}
+	lines, err := s.RepositoryQuotationInterface.FindCampaignLines(ctx, tx, ids)
+	helpers.PanicIfError(err)
+
+	campaigns := map[int][]webQuotation.CampaignLineResponse{}
+	for _, l := range lines {
+		campaigns[l.QuotationId] = append(campaigns[l.QuotationId], webQuotation.CampaignLineResponse{
+			Kind: l.Kind, Mode: l.Mode, PackageName: l.SalesPackageName,
+			BuildingCount: l.BuildingCount, Weeks: l.Weeks,
+		})
+	}
+
 	responses := make([]webQuotation.QuotationResponse, len(list))
 	for i, item := range list {
 		responses[i] = toResponse(item, nil)
+
+		// Always a list on a list row, even when nothing is selected yet, so the
+		// client can tell "no selection" from "not loaded".
+		responses[i].Campaign = campaigns[item.Id]
+		if responses[i].Campaign == nil {
+			responses[i].Campaign = []webQuotation.CampaignLineResponse{}
+		}
 	}
 
 	return responses, total
@@ -156,6 +178,11 @@ func (s *ServiceQuotationImpl) DashboardCounts(ctx context.Context, actor Actor)
 	for _, n := range byStatus {
 		counts.All += n
 	}
+
+	awaiting, err := s.RepositoryQuotationInterface.CountAll(ctx, tx,
+		repositoriesQuotation.ListScope{AwaitingApprovalByUserId: actor.UserId})
+	helpers.PanicIfError(err)
+	counts.AwaitingMe = awaiting
 
 	return counts
 }

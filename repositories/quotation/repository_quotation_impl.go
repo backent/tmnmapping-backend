@@ -322,6 +322,43 @@ func (r *RepositoryQuotationImpl) FindSelections(ctx context.Context, tx *sql.Tx
 	return selections, nil
 }
 
+// FindCampaignLines is one query for a whole page of the list. Loading each row's
+// selections instead would be a query per row plus one per selection, and would read
+// every building of a quotation only to count them.
+func (r *RepositoryQuotationImpl) FindCampaignLines(ctx context.Context, tx *sql.Tx, quotationIds []int) ([]models.QuotationCampaignLine, error) {
+	if len(quotationIds) == 0 {
+		return []models.QuotationCampaignLine{}, nil
+	}
+
+	ids := make([]string, len(quotationIds))
+	for i, id := range quotationIds {
+		ids[i] = strconv.Itoa(id)
+	}
+
+	SQL := `SELECT s.quotation_id, s.kind, s.mode, COALESCE(s.sales_package_name, ''), s.weeks,
+		(SELECT COUNT(*) FROM ` + models.QuotationSelectionItemTable + ` i WHERE i.quotation_selection_id = s.id)
+		FROM ` + models.QuotationSelectionTable + ` s
+		WHERE s.quotation_id = ANY(string_to_array($1, ',')::bigint[])
+		ORDER BY s.quotation_id, s.kind DESC`
+
+	rows, err := tx.QueryContext(ctx, SQL, strings.Join(ids, ","))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	lines := []models.QuotationCampaignLine{}
+	for rows.Next() {
+		var l models.QuotationCampaignLine
+		if err := rows.Scan(&l.QuotationId, &l.Kind, &l.Mode, &l.SalesPackageName, &l.Weeks, &l.BuildingCount); err != nil {
+			return nil, err
+		}
+		lines = append(lines, l)
+	}
+
+	return lines, rows.Err()
+}
+
 func (r *RepositoryQuotationImpl) findSelectionItems(ctx context.Context, tx *sql.Tx, selectionId int) ([]models.QuotationSelectionItem, error) {
 	SQL := `SELECT id, quotation_selection_id, COALESCE(building_id,0), building_name,
 		COALESCE(building_iris_code,''), COALESCE(building_type,''), COALESCE(citytown,''),
