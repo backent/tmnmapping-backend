@@ -44,6 +44,26 @@ const poiSelectCols = `p.id, p.brand, p.color,
 	c.name, sc.name, mb.name,
 	p.created_at, p.updated_at`
 
+// poiAllowedOrderBy maps the orderBy values the API accepts onto columns. Both
+// orderBy and orderDirection come from the query string and are spliced into ORDER BY,
+// so anything not listed here falls back to the default rather than reaching SQL.
+var poiAllowedOrderBy = map[string]string{
+	"id": "p.id", "brand": "p.brand", "color": "p.color",
+	"created_at": "p.created_at", "updated_at": "p.updated_at",
+}
+
+func poiSafeOrder(orderBy, orderDirection string) (string, string) {
+	column, ok := poiAllowedOrderBy[orderBy]
+	if !ok {
+		column = "p.created_at"
+	}
+	if orderDirection != "ASC" && orderDirection != "DESC" {
+		orderDirection = "DESC"
+	}
+
+	return column, orderDirection
+}
+
 const poiJoins = ` LEFT JOIN categories c ON c.id = p.category_id
 	LEFT JOIN sub_categories sc ON sc.id = p.sub_category_id
 	LEFT JOIN mother_brands mb ON mb.id = p.mother_brand_id`
@@ -200,7 +220,8 @@ func (repository *RepositoryPOIImpl) FindAll(ctx context.Context, tx *sql.Tx, ta
 	if len(whereClauses) > 0 {
 		SQL += ` WHERE ` + strings.Join(whereClauses, " AND ")
 	}
-	SQL += ` ORDER BY p.` + orderBy + ` ` + orderDirection + `, p.brand ASC`
+	column, direction := poiSafeOrder(orderBy, orderDirection)
+	SQL += ` ORDER BY ` + column + ` ` + direction + `, p.brand ASC`
 	SQL += ` LIMIT $` + strconv.Itoa(paramIdx) + ` OFFSET $` + strconv.Itoa(paramIdx+1)
 	args = append(args, take, skip)
 

@@ -136,6 +136,37 @@ func (repository *RepositoryBuildingImpl) FindByIrisCode(ctx context.Context, tx
 	return building, err
 }
 
+// buildingAllowedOrderBy maps the orderBy values the API accepts onto columns.
+//
+// orderBy and orderDirection arrive straight from the query string and are spliced
+// into ORDER BY, which cannot take a placeholder. Without this map any signed-in role
+// could append SQL to the buildings list.
+var buildingAllowedOrderBy = map[string]string{
+	"id": "b.id", "external_building_id": "b.external_building_id", "iris_code": "b.iris_code",
+	"name": "b.name", "project_name": "b.project_name",
+	"audience": "b.audience", "impression": "b.impression", "cbd_area": "b.cbd_area",
+	"building_status": "b.building_status", "sellable": "b.sellable",
+	"connectivity": "b.connectivity", "resource_type": "b.resource_type",
+	"subdistrict": "b.subdistrict", "citytown": "b.citytown", "province": "b.province",
+	"grade_resource": "b.grade_resource", "building_type": "b.building_type",
+	"completion_year": "b.completion_year", "lcd_presence_status": "b.lcd_presence_status",
+	"synced_at": "b.synced_at", "created_at": "b.created_at", "updated_at": "b.updated_at",
+}
+
+// buildingSafeOrder falls back to the list's default order for anything unrecognised
+// rather than refusing it: an old bookmarked URL should still load.
+func buildingSafeOrder(orderBy, orderDirection string) (string, string) {
+	column, ok := buildingAllowedOrderBy[orderBy]
+	if !ok {
+		column = "b.created_at"
+	}
+	if orderDirection != "ASC" && orderDirection != "DESC" {
+		orderDirection = "DESC"
+	}
+
+	return column, orderDirection
+}
+
 // FindAll retrieves all buildings with pagination, sorting, search, and filters
 func (repository *RepositoryBuildingImpl) FindAll(ctx context.Context, tx *sql.Tx, take int, skip int, orderBy string, orderDirection string, search string, buildingStatus string, sellable string, connectivity string, resourceType string, competitorLocation *bool, cbdArea string, subdistrict string, citytown string, province string, gradeResource string, buildingType string, excludeIds string) ([]models.Building, error) {
 	// The filters below name columns without a prefix, which is why buildingFrom
@@ -260,7 +291,8 @@ func (repository *RepositoryBuildingImpl) FindAll(ctx context.Context, tx *sql.T
 		}
 	}
 
-	SQL += ` ORDER BY ` + orderBy + ` ` + orderDirection + `, name ASC LIMIT $` + strconv.Itoa(argIndex) + ` OFFSET $` + strconv.Itoa(argIndex+1)
+	column, direction := buildingSafeOrder(orderBy, orderDirection)
+	SQL += ` ORDER BY ` + column + ` ` + direction + `, name ASC LIMIT $` + strconv.Itoa(argIndex) + ` OFFSET $` + strconv.Itoa(argIndex+1)
 	args = append(args, take, skip)
 
 	rows, err := tx.QueryContext(ctx, SQL, args...)
