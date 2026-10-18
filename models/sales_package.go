@@ -4,12 +4,26 @@ import (
 	"database/sql"
 )
 
+// SalesPackage is a sellable bundle of buildings, and a priced resource in its own
+// right. Its screen count, traffic and impressions are set independently rather than
+// summed from its member buildings -- see docs/QUOTATION_DOCUMENT_ANALYSIS.md §4.1.
+// The price lives in rate_card_package_prices, versioned like every other price.
 type SalesPackage struct {
-	Id        int           `json:"id"`
-	Name      string        `json:"name"`
-	Buildings []BuildingRef `json:"buildings"`
-	CreatedAt string        `json:"created_at"`
-	UpdatedAt string        `json:"updated_at"`
+	Id          int    `json:"id"`
+	PackageCode string `json:"package_code"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Status      string `json:"status"`
+	ScreenCount int    `json:"screen_count"`
+	Traffic     int    `json:"traffic"`
+	Impressions int    `json:"impressions"`
+
+	// What the advertiser pays for one week of the whole package. Set on the
+	// package rather than in a rate card -- see migration 020.
+	PriceIdrPerWeek int64         `json:"price_idr_per_week"`
+	Buildings       []BuildingRef `json:"buildings"`
+	CreatedAt       string        `json:"created_at"`
+	UpdatedAt       string        `json:"updated_at"`
 }
 
 // BuildingRef holds a lightweight subset of building fields used in relation responses
@@ -27,16 +41,23 @@ type BuildingRef struct {
 
 // SalesPackageBuilding is a junction row (sales_package_buildings table)
 type SalesPackageBuilding struct {
-	Id              int `json:"id"`
-	SalesPackageId  int `json:"sales_package_id"`
-	BuildingId      int `json:"building_id"`
+	Id             int `json:"id"`
+	SalesPackageId int `json:"sales_package_id"`
+	BuildingId     int `json:"building_id"`
 }
 
 type NullAbleSalesPackage struct {
-	Id        sql.NullInt64
-	Name      sql.NullString
-	CreatedAt sql.NullString
-	UpdatedAt sql.NullString
+	Id              sql.NullInt64
+	PackageCode     sql.NullString
+	Name            sql.NullString
+	Description     sql.NullString
+	Status          sql.NullString
+	ScreenCount     sql.NullInt64
+	Traffic         sql.NullInt64
+	Impressions     sql.NullInt64
+	PriceIdrPerWeek sql.NullInt64
+	CreatedAt       sql.NullString
+	UpdatedAt       sql.NullString
 }
 
 type NullAbleSalesPackageBuilding struct {
@@ -50,8 +71,17 @@ var SalesPackageBuildingTable string = "sales_package_buildings"
 
 func NullAbleSalesPackageToSalesPackage(nullable NullAbleSalesPackage) SalesPackage {
 	return SalesPackage{
-		Id:        int(nullable.Id.Int64),
-		Name:      nullable.Name.String,
+		Id:          int(nullable.Id.Int64),
+		PackageCode: nullable.PackageCode.String,
+		Name:        nullable.Name.String,
+		Description: nullable.Description.String,
+		Status:      nullable.Status.String,
+		ScreenCount: int(nullable.ScreenCount.Int64),
+		Traffic:     int(nullable.Traffic.Int64),
+		Impressions: int(nullable.Impressions.Int64),
+
+		PriceIdrPerWeek: nullable.PriceIdrPerWeek.Int64,
+
 		Buildings: []BuildingRef{},
 		CreatedAt: nullable.CreatedAt.String,
 		UpdatedAt: nullable.UpdatedAt.String,

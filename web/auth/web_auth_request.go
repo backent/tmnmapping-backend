@@ -7,4 +7,3 @@ type LoginRequest struct {
 
 	UserId int
 }
-

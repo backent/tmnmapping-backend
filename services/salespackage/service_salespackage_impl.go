@@ -19,7 +19,7 @@ import (
 )
 
 type ServiceSalesPackageImpl struct {
-	DB                            *sql.DB
+	DB                              *sql.DB
 	RepositorySalesPackageInterface repositoriesSalesPackage.RepositorySalesPackageInterface
 	RepositoryBuildingInterface     repositoriesBuilding.RepositoryBuildingInterface
 }
@@ -30,7 +30,7 @@ func NewServiceSalesPackageImpl(
 	repoBuilding repositoriesBuilding.RepositoryBuildingInterface,
 ) ServiceSalesPackageInterface {
 	return &ServiceSalesPackageImpl{
-		DB:                            db,
+		DB:                              db,
 		RepositorySalesPackageInterface: repoSalesPackage,
 		RepositoryBuildingInterface:     repoBuilding,
 	}
@@ -55,7 +55,17 @@ func (s *ServiceSalesPackageImpl) Create(ctx context.Context, request webSalesPa
 
 	s.validateBuildingIdsErr(ctx, tx, request.BuildingIds)
 
-	pkg := models.SalesPackage{Name: request.Name}
+	pkg := models.SalesPackage{
+		PackageCode: request.PackageCode,
+		Name:        request.Name,
+		Description: request.Description,
+		Status:      request.Status,
+		ScreenCount: request.ScreenCount,
+		Traffic:     request.Traffic,
+		Impressions: request.Impressions,
+
+		PriceIdrPerWeek: request.PriceIdrPerWeek,
+	}
 	created, err := s.RepositorySalesPackageInterface.Create(ctx, tx, pkg, request.BuildingIds)
 	helpers.PanicIfError(err)
 	return s.modelToResponse(created)
@@ -107,7 +117,15 @@ func (s *ServiceSalesPackageImpl) Update(ctx context.Context, request webSalesPa
 
 	s.validateBuildingIdsErr(ctx, tx, request.BuildingIds)
 
+	existing.PackageCode = request.PackageCode
 	existing.Name = request.Name
+	existing.Description = request.Description
+	existing.Status = request.Status
+	existing.ScreenCount = request.ScreenCount
+	existing.Traffic = request.Traffic
+	existing.Impressions = request.Impressions
+	existing.PriceIdrPerWeek = request.PriceIdrPerWeek
+
 	updated, err := s.RepositorySalesPackageInterface.Update(ctx, tx, existing, request.BuildingIds)
 	helpers.PanicIfError(err)
 	return s.modelToResponse(updated)
@@ -252,7 +270,13 @@ func (s *ServiceSalesPackageImpl) Import(ctx context.Context, fileBytes []byte, 
 	var responses []webSalesPackage.SalesPackageResponse
 	for _, name := range nameOrder {
 		group := groups[name]
-		pkg := models.SalesPackage{Name: group.name}
+		// The import sheet carries only a name and its buildings. Generate a code
+		// and default the rest; the unique + NOT NULL constraints must still hold.
+		pkg := models.SalesPackage{
+			PackageCode: spGenerateCode(group.name),
+			Name:        group.name,
+			Status:      models.StatusActive,
+		}
 		created, err := s.RepositorySalesPackageInterface.Create(ctx, tx, pkg, group.buildingIds)
 		helpers.PanicIfError(err)
 		responses = append(responses, s.modelToResponse(created))
@@ -291,8 +315,17 @@ func (s *ServiceSalesPackageImpl) modelToResponse(p models.SalesPackage) webSale
 		}
 	}
 	return webSalesPackage.SalesPackageResponse{
-		Id:        p.Id,
-		Name:      p.Name,
+		Id:          p.Id,
+		PackageCode: p.PackageCode,
+		Name:        p.Name,
+		Description: p.Description,
+		Status:      p.Status,
+		ScreenCount: p.ScreenCount,
+		Traffic:     p.Traffic,
+		Impressions: p.Impressions,
+
+		PriceIdrPerWeek: p.PriceIdrPerWeek,
+
 		Buildings: buildings,
 		CreatedAt: p.CreatedAt,
 		UpdatedAt: p.UpdatedAt,
@@ -391,3 +424,37 @@ func buildSalesPackageExcel(packages []models.SalesPackage) ([]byte, error) {
 	}
 	return buf.Bytes(), nil
 }
+
+// spGenerateCode derives a stable package code from a name, for packages created by
+// the XLSX import, which carries no code column. Uppercased, non-alphanumerics
+// collapsed to a dash, trimmed to fit VARCHAR(50).
+//
+// Collisions are possible for names that differ only in punctuation; the unique
+// constraint turns that into a visible error rather than a silent merge.
+func spGenerateCode(name string) string {
+	var b strings.Builder
+	lastDash := false
+	for _, r := range strings.ToUpper(strings.TrimSpace(name)) {
+		switch {
+		case (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9'):
+			b.WriteRune(r)
+			lastDash = false
+		case !lastDash:
+			b.WriteRune('-')
+			lastDash = true
+		}
+	}
+
+	code := strings.Trim(b.String(), "-")
+	if code == "" {
+		code = "PACKAGE"
+	}
+	if len(code) > 50 {
+		code = code[:50]
+	}
+
+	return code
+}
+
+// GenerateCodeForTest exposes spGenerateCode to the package's external test file.
+func GenerateCodeForTest(name string) string { return spGenerateCode(name) }

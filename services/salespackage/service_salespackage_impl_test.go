@@ -350,3 +350,61 @@ func TestSalesPackageImport_CSV_HappyPath(t *testing.T) {
 	repoBuilding.AssertExpectations(t)
 	assert.NoError(t, sqlMock.ExpectationsWereMet())
 }
+
+// A package is a priced resource in its own right, so its screen count, traffic and
+// impressions are stored as given rather than summed from its member buildings.
+// See docs/QUOTATION_DOCUMENT_ANALYSIS.md §4.1.
+func TestCreate_StoresPackageAttributesAsGiven(t *testing.T) {
+	db, sqlMock := testutil.NewMockDB(t)
+	repoPkg := &mocks.MockRepositorySalesPackage{}
+	repoBuilding := &mocks.MockRepositoryBuilding{}
+	svc := serviceSalesPackage.NewServiceSalesPackageImpl(db, repoPkg, repoBuilding)
+
+	sqlMock.ExpectBegin()
+	sqlMock.ExpectCommit()
+
+	repoBuilding.On("FindById", mock.Anything, mock.AnythingOfType("*sql.Tx"), 1).
+		Return(models.Building{Id: 1, Name: "Menara BCA"}, nil)
+
+	var captured models.SalesPackage
+	repoPkg.On("Create", mock.Anything, mock.AnythingOfType("*sql.Tx"),
+		mock.AnythingOfType("models.SalesPackage"), []int{1}).
+		Run(func(args mock.Arguments) { captured = args.Get(2).(models.SalesPackage) }).
+		Return(models.SalesPackage{Id: 7}, nil)
+	repoPkg.On("FindBuildingsBySalesPackageId", mock.Anything, mock.AnythingOfType("*sql.Tx"), 7).
+		Return([]models.BuildingRef{}, nil)
+
+	svc.Create(context.Background(), webSalesPackage.CreateSalesPackageRequest{
+		PackageCode: "SP-CBD-01",
+		Name:        "CBD Premium",
+		Description: "Central Jakarta high-rises",
+		Status:      "active",
+		ScreenCount: 950,
+		Traffic:     73700,
+		Impressions: 1423000,
+		BuildingIds: []int{1},
+	})
+
+	assert.Equal(t, "SP-CBD-01", captured.PackageCode)
+	assert.Equal(t, 950, captured.ScreenCount, "screen count is stored, not derived")
+	assert.Equal(t, 73700, captured.Traffic)
+	assert.Equal(t, 1423000, captured.Impressions)
+	assert.Equal(t, "active", captured.Status)
+	assert.NoError(t, sqlMock.ExpectationsWereMet())
+}
+
+// The XLSX import sheet has no code column, so one is generated -- the column is
+// NOT NULL and unique.
+func TestGeneratedPackageCodes(t *testing.T) {
+	tests := []struct{ name, expected string }{
+		{"CBD Premium", "CBD-PREMIUM"},
+		{"  Jakarta  Selatan  ", "JAKARTA-SELATAN"},
+		{"Grade A / Office", "GRADE-A-OFFICE"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, serviceSalesPackage.GenerateCodeForTest(tt.name))
+		})
+	}
+}

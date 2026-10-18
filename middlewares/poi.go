@@ -26,8 +26,8 @@ func NewPOIMiddleware(
 	repositoryPOI repositoriesPOI.RepositoryPOIInterface,
 ) *POIMiddleware {
 	return &POIMiddleware{
-		Validate:                validate,
-		DB:                      db,
+		Validate:               validate,
+		DB:                     db,
 		RepositoryPOIInterface: repositoryPOI,
 	}
 }

@@ -29,6 +29,11 @@ func (m *MockRepositoryBuilding) FindByExternalId(ctx context.Context, tx *sql.T
 	return args.Get(0).(models.Building), args.Error(1)
 }
 
+func (m *MockRepositoryBuilding) FindByIrisCode(ctx context.Context, tx *sql.Tx, irisCode string) (models.Building, error) {
+	args := m.Called(ctx, tx, irisCode)
+	return args.Get(0).(models.Building), args.Error(1)
+}
+
 func (m *MockRepositoryBuilding) FindAll(ctx context.Context, tx *sql.Tx, take int, skip int, orderBy string, orderDirection string, search string, buildingStatus string, sellable string, connectivity string, resourceType string, competitorLocation *bool, cbdArea string, subdistrict string, citytown string, province string, gradeResource string, buildingType string, excludeIds string) ([]models.Building, error) {
 	args := m.Called(ctx, tx, take, skip, orderBy, orderDirection, search, buildingStatus, sellable, connectivity, resourceType, competitorLocation, cbdArea, subdistrict, citytown, province, gradeResource, buildingType, excludeIds)
 	return args.Get(0).([]models.Building), args.Error(1)
@@ -54,7 +59,13 @@ func (m *MockRepositoryBuilding) UpdateFromSync(ctx context.Context, tx *sql.Tx,
 	return args.Get(0).(models.Building), args.Error(1)
 }
 
-func (m *MockRepositoryBuilding) FindAllForMapping(ctx context.Context, tx *sql.Tx, buildingType string, buildingGrade string, year string, subdistrict string, progress string, sellable string, connectivity string, lcdPresence string, salesPackageIds string, buildingRestrictionIds string, lat *float64, lng *float64, radius *int, poiPoints []struct{ Lat float64; Lng float64 }, polygonPoints []struct{ Lat float64; Lng float64 }, minLat *float64, maxLat *float64, minLng *float64, maxLng *float64) ([]models.Building, error) {
+func (m *MockRepositoryBuilding) FindAllForMapping(ctx context.Context, tx *sql.Tx, buildingType string, buildingGrade string, year string, subdistrict string, progress string, sellable string, connectivity string, lcdPresence string, salesPackageIds string, buildingRestrictionIds string, lat *float64, lng *float64, radius *int, poiPoints []struct {
+	Lat float64
+	Lng float64
+}, polygonPoints []struct {
+	Lat float64
+	Lng float64
+}, minLat *float64, maxLat *float64, minLng *float64, maxLng *float64) ([]models.Building, error) {
 	args := m.Called(ctx, tx, buildingType, buildingGrade, year, subdistrict, progress, sellable, connectivity, lcdPresence, salesPackageIds, buildingRestrictionIds, lat, lng, radius, poiPoints, polygonPoints, minLat, maxLat, minLng, maxLng)
 	return args.Get(0).([]models.Building), args.Error(1)
 }
@@ -72,4 +83,36 @@ func (m *MockRepositoryBuilding) GetLCDPresenceSummary(ctx context.Context, tx *
 func (m *MockRepositoryBuilding) FindAllDropdown(ctx context.Context, tx *sql.Tx) ([]models.Building, error) {
 	args := m.Called(ctx, tx)
 	return args.Get(0).([]models.Building), args.Error(1)
+}
+
+// Spreadsheet import, export and the change log -- migration 025.
+
+func (m *MockRepositoryBuilding) FindAllForExport(ctx context.Context, tx *sql.Tx) ([]models.Building, error) {
+	args := m.Called(ctx, tx)
+	return args.Get(0).([]models.Building), args.Error(1)
+}
+
+func (m *MockRepositoryBuilding) RecordChanges(ctx context.Context, tx *sql.Tx, changes []models.BuildingChange) error {
+	args := m.Called(ctx, tx, changes)
+	return args.Error(0)
+}
+
+func (m *MockRepositoryBuilding) FindChanges(ctx context.Context, tx *sql.Tx, buildingId int, take int, skip int) ([]models.BuildingChange, error) {
+	args := m.Called(ctx, tx, buildingId, take, skip)
+	return args.Get(0).([]models.BuildingChange), args.Error(1)
+}
+
+func (m *MockRepositoryBuilding) CountChanges(ctx context.Context, tx *sql.Tx, buildingId int) (int, error) {
+	args := m.Called(ctx, tx, buildingId)
+	return args.Int(0), args.Error(1)
+}
+
+func (m *MockRepositoryBuilding) UpdateFromImport(ctx context.Context, tx *sql.Tx, building models.Building) (models.Building, error) {
+	args := m.Called(ctx, tx, building)
+	return args.Get(0).(models.Building), args.Error(1)
+}
+
+func (m *MockRepositoryBuilding) UpdateImagesFromSync(ctx context.Context, tx *sql.Tx, buildingId int, imagesJSON string) error {
+	args := m.Called(ctx, tx, buildingId, imagesJSON)
+	return args.Error(0)
 }

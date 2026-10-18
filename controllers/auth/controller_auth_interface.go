@@ -11,4 +11,3 @@ type ControllerAuthInterface interface {
 	Logout(w http.ResponseWriter, r *http.Request, p httprouter.Params)
 	CurrentUser(w http.ResponseWriter, r *http.Request, p httprouter.Params)
 }
-

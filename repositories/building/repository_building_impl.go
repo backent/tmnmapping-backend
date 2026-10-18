@@ -31,9 +31,9 @@ func (repository *RepositoryBuildingImpl) Create(ctx context.Context, tx *sql.Tx
 	SQL := `INSERT INTO ` + models.BuildingTable + ` 
 		(external_building_id, iris_code, name, project_name, audience, impression, 
 		cbd_area, building_status, competitor_location, competitor_exclusive, competitor_presence, sellable, connectivity, 
-		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, latitude, longitude, location, images, lcd_presence_status, synced_at) 
+		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, latitude, longitude, location, images, lcd_presence_status, synced_at, project_id) 
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, 
-		CASE WHEN $21::DOUBLE PRECISION IS NOT NULL AND $22::DOUBLE PRECISION IS NOT NULL AND ($21::DOUBLE PRECISION) != 0 AND ($22::DOUBLE PRECISION) != 0 THEN ST_SetSRID(ST_MakePoint($22::DOUBLE PRECISION, $21::DOUBLE PRECISION), 4326)::geography ELSE NULL END, $23, $24, $25) 
+		CASE WHEN $21::DOUBLE PRECISION IS NOT NULL AND $22::DOUBLE PRECISION IS NOT NULL AND ($21::DOUBLE PRECISION) != 0 AND ($22::DOUBLE PRECISION) != 0 THEN ST_SetSRID(ST_MakePoint($22::DOUBLE PRECISION, $21::DOUBLE PRECISION), 4326)::geography ELSE NULL END, $23, $24, $25, $26) 
 		RETURNING id, created_at, updated_at`
 
 	err = tx.QueryRowContext(ctx, SQL,
@@ -62,6 +62,10 @@ func (repository *RepositoryBuildingImpl) Create(ctx context.Context, tx *sql.Tx
 		imagesJSON,
 		nullIfEmpty(building.LcdPresenceStatus),
 		nullIfEmpty(building.SyncedAt),
+		// The project link. Absent until 2026-09-23, so a building created with a
+		// project -- by the form or the spreadsheet import -- came back unlinked
+		// while every other field saved correctly.
+		nullIfZero(building.ProjectId),
 	).Scan(&building.Id, &building.CreatedAt, &building.UpdatedAt)
 
 	if err != nil {
@@ -73,56 +77,12 @@ func (repository *RepositoryBuildingImpl) Create(ctx context.Context, tx *sql.Tx
 
 // FindById retrieves a building by ID
 func (repository *RepositoryBuildingImpl) FindById(ctx context.Context, tx *sql.Tx, id int) (models.Building, error) {
-	SQL := `SELECT id, external_building_id, iris_code, name, project_name, audience, 
-		impression, cbd_area, building_status, competitor_location, competitor_exclusive, competitor_presence, sellable, connectivity, 
-		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, latitude, longitude, images, lcd_presence_status, synced_at, created_at, updated_at 
-		FROM ` + models.BuildingTable + ` WHERE id = $1`
-
-	rows, err := tx.QueryContext(ctx, SQL, id)
-	if err != nil {
-		return models.Building{}, err
-	}
-	defer rows.Close()
-
-	building := models.NullAbleBuilding{}
-	if rows.Next() {
-		err := rows.Scan(
-			&building.Id,
-			&building.ExternalBuildingId,
-			&building.IrisCode,
-			&building.Name,
-			&building.ProjectName,
-			&building.Audience,
-			&building.Impression,
-			&building.CbdArea,
-			&building.BuildingStatus,
-			&building.CompetitorLocation,
-			&building.CompetitorExclusive,
-			&building.CompetitorPresence,
-			&building.Sellable,
-			&building.Connectivity,
-			&building.ResourceType,
-			&building.Subdistrict,
-			&building.Citytown,
-			&building.Province,
-			&building.GradeResource,
-			&building.BuildingType,
-			&building.CompletionYear,
-			&building.Latitude,
-			&building.Longitude,
-			&building.Images,
-			&building.LcdPresenceStatus,
-			&building.SyncedAt,
-			&building.CreatedAt,
-			&building.UpdatedAt,
-		)
-		if err != nil {
-			return models.Building{}, err
-		}
-		return models.NullAbleBuildingToBuilding(building), nil
+	building, err := scanBuildingRow(tx.QueryRowContext(ctx, selectBuilding(` WHERE b.id = $1`), id))
+	if err == sql.ErrNoRows {
+		return models.Building{}, sql.ErrNoRows
 	}
 
-	return models.Building{}, sql.ErrNoRows
+	return building, err
 }
 
 // FindByIds retrieves buildings by IDs (order not guaranteed)
@@ -130,122 +90,90 @@ func (repository *RepositoryBuildingImpl) FindByIds(ctx context.Context, tx *sql
 	if len(ids) == 0 {
 		return []models.Building{}, nil
 	}
+
 	placeholders := make([]string, len(ids))
 	args := make([]interface{}, len(ids))
 	for i, id := range ids {
 		placeholders[i] = "$" + strconv.Itoa(i+1)
 		args[i] = id
 	}
-	SQL := `SELECT id, external_building_id, iris_code, name, project_name, audience, 
-		impression, cbd_area, building_status, competitor_location, competitor_exclusive, competitor_presence, sellable, connectivity, 
-		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, latitude, longitude, images, lcd_presence_status, synced_at, created_at, updated_at 
-		FROM ` + models.BuildingTable + ` WHERE id IN (` + strings.Join(placeholders, ",") + `)`
-	rows, err := tx.QueryContext(ctx, SQL, args...)
+
+	rows, err := tx.QueryContext(ctx,
+		selectBuilding(` WHERE b.id IN (`+strings.Join(placeholders, ",")+`)`), args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var result []models.Building
-	for rows.Next() {
-		building := models.NullAbleBuilding{}
-		err := rows.Scan(
-			&building.Id,
-			&building.ExternalBuildingId,
-			&building.IrisCode,
-			&building.Name,
-			&building.ProjectName,
-			&building.Audience,
-			&building.Impression,
-			&building.CbdArea,
-			&building.BuildingStatus,
-			&building.CompetitorLocation,
-			&building.CompetitorExclusive,
-			&building.CompetitorPresence,
-			&building.Sellable,
-			&building.Connectivity,
-			&building.ResourceType,
-			&building.Subdistrict,
-			&building.Citytown,
-			&building.Province,
-			&building.GradeResource,
-			&building.BuildingType,
-			&building.CompletionYear,
-			&building.Latitude,
-			&building.Longitude,
-			&building.Images,
-			&building.LcdPresenceStatus,
-			&building.SyncedAt,
-			&building.CreatedAt,
-			&building.UpdatedAt,
-		)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, models.NullAbleBuildingToBuilding(building))
-	}
-	return result, nil
+
+	return scanBuildingRows(rows)
 }
 
-// FindByExternalId retrieves a building by external ERP ID
 func (repository *RepositoryBuildingImpl) FindByExternalId(ctx context.Context, tx *sql.Tx, externalId string) (models.Building, error) {
-	SQL := `SELECT id, external_building_id, iris_code, name, project_name, audience, 
-		impression, cbd_area, building_status, competitor_location, competitor_exclusive, competitor_presence, sellable, connectivity, 
-		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, latitude, longitude, images, lcd_presence_status, synced_at, created_at, updated_at 
-		FROM ` + models.BuildingTable + ` WHERE external_building_id = $1`
-
-	rows, err := tx.QueryContext(ctx, SQL, externalId)
-	if err != nil {
-		return models.Building{}, err
-	}
-	defer rows.Close()
-
-	building := models.NullAbleBuilding{}
-	if rows.Next() {
-		err := rows.Scan(
-			&building.Id,
-			&building.ExternalBuildingId,
-			&building.IrisCode,
-			&building.Name,
-			&building.ProjectName,
-			&building.Audience,
-			&building.Impression,
-			&building.CbdArea,
-			&building.BuildingStatus,
-			&building.CompetitorLocation,
-			&building.CompetitorExclusive,
-			&building.CompetitorPresence,
-			&building.Sellable,
-			&building.Connectivity,
-			&building.ResourceType,
-			&building.Subdistrict,
-			&building.Citytown,
-			&building.Province,
-			&building.GradeResource,
-			&building.BuildingType,
-			&building.CompletionYear,
-			&building.Latitude,
-			&building.Longitude,
-			&building.Images,
-			&building.LcdPresenceStatus,
-			&building.SyncedAt,
-			&building.CreatedAt,
-			&building.UpdatedAt,
-		)
-		if err != nil {
-			return models.Building{}, err
-		}
-		return models.NullAbleBuildingToBuilding(building), nil
+	building, err := scanBuildingRow(tx.QueryRowContext(ctx,
+		selectBuilding(` WHERE b.external_building_id = $1`), externalId))
+	if err == sql.ErrNoRows {
+		return models.Building{}, sql.ErrNoRows
 	}
 
-	return models.Building{}, sql.ErrNoRows
+	return building, err
+}
+
+// FindByIrisCode retrieves a building by its IRIS code.
+//
+// This is the key the rate card spreadsheet uses ("IRIS Building ID", e.g. B000006).
+// external_building_id is a different identifier entirely (BLDG-2025-09-02547) and
+// matches none of them.
+//
+// iris_code is not unique in the schema, so this returns the first match by id. A
+// caller that needs to detect ambiguity should count separately.
+func (repository *RepositoryBuildingImpl) FindByIrisCode(ctx context.Context, tx *sql.Tx, irisCode string) (models.Building, error) {
+	building, err := scanBuildingRow(tx.QueryRowContext(ctx,
+		selectBuilding(` WHERE b.iris_code = $1 ORDER BY b.id LIMIT 1`), irisCode))
+	if err == sql.ErrNoRows {
+		return models.Building{}, sql.ErrNoRows
+	}
+
+	return building, err
+}
+
+// buildingAllowedOrderBy maps the orderBy values the API accepts onto columns.
+//
+// orderBy and orderDirection arrive straight from the query string and are spliced
+// into ORDER BY, which cannot take a placeholder. Without this map any signed-in role
+// could append SQL to the buildings list.
+var buildingAllowedOrderBy = map[string]string{
+	"id": "b.id", "external_building_id": "b.external_building_id", "iris_code": "b.iris_code",
+	"name": "b.name", "project_name": "b.project_name",
+	"audience": "b.audience", "impression": "b.impression", "cbd_area": "b.cbd_area",
+	"building_status": "b.building_status", "sellable": "b.sellable",
+	"connectivity": "b.connectivity", "resource_type": "b.resource_type",
+	"subdistrict": "b.subdistrict", "citytown": "b.citytown", "province": "b.province",
+	"grade_resource": "b.grade_resource", "building_type": "b.building_type",
+	"completion_year": "b.completion_year", "lcd_presence_status": "b.lcd_presence_status",
+	"synced_at": "b.synced_at", "created_at": "b.created_at", "updated_at": "b.updated_at",
+}
+
+// buildingSafeOrder falls back to the list's default order for anything unrecognised
+// rather than refusing it: an old bookmarked URL should still load.
+func buildingSafeOrder(orderBy, orderDirection string) (string, string) {
+	column, ok := buildingAllowedOrderBy[orderBy]
+	if !ok {
+		column = "b.created_at"
+	}
+	if orderDirection != "ASC" && orderDirection != "DESC" {
+		orderDirection = "DESC"
+	}
+
+	return column, orderDirection
 }
 
 // FindAll retrieves all buildings with pagination, sorting, search, and filters
 func (repository *RepositoryBuildingImpl) FindAll(ctx context.Context, tx *sql.Tx, take int, skip int, orderBy string, orderDirection string, search string, buildingStatus string, sellable string, connectivity string, resourceType string, competitorLocation *bool, cbdArea string, subdistrict string, citytown string, province string, gradeResource string, buildingType string, excludeIds string) ([]models.Building, error) {
-	SQL := `SELECT id, external_building_id, iris_code, name, project_name, audience, 
-		impression, cbd_area, building_status, competitor_location, competitor_exclusive, competitor_presence, sellable, connectivity, 
-		resource_type, subdistrict, citytown, province, grade_resource, building_type, completion_year, latitude, longitude, images, lcd_presence_status, synced_at, created_at, updated_at 
-		FROM ` + models.BuildingTable
+	// The filters below name columns without a prefix, which is why buildingFrom
+	// aliases the table and reads the project through subqueries rather than a join:
+	// building_projects also has a `name`, and a join would make `name ILIKE $1`
+	// ambiguous.
+	SQL := selectBuilding("")
 
 	args := []interface{}{}
 	argIndex := 1
@@ -363,7 +291,8 @@ func (repository *RepositoryBuildingImpl) FindAll(ctx context.Context, tx *sql.T
 		}
 	}
 
-	SQL += ` ORDER BY ` + orderBy + ` ` + orderDirection + `, name ASC LIMIT $` + strconv.Itoa(argIndex) + ` OFFSET $` + strconv.Itoa(argIndex+1)
+	column, direction := buildingSafeOrder(orderBy, orderDirection)
+	SQL += ` ORDER BY ` + column + ` ` + direction + `, name ASC LIMIT $` + strconv.Itoa(argIndex) + ` OFFSET $` + strconv.Itoa(argIndex+1)
 	args = append(args, take, skip)
 
 	rows, err := tx.QueryContext(ctx, SQL, args...)
@@ -372,46 +301,7 @@ func (repository *RepositoryBuildingImpl) FindAll(ctx context.Context, tx *sql.T
 	}
 	defer rows.Close()
 
-	var buildings []models.Building
-	for rows.Next() {
-		building := models.NullAbleBuilding{}
-		err := rows.Scan(
-			&building.Id,
-			&building.ExternalBuildingId,
-			&building.IrisCode,
-			&building.Name,
-			&building.ProjectName,
-			&building.Audience,
-			&building.Impression,
-			&building.CbdArea,
-			&building.BuildingStatus,
-			&building.CompetitorLocation,
-			&building.CompetitorExclusive,
-			&building.CompetitorPresence,
-			&building.Sellable,
-			&building.Connectivity,
-			&building.ResourceType,
-			&building.Subdistrict,
-			&building.Citytown,
-			&building.Province,
-			&building.GradeResource,
-			&building.BuildingType,
-			&building.CompletionYear,
-			&building.Latitude,
-			&building.Longitude,
-			&building.Images,
-			&building.LcdPresenceStatus,
-			&building.SyncedAt,
-			&building.CreatedAt,
-			&building.UpdatedAt,
-		)
-		if err != nil {
-			return []models.Building{}, err
-		}
-		buildings = append(buildings, models.NullAbleBuildingToBuilding(building))
-	}
-
-	return buildings, nil
+	return scanBuildingRows(rows)
 }
 
 // CountAll returns the total count of buildings with optional search and filters
@@ -585,11 +475,18 @@ func (repository *RepositoryBuildingImpl) GetDistinctValues(ctx context.Context,
 }
 
 // FindAllForMapping retrieves all buildings for mapping with filters (no pagination)
-func (repository *RepositoryBuildingImpl) FindAllForMapping(ctx context.Context, tx *sql.Tx, buildingType string, buildingGrade string, year string, subdistrict string, progress string, sellable string, connectivity string, lcdPresence string, salesPackageIds string, buildingRestrictionIds string, lat *float64, lng *float64, radius *int, poiPoints []struct{ Lat float64; Lng float64 }, polygonPoints []struct{ Lat float64; Lng float64 }, minLat *float64, maxLat *float64, minLng *float64, maxLng *float64) ([]models.Building, error) {
-	SQL := `SELECT DISTINCT b.id, b.external_building_id, b.iris_code, b.name, b.project_name, b.audience, 
-		b.impression, b.cbd_area, b.building_status, b.competitor_location, b.competitor_exclusive, b.competitor_presence, b.sellable, b.connectivity, 
-		b.resource_type, b.subdistrict, b.citytown, b.province, b.grade_resource, b.building_type, b.completion_year, b.latitude, b.longitude, b.images, b.lcd_presence_status, b.synced_at, b.created_at, b.updated_at 
-		FROM ` + models.BuildingTable + ` b`
+func (repository *RepositoryBuildingImpl) FindAllForMapping(ctx context.Context, tx *sql.Tx, buildingType string, buildingGrade string, year string, subdistrict string, progress string, sellable string, connectivity string, lcdPresence string, salesPackageIds string, buildingRestrictionIds string, lat *float64, lng *float64, radius *int, poiPoints []struct {
+	Lat float64
+	Lng float64
+}, polygonPoints []struct {
+	Lat float64
+	Lng float64
+}, minLat *float64, maxLat *float64, minLng *float64, maxLng *float64) ([]models.Building, error) {
+	// DISTINCT because the polygon, package and restriction joins below can match a
+	// building more than once. Same column list as every other read: the map screen
+	// showing a different shape from the list screen is exactly the drift this
+	// consolidation exists to stop.
+	SQL := `SELECT DISTINCT ` + buildingColumns + buildingFrom
 
 	args := []interface{}{}
 	argIndex := 1
@@ -856,43 +753,11 @@ func (repository *RepositoryBuildingImpl) FindAllForMapping(ctx context.Context,
 	defer rows.Close()
 
 	var buildings []models.Building
-	for rows.Next() {
-		building := models.NullAbleBuilding{}
-		err := rows.Scan(
-			&building.Id,
-			&building.ExternalBuildingId,
-			&building.IrisCode,
-			&building.Name,
-			&building.ProjectName,
-			&building.Audience,
-			&building.Impression,
-			&building.CbdArea,
-			&building.BuildingStatus,
-			&building.CompetitorLocation,
-			&building.CompetitorExclusive,
-			&building.CompetitorPresence,
-			&building.Sellable,
-			&building.Connectivity,
-			&building.ResourceType,
-			&building.Subdistrict,
-			&building.Citytown,
-			&building.Province,
-			&building.GradeResource,
-			&building.BuildingType,
-			&building.CompletionYear,
-			&building.Latitude,
-			&building.Longitude,
-			&building.Images,
-			&building.LcdPresenceStatus,
-			&building.SyncedAt,
-			&building.CreatedAt,
-			&building.UpdatedAt,
-		)
-		if err != nil {
-			return []models.Building{}, err
-		}
-		buildings = append(buildings, models.NullAbleBuildingToBuilding(building))
+	mapped, err := scanBuildingRows(rows)
+	if err != nil {
+		return []models.Building{}, err
 	}
+	buildings = mapped
 
 	return buildings, nil
 }

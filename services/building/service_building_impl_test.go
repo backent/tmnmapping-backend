@@ -27,7 +27,7 @@ func newBuildingService(
 ) serviceBuilding.ServiceBuildingInterface {
 	logger := logrus.New()
 	logger.SetOutput(io.Discard) // suppress log output during tests
-	return serviceBuilding.NewServiceBuildingImpl(db, repoBuilding, repoPOI, nil, logger)
+	return serviceBuilding.NewServiceBuildingImpl(db, repoBuilding, &mocks.MockRepositoryBuildingProject{}, repoPOI, nil, logger)
 }
 
 // --- FindById ---
